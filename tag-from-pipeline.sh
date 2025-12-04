@@ -68,7 +68,7 @@ function create_new_tag() {
     if ! [ $(git tag -l "$version") ]; then
         printf "Releasing version %s.\n" "$version"
         curl -X POST -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/releases" \
-        -d "{\"tag_name\": \"$version\", \"name\": \"$version\", \"body\": \"Changelog: https://github.com/$GITHUB_REPOSITORY/blob/develop/CHANGELOG.md\"}"
+        -d "{\"tag_name\": \"$version\", \"name\": \"$version\", \"body\": \"Changelog: https://github.com/$GITHUB_REPOSITORY/blob/main/CHANGELOG.md\"}"
     else
         printf "Version %s already exists, not creating a new tag.\n" "$version"
     fi

@@ -1,3 +1,9 @@
+## [0.0.3] - 04.12.2025
+
+- Fix CI github action workflow
+- Fix publish workflow
+- Fix `pyproject.toml` metadata
+
 ## [0.0.2] - 04.12.2025
 
 - Fix CI github action workflow
