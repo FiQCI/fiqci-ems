@@ -1,0 +1,91 @@
+
+[project]
+name = "fiqci-ems"
+dynamic = ["version"]
+description = "FiQCI Error Mitigation Service"
+readme = "README.md"
+requires-python = ">=3.11, <3.13"
+dependencies = [
+    "iqm-client[qiskit]==33.0.0",
+    "matplotlib>=3.10.7",
+    "mthree>=3.0.0",
+]
+
+[project.optional-dependencies]
+docs = [
+    "ipykernel>=7.1.0",
+    "ipywidgets>=8.1.8",
+]
+
+
+[build-system]
+requires = ["setuptools>=68.0.0", "setuptools_scm[toml]>=7"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# See configuration details in https://github.com/pypa/setuptools_scm
+version_scheme = "no-guess-dev"
+fallback_version = "0.1"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+target-version = "py311"
+
+[tool.ruff.lint]
+
+ignore = ["F405", "F541", "E501"]
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+indent-style = "tab"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.0",
+    "pyrefly>=0.44.0",
+    "pytest>=9.0.1",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.14.7",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
