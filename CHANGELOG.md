@@ -2,6 +2,7 @@
 
 - Fix publishing to testPyPI
 - Manually trigger the `publish.yml` workflow from `tag_and_release.yml`
+  - Trigger workflow with `gh`
 
 ## [0.0.2] - 04.12.2025
 

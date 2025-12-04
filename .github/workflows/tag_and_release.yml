@@ -37,9 +37,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # GitHub works so that events ('release' event in this case) triggered while using the GITHUB_TOKEN will not create a
-  # new workflow run. This means the publishing workflow will not be triggered even though a new release is successfully
-  # created by the above job create_tag_and_release. Here we trigger the said workflow manually.
-  trigger_publishing:
-    needs: create_tag_and_release
-    uses: ./.github/workflows/publish.yml
+      # Manually trigger the publish workflow after release is created
+      - name: Trigger publish workflow
+        run: |
+          sleep 5  # Wait for release to be created
+          gh workflow run publish.yml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
