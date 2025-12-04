@@ -12,18 +12,28 @@ authors = [
 maintainers = [
     {name = "FiQCI", email = "servicedesk@csc.fi"}
 ]
+keywords = ["quantum computing", "error mitigation", "quantum error correction", "FiQCI", "readout error mitigation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "iqm-client[qiskit]==33.0.0",
+    "matplotlib>=3.10.7",
+    "mthree>=3.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/fiqci/fiqci-ems"
 Repository = "https://github.com/fiqci/fiqci-ems"
 Issues = "https://github.com/fiqci/fiqci-ems/issues"
 Changelog = "https://github.com/fiqci/fiqci-ems/blob/main/CHANGELOG.md"
-
-dependencies = [
-    "iqm-client[qiskit]==33.0.0",
-    "matplotlib>=3.10.7",
-    "mthree>=3.0.0",
-]
 
 [project.optional-dependencies]
 docs = [
@@ -53,7 +63,10 @@ ignore = ["F405", "F541", "E501"]
 
 [tool.pyrefly]
 project-includes = [
-    "**/*.py*",
+    "src/**/*.py",
+]
+project-excludes = [
+    "tests/**",
     "**/*.ipynb",
 ]
 
