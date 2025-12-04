@@ -6,6 +6,19 @@ description = "FiQCI Error Mitigation Service"
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
 license = {text = "Apache-2.0"}
+authors = [
+    {name = "FiQCI", email = "servicedesk@csc.fi"}
+]
+maintainers = [
+    {name = "FiQCI", email = "servicedesk@csc.fi"}
+]
+
+[project.urls]
+Homepage = "https://github.com/fiqci/fiqci-ems"
+Repository = "https://github.com/fiqci/fiqci-ems"
+Issues = "https://github.com/fiqci/fiqci-ems/issues"
+Changelog = "https://github.com/fiqci/fiqci-ems/blob/main/CHANGELOG.md"
+
 dependencies = [
     "iqm-client[qiskit]==33.0.0",
     "matplotlib>=3.10.7",
