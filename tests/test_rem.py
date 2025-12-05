@@ -5,13 +5,13 @@ from collections.abc import Iterator
 from typing import Any
 from unittest.mock import Mock, patch
 
+import numpy as np
 import pytest
-from mthree.classes import QuasiDistribution
 from mthree.exceptions import M3Error
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-from fiqci.ems.rem import M3IQM, apply_readout_error_mitigation, balanced_cal_strings, readout_error_m3
+from fiqci.ems.rem import M3IQM, balanced_cal_strings
 
 
 class TestBalancedCalStrings:
@@ -69,7 +69,7 @@ class TestM3IQM:
 	@pytest.fixture
 	def mock_system_info(self) -> dict[str, Any]:
 		"""Create mock system info."""
-		return {"max_shots": 10000, "inoperable_qubits": [], "num_qubits": 5}
+		return {"max_shots": 10000, "max_circuits": 100, "inoperable_qubits": [], "num_qubits": 5}
 
 	@pytest.fixture
 	def m3iqm_instance(self, mock_backend: Mock, mock_system_info: dict[str, Any]) -> Iterator[M3IQM]:
@@ -139,7 +139,7 @@ class TestM3IQM:
 			assert set(called_qubits) == {0, 2, 4}
 
 	def test_cals_from_system_sets_default_method_to_balanced(self, m3iqm_instance: M3IQM) -> None:
-		"""Test that default calibration method is 'balanced'."""
+		"""Test that default calibration method is 'balanced' for IQM."""
 		with patch.object(m3iqm_instance, "_grab_additional_cals"):
 			m3iqm_instance.cals_from_system(qubits=[0, 1])
 			assert m3iqm_instance.cal_method == "balanced"
@@ -178,46 +178,18 @@ class TestM3IQM:
 		with pytest.raises(M3Error, match="Attempting to calibrate inoperable qubits"):
 			m3iqm_real_grab_cals._grab_additional_cals([1, 3])
 
-	def test_grab_additional_cals_converts_dict_qubits_to_list(self, m3iqm_real_grab_cals: M3IQM) -> None:
-		"""Test that dict of qubits is converted to list of unique values."""
-		m3iqm_real_grab_cals.single_qubit_cals = [None] * 5
-		m3iqm_real_grab_cals.cal_shots = 1000
-
-		mock_circuit = Mock(spec=QuantumCircuit)
-		with patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]) as mock_marg:
-			with patch("fiqci.ems.rem.transpile", return_value=mock_circuit):
-				with patch("fiqci.ems.rem._job_thread"):
-					m3iqm_real_grab_cals._grab_additional_cals({"q0": 0, "q1": 1, "q2": 2}, method="marginal")
-					# Check that qubit list contains the unique values
-					called_qubits = mock_marg.call_args[0][0]
-					assert set(called_qubits) == {0, 1, 2}
-
-	def test_grab_additional_cals_handles_list_of_dicts(self, m3iqm_real_grab_cals: M3IQM) -> None:
-		"""Test that list of dict mappings is converted correctly."""
-		m3iqm_real_grab_cals.single_qubit_cals = [None] * 5
-		m3iqm_real_grab_cals.cal_shots = 1000
-
-		mock_circuit = Mock(spec=QuantumCircuit)
-		with patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]) as mock_marg:
-			with patch("fiqci.ems.rem.transpile", return_value=mock_circuit):
-				with patch("fiqci.ems.rem._job_thread"):
-					qubits = [{"q0": 0, "q1": 1}, {"q0": 2, "q1": 3}]
-					m3iqm_real_grab_cals._grab_additional_cals(qubits, method="marginal")
-					# Should extract unique qubits from all dicts
-					called_qubits = mock_marg.call_args[0][0]
-					assert set(called_qubits) == {0, 1, 2, 3}
-
 	def test_grab_additional_cals_initializes_single_qubit_cals_if_none(self, m3iqm_real_grab_cals: M3IQM) -> None:
 		"""Test that single_qubit_cals is initialized if None."""
 		m3iqm_real_grab_cals.single_qubit_cals = None
 		m3iqm_real_grab_cals.cal_shots = 1000
 
 		mock_circuit = Mock(spec=QuantumCircuit)
-		with patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]):
-			with patch("fiqci.ems.rem.transpile", return_value=mock_circuit):
-				with patch("fiqci.ems.rem._job_thread"):
-					m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
-					assert m3iqm_real_grab_cals.single_qubit_cals == [None] * 5
+		with (
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
+		):
+			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
+			assert m3iqm_real_grab_cals.single_qubit_cals == [None] * 5
 
 	def test_grab_additional_cals_sets_default_shots(self, m3iqm_real_grab_cals: M3IQM) -> None:
 		"""Test that default shots is set to min(max_shots, 10000)."""
@@ -225,11 +197,12 @@ class TestM3IQM:
 		m3iqm_real_grab_cals.cal_shots = None
 
 		mock_circuit = Mock(spec=QuantumCircuit)
-		with patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]):
-			with patch("fiqci.ems.rem.transpile", return_value=mock_circuit):
-				with patch("fiqci.ems.rem._job_thread"):
-					m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
-					assert m3iqm_real_grab_cals.cal_shots == 10000
+		with (
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
+		):
+			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
+			assert m3iqm_real_grab_cals.cal_shots == 10000
 
 	def test_grab_additional_cals_respects_max_shots_limit(self, m3iqm_real_grab_cals: M3IQM) -> None:
 		"""Test that shots respects backend max_shots limit."""
@@ -238,11 +211,12 @@ class TestM3IQM:
 		m3iqm_real_grab_cals.system_info["max_shots"] = 5000
 
 		mock_circuit = Mock(spec=QuantumCircuit)
-		with patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]):
-			with patch("fiqci.ems.rem.transpile", return_value=mock_circuit):
-				with patch("fiqci.ems.rem._job_thread"):
-					m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
-					assert m3iqm_real_grab_cals.cal_shots == 5000
+		with (
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
+		):
+			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
+			assert m3iqm_real_grab_cals.cal_shots == 5000
 
 	@pytest.mark.parametrize("method", ["marginal", "balanced", "independent"])
 	def test_grab_additional_cals_accepts_valid_methods(self, m3iqm_real_grab_cals: M3IQM, method: str) -> None:
@@ -252,169 +226,14 @@ class TestM3IQM:
 
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
-			patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
 			patch("fiqci.ems.rem.balanced_cal_strings", return_value=["00", "01", "10", "11"]),
-			patch("fiqci.ems.rem.balanced_cal_circuits", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem._tensor_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem.transpile", return_value=mock_circuit),
-			patch("fiqci.ems.rem._job_thread"),
+			patch("mthree.circuits.balanced_cal_circuits", return_value=[mock_circuit]),
+			patch("mthree.circuits._tensor_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
 		):
 			# Should not raise
 			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method=method)
-
-
-class TestReadoutErrorM3:
-	"""Tests for readout_error_m3 function."""
-
-	def test_readout_error_m3_returns_quasidistribution(self) -> None:
-		"""Test that readout_error_m3 returns a QuasiDistribution object."""
-		mock_mit = Mock(spec=M3IQM)
-		# Create a proper QuasiDistribution mock return value
-		quasi_dist = QuasiDistribution({"00": 0.95, "11": 0.05})
-		mock_mit.apply_correction = Mock(return_value=quasi_dist)
-
-		counts = {"00": 900, "11": 100}
-		qubits = [0, 1]
-
-		result = readout_error_m3(counts, mock_mit, qubits)
-
-		mock_mit.apply_correction.assert_called_once_with(counts, qubits)
-		# Verify the result is a dict-like object (QuasiDistribution inherits from dict)
-		assert isinstance(result, dict)
-		assert "00" in result
-		assert "11" in result
-
-	def test_readout_error_m3_with_dict_qubits(self) -> None:
-		"""Test that readout_error_m3 works with dict qubits mapping."""
-		mock_mit = Mock(spec=M3IQM)
-		quasi_dist = QuasiDistribution({"00": 0.98, "01": 0.02})
-		mock_mit.apply_correction = Mock(return_value=quasi_dist)
-
-		counts = {"00": 980, "01": 20}
-		qubits = {"q0": 0, "q1": 1}
-
-		result = readout_error_m3(counts, mock_mit, qubits)
-
-		mock_mit.apply_correction.assert_called_once_with(counts, qubits)
-		assert isinstance(result, dict)
-		assert "00" in result
-		assert "01" in result
-
-
-class TestApplyReadoutErrorMitigation:
-	"""Tests for apply_readout_error_mitigation function."""
-
-	@pytest.fixture
-	def mock_backend(self) -> Mock:
-		"""Create a mock IQM backend."""
-		backend = Mock()
-		backend.num_qubits = 3
-		return backend
-
-	@pytest.fixture
-	def mock_circuits(self) -> list[QuantumCircuit]:
-		"""Create mock quantum circuits."""
-		circuit1 = QuantumCircuit(2)
-		circuit1.h(0)
-		circuit1.cx(0, 1)
-		circuit1.measure_all()
-
-		circuit2 = QuantumCircuit(2)
-		circuit2.h(0)
-		circuit2.measure_all()
-
-		return [circuit1, circuit2]
-
-	@pytest.fixture
-	def mock_counts(self) -> list[dict[str, int]]:
-		"""Create mock measurement counts."""
-		return [{"00": 500, "11": 500}, {"0": 600, "1": 400}]
-
-	def test_apply_readout_error_mitigation_accepts_iqm_backend(
-		self, mock_backend: Mock, mock_circuits: list[QuantumCircuit], mock_counts: list[dict[str, int]]
-	) -> None:
-		"""Test that IQMBackendBase instance is accepted."""
-		with (
-			patch("fiqci.ems.rem.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.rem.M3IQM") as mock_m3iqm_class,
-		):
-			mock_mit = Mock()
-			mock_mit.apply_correction = Mock(return_value=Mock())
-			mock_m3iqm_class.return_value = mock_mit
-
-			# Should not raise
-			apply_readout_error_mitigation(mock_backend, mock_circuits, mock_counts)
-
-	def test_apply_readout_error_mitigation_creates_m3iqm_instance(
-		self, mock_backend: Mock, mock_circuits: list[QuantumCircuit], mock_counts: list[dict[str, int]]
-	) -> None:
-		"""Test that M3IQM instance is created with backend."""
-		with (
-			patch("fiqci.ems.rem.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.rem.M3IQM") as mock_m3iqm_class,
-		):
-			mock_mit = Mock()
-			mock_mit.apply_correction = Mock(return_value=Mock())
-			mock_m3iqm_class.return_value = mock_mit
-
-			apply_readout_error_mitigation(mock_backend, mock_circuits, mock_counts, mit_shots=2000)
-
-			mock_m3iqm_class.assert_called_once_with(mock_backend)
-			mock_mit.cals_from_system.assert_called_once()
-
-	def test_apply_readout_error_mitigation_calls_cals_from_system(
-		self, mock_backend: Mock, mock_circuits: list[QuantumCircuit], mock_counts: list[dict[str, int]]
-	) -> None:
-		"""Test that calibration is performed with correct parameters."""
-		with (
-			patch("fiqci.ems.rem.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.rem.M3IQM") as mock_m3iqm_class,
-		):
-			mock_mit = Mock()
-			mock_mit.apply_correction = Mock(return_value=Mock())
-			mock_m3iqm_class.return_value = mock_mit
-
-			apply_readout_error_mitigation(mock_backend, mock_circuits, mock_counts, mit_shots=3000)
-
-			# Check that cals_from_system was called with correct shots
-			call_kwargs = mock_mit.cals_from_system.call_args[1]
-			assert call_kwargs["shots"] == 3000
-
-	def test_apply_readout_error_mitigation_applies_correction_to_all_circuits(
-		self, mock_backend: Mock, mock_circuits: list[QuantumCircuit], mock_counts: list[dict[str, int]]
-	) -> None:
-		"""Test that correction is applied to all circuits."""
-		with (
-			patch("fiqci.ems.rem.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.rem.M3IQM") as mock_m3iqm_class,
-		):
-			mock_mit = Mock()
-			mock_mit.apply_correction = Mock(return_value=Mock())
-			mock_m3iqm_class.return_value = mock_mit
-
-			result = apply_readout_error_mitigation(mock_backend, mock_circuits, mock_counts)
-
-			# Should call apply_correction for each circuit/counts pair
-			assert mock_mit.apply_correction.call_count == len(mock_circuits)
-			assert len(result) == len(mock_circuits)
-
-	def test_apply_readout_error_mitigation_uses_default_shots(
-		self, mock_backend: Mock, mock_circuits: list[QuantumCircuit], mock_counts: list[dict[str, int]]
-	) -> None:
-		"""Test that default mit_shots value is used."""
-		with (
-			patch("fiqci.ems.rem.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.rem.M3IQM") as mock_m3iqm_class,
-		):
-			mock_mit = Mock()
-			mock_mit.apply_correction = Mock(return_value=Mock())
-			mock_m3iqm_class.return_value = mock_mit
-
-			apply_readout_error_mitigation(mock_backend, mock_circuits, mock_counts)
-
-			# Check that default 1000 shots is used
-			call_kwargs = mock_mit.cals_from_system.call_args[1]
-			assert call_kwargs["shots"] == 1000
 
 
 class TestIntegration:
@@ -427,3 +246,62 @@ class TestIntegration:
 		assert all(isinstance(s, str) for s in strings)
 		assert all(len(s) == 2 for s in strings)
 		assert all(c in "01" for s in strings for c in s)
+
+	def test_mitigation_reduces_errors_on_bell_state(self) -> None:
+		"""Test that mitigation actually reduces errors on a Bell state.
+
+		Simulates a Bell state experiment with realistic readout errors and
+		verifies that mitigation increases the correct state populations.
+
+		This test manually sets calibration matrices and verifies that applying
+		mitigation to noisy counts improves the fidelity toward the ideal state.
+		"""
+		# Create a simple mock backend
+		backend = Mock()
+		backend.version = 2
+		backend.name = "mock_iqm_backend"
+		backend.num_qubits = 20
+		config = Mock()
+		config.num_qubits = 20
+		config.max_shots = 10000
+		config.simulator = False
+		backend.configuration.return_value = config
+
+		# Create M3 mitigator
+		m3 = M3IQM(backend)
+
+		# Initialize calibration list
+		m3.single_qubit_cals = [None] * 20
+
+		# Manually set calibration matrices (realistic 5% readout error)
+		# P(measure i | prepared j) for each qubit
+		m3.single_qubit_cals[8] = np.array([[0.95, 0.05], [0.05, 0.95]], dtype=np.float32)
+		m3.single_qubit_cals[16] = np.array([[0.94, 0.04], [0.06, 0.96]], dtype=np.float32)
+
+		# Simulate noisy Bell state: ideal is 50% |00⟩ + 50% |11⟩
+		# With ~5% error per qubit, we get ~150 error counts out of 2000
+		raw_counts = {
+			"00": 900,  # Should be ~1000 (correct state)
+			"01": 75,  # Error: measured 01 instead of 00 or 11
+			"10": 75,  # Error: measured 10 instead of 00 or 11
+			"11": 950,  # Should be ~1000 (correct state)
+		}
+
+		# Apply mitigation
+		quasi_dist = m3.apply_correction(raw_counts, qubits=[8, 16])
+
+		# Get nearest probability distribution and convert to counts
+		mitigated_probs = quasi_dist.nearest_probability_distribution()
+		mitigated_counts = {state: int(prob * 2000) for state, prob in mitigated_probs.items()}
+
+		# Verify that mitigation improved the results
+		# Count correct states (00 and 11)
+		raw_correct = raw_counts.get("00", 0) + raw_counts.get("11", 0)
+		mitigated_correct = mitigated_counts.get("00", 0) + mitigated_counts.get("11", 0)
+
+		# Mitigation should increase correct states significantly
+		# From 1850 raw to at least 1950 mitigated (>100 count improvement)
+		assert mitigated_correct > raw_correct, (
+			f"Mitigation should increase correct states: {raw_correct} → {mitigated_correct}"
+		)
+		assert mitigated_correct >= 1950, f"Mitigated should be >=1950 correct counts, got {mitigated_correct}"

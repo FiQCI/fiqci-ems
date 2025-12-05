@@ -1,3 +1,9 @@
+## [0.1.0] - 05.12.2025
+
+- Enable publishing to PyPi
+- Fix: M3 was incorrectly calculating the Calibration matrices
+- Add: FiQCI Backend that allows configurable mitigation levels.
+
 ## [0.0.3] - 04.12.2025
 
 - Fix publishing to testPyPI
