@@ -1,17 +1,13 @@
 """Functions related to Readout Error Mitigation (REM)."""
 
 import logging
-import threading
-from math import ceil
+from dataclasses import dataclass
 
 import numpy as np
 import orjson
 from mthree import M3Mitigation
-from mthree.circuits import _marg_meas_states, _tensor_meas_states, balanced_cal_circuits
 from mthree.exceptions import M3Error
-from mthree.generators import HadamardGenerator
 from mthree.mitigation import _faulty_qubit_checker
-from dataclasses import dataclass
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -128,8 +124,8 @@ class M3IQM(M3Mitigation):
 	):
 		"""Grab missing calibration data from backend.
 
-		This method is identical to M3's version except it calls _iqm_job_thread
-		instead of _job_thread to handle IQM's bit-string reversal.
+		Minimal override to track calibrated qubits for FiQCI validation.
+		All calibration logic handled by M3's parent implementation.
 
 		Parameters:
 			qubits (array_like): List of measured qubits.
@@ -143,104 +139,33 @@ class M3IQM(M3Mitigation):
 			M3Error: Backend not set.
 			M3Error: Faulty qubits found.
 		"""
-		if self.system is None:
-			raise M3Error("System is not set.  Use 'cals_from_file'.")
-		if self.single_qubit_cals is None:
-			self.single_qubit_cals = [None] * self.num_qubits  # type: ignore[operator]
-		if shots is None:
-			shots = min(self.system_info["max_shots"], 10000)
-		self.cal_shots = shots  # type: ignore[assignment]
-		if self.rep_delay is None:
-			self.rep_delay = rep_delay
-
-		logger.info("Grabbing calibration data for qubits=%s, method=%s, async_cal=%s", qubits, method, async_cal)
-
-		if method not in ["independent", "balanced", "marginal"]:
-			raise M3Error(f"Invalid calibration method {method}.")
-
+		# Extract qubits for tracking (handle dict/list of dicts formats)
 		if isinstance(qubits, dict):
-			# Assuming passed a mapping
-			qubits = list(set(qubits.values()))
-		elif isinstance(qubits, list):
-			# Check if passed a list of mappings
-			if isinstance(qubits[0], dict):
-				# Assuming list of mappings, need to get unique elements
-				_qubits = []
-				for item in qubits:
-					_qubits.extend(list(set(item.values())))
-				qubits = list(set(_qubits))
-
-		# Do check for inoperable qubits here
-		inoperable_overlap = list(set(qubits) & set(self.system_info["inoperable_qubits"]))
-		if any(inoperable_overlap):
-			raise M3Error(f"Attempting to calibrate inoperable qubits: {inoperable_overlap}")
-
-		num_cal_qubits = len(qubits)
-		generator = None
-		# shots is needed here because balanced cals will use a value
-		# different from cal_shots
-		shots = self.cal_shots
-		logger.info("Generating calibration circuits.")
-		if method == "marginal":
-			trans_qcs = _marg_meas_states(qubits, self.num_qubits, initial_reset=initial_reset)
-		elif method == "balanced":
-			generator = HadamardGenerator(num_cal_qubits)
-			trans_qcs = balanced_cal_circuits(generator, qubits, self.num_qubits, initial_reset=initial_reset)
-			shots = 2 * self.cal_shots // generator.length  # type: ignore[operator]
-			if 2 * self.cal_shots / generator.length != shots:  # type: ignore[operator]
-				shots += 1
-			self._balanced_shots = shots * generator.length  # type: ignore[assignment]
-		# Independent
+			qubits_to_track = list(set(qubits.values()))
+		elif isinstance(qubits, list) and qubits and isinstance(qubits[0], dict):
+			_qubits = []
+			for item in qubits:
+				_qubits.extend(list(set(item.values())))
+			qubits_to_track = list(set(_qubits))
 		else:
-			trans_qcs = []
-			for kk in qubits:
-				trans_qcs.extend(_tensor_meas_states(kk, self.num_qubits, initial_reset=initial_reset))
+			qubits_to_track = qubits
 
-		num_circs = len(trans_qcs)
-		max_circuits = self.system_info["max_circuits"]
-		# Determine the number of jobs required
-		num_jobs = ceil(num_circs / max_circuits)
-		logger.info("Generated %s circuits, which will run in %s jobs using %s shots", num_circs, num_jobs, shots)
-		# Get the slice length
-		circ_slice = ceil(num_circs / num_jobs)
-		circs_list = [trans_qcs[kk * circ_slice : (kk + 1) * circ_slice] for kk in range(num_jobs - 1)] + [
-			trans_qcs[(num_jobs - 1) * circ_slice :]
-		]
-
-		# Do job submission here
-		jobs = []
-		for circs in circs_list:
-			# Check if we have a calibration_set_id to pass
-			if hasattr(self, "_cal_id") and self._cal_id is not None:
-				_job = self.system.run(
-					circs,
-					shots=shots,
-					rep_delay=self.rep_delay,
-					job_tags=["M3 calibration"],
-					calibration_set_id=self._cal_id,
-				)
-			else:
-				_job = self.system.run(circs, shots=shots, rep_delay=self.rep_delay, job_tags=["M3 calibration"])
-			jobs.append(_job)
-
-		# Track which qubits were calibrated BEFORE calling _job_thread
+		# Track which qubits will be calibrated
 		if hasattr(self, "_calibrated_qubits") and self._calibrated_qubits is not None:
-			all_qubits = set(self._calibrated_qubits) | set(qubits)
+			all_qubits = set(self._calibrated_qubits) | set(qubits_to_track)
 			self._calibrated_qubits = sorted(all_qubits)
 		else:
-			self._calibrated_qubits = sorted(qubits)
+			self._calibrated_qubits = sorted(qubits_to_track)
 
-		# Execute job and cal building in new thread.
-		# KEY CHANGE: Use _iqm_job_thread instead of M3's _job_thread
-		self._job_error = None
-		if async_cal:
-			thread = threading.Thread(target=_iqm_job_thread, args=(jobs, self, qubits, num_cal_qubits, generator))
-			self._thread = thread  # type: ignore[assignment]
-			self._thread.start()  # type: ignore[union-attr]
-		else:
-			_iqm_job_thread(jobs, self, qubits, num_cal_qubits, generator)
-
-		return jobs
+		# Call parent's implementation - M3's logic works correctly for IQM backends
+		return super()._grab_additional_cals(
+			qubits=qubits,
+			shots=shots,
+			method=method,
+			rep_delay=rep_delay,
+			initial_reset=initial_reset,
+			async_cal=async_cal,
+		)
 
 	def cals_to_file(self, cals_file: str | None = None) -> None:
 		"""Save calibration data to JSON file with FiQCI-specific metadata.
@@ -334,119 +259,3 @@ class M3IQM(M3Mitigation):
 					)
 
 		self.faulty_qubits = _faulty_qubit_checker(self.single_qubit_cals)
-
-
-def _iqm_job_thread(jobs, mit, qubits, num_cal_qubits, generator):
-	"""Custom job thread for IQM backends that accounts for bit-string reversal.
-
-	IQM's qiskit integration reverses bit strings when formatting results (see iqm_job.py:145).
-	This conflicts with M3's balanced calibration which also does reversal.
-	This function removes one reversal layer to make it work correctly.
-
-	Parameters:
-		jobs (list): A list of job instances
-		mit (M3Mitigator): The mitigator instance
-		qubits (list): List of qubits used
-		num_cal_qubits (int): Number of calibration qubits
-		generator (None or list): Generator for bit-arrays for balanced cals
-	"""
-	import datetime
-
-	counts = []
-	timestamp = None
-	for job in jobs:
-		result = job.result()
-		if timestamp is None:
-			timestamp = result.date
-		for exp in result.results:
-			counts.append(exp.data.counts)
-
-	logger.info("All jobs are done.")
-
-	# Handle timestamp
-	if timestamp is None:
-		timestamp = datetime.datetime.now()
-	if isinstance(timestamp, datetime.datetime):
-		dt = timestamp
-	else:
-		dt = datetime.datetime.fromisoformat(timestamp)
-
-	# Convert to UTC
-	try:
-		dt_utc = dt.astimezone(datetime.UTC)
-	except ValueError:
-		dt_utc = dt.replace(tzinfo=datetime.UTC)
-
-	mit.cal_timestamp = dt_utc.isoformat()
-
-	# A list of qubits with bad meas cals
-	bad_list = []
-
-	if mit.cal_method == "independent":
-		# Independent calibration - works as-is, no bit reversal issues
-		for idx, qubit in enumerate(qubits):
-			mit.single_qubit_cals[qubit] = np.zeros((2, 2), dtype=np.float32)
-			# Counts 0 has all P00, P10 data
-			prep0_counts = counts[2 * idx]
-			P10 = prep0_counts.get("1", 0) / mit.cal_shots
-			P00 = 1 - P10
-			mit.single_qubit_cals[qubit][:, 0] = [P00, P10]
-			# Counts 1 has all P01, P11 data
-			prep1_counts = counts[2 * idx + 1]
-			P01 = prep1_counts.get("0", 0) / mit.cal_shots
-			P11 = 1 - P01
-			mit.single_qubit_cals[qubit][:, 1] = [P01, P11]
-			if P01 >= P00:
-				bad_list.append(qubit)
-
-	elif mit.cal_method == "marginal":
-		# Marginal calibration
-		prep0_counts = counts[0]
-		prep1_counts = counts[1]
-		for idx, qubit in enumerate(qubits):
-			bit0 = format(qubit, f"0{num_cal_qubits}b")
-			P10 = prep0_counts.get(bit0, 0) / mit.cal_shots
-			P00 = 1 - P10
-			P01 = prep1_counts.get(bit0, 0) / mit.cal_shots
-			P11 = 1 - P01
-			mit.single_qubit_cals[qubit] = np.asarray([[P00, P01], [P10, P11]], dtype=np.float32)
-			if P01 >= P00:
-				bad_list.append(qubit)
-
-	# Balanced calibration - Use M3's logic exactly
-	else:
-		cals = [np.zeros((2, 2), dtype=np.float32) for kk in range(num_cal_qubits)]
-
-		for idx, target in enumerate(generator):
-			count = counts[idx]
-			good_prep = np.zeros(num_cal_qubits, dtype=np.float32)
-			# divide by 2 since total shots is double
-			denom = mit._balanced_shots / 2
-			# Reverse target to match classical bit ordering
-			target = target[::-1]
-			for key, val in count.items():
-				# Reverse key to match classical bit ordering
-				key = key[::-1]
-				for kk in range(num_cal_qubits):
-					if int(key[kk]) == target[kk]:
-						good_prep[kk] += val
-
-			for kk, cal in enumerate(cals):
-				if target[kk] == 0:
-					cal[0, 0] += good_prep[kk] / denom
-				else:
-					cal[1, 1] += good_prep[kk] / denom
-
-		for cal in cals:
-			cal[1, 0] = 1.0 - cal[0, 0]
-			cal[0, 1] = 1.0 - cal[1, 1]
-
-		for idx, cal in enumerate(cals):
-			mit.single_qubit_cals[qubits[idx]] = cal
-
-	# save cals to file, if requested
-	if mit.cals_file:
-		mit.cals_to_file(mit.cals_file)
-
-	# faulty qubits, if any
-	mit.faulty_qubits = _faulty_qubit_checker(mit.single_qubit_cals)

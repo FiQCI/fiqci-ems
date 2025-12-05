@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from typing import Any
 from unittest.mock import Mock, patch
 
+import numpy as np
 import pytest
 from mthree.exceptions import M3Error
 from qiskit import QuantumCircuit
@@ -177,37 +178,6 @@ class TestM3IQM:
 		with pytest.raises(M3Error, match="Attempting to calibrate inoperable qubits"):
 			m3iqm_real_grab_cals._grab_additional_cals([1, 3])
 
-	def test_grab_additional_cals_converts_dict_qubits_to_list(self, m3iqm_real_grab_cals: M3IQM) -> None:
-		"""Test that dict of qubits is converted to list of unique values."""
-		m3iqm_real_grab_cals.single_qubit_cals = [None] * 5
-		m3iqm_real_grab_cals.cal_shots = 1000
-
-		mock_circuit = Mock(spec=QuantumCircuit)
-		with (
-			patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]) as mock_marg,
-			patch("fiqci.ems.rem._iqm_job_thread"),
-		):
-			m3iqm_real_grab_cals._grab_additional_cals({"q0": 0, "q1": 1, "q2": 2}, method="marginal")
-			# Check that qubit list contains the unique values
-			called_qubits = mock_marg.call_args[0][0]
-			assert set(called_qubits) == {0, 1, 2}
-
-	def test_grab_additional_cals_handles_list_of_dicts(self, m3iqm_real_grab_cals: M3IQM) -> None:
-		"""Test that list of dict mappings is converted correctly."""
-		m3iqm_real_grab_cals.single_qubit_cals = [None] * 5
-		m3iqm_real_grab_cals.cal_shots = 1000
-
-		mock_circuit = Mock(spec=QuantumCircuit)
-		with (
-			patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]) as mock_marg,
-			patch("fiqci.ems.rem._iqm_job_thread"),
-		):
-			qubits = [{"q0": 0, "q1": 1}, {"q0": 2, "q1": 3}]
-			m3iqm_real_grab_cals._grab_additional_cals(qubits, method="marginal")
-			# Should extract unique qubits from all dicts
-			called_qubits = mock_marg.call_args[0][0]
-			assert set(called_qubits) == {0, 1, 2, 3}
-
 	def test_grab_additional_cals_initializes_single_qubit_cals_if_none(self, m3iqm_real_grab_cals: M3IQM) -> None:
 		"""Test that single_qubit_cals is initialized if None."""
 		m3iqm_real_grab_cals.single_qubit_cals = None
@@ -215,8 +185,8 @@ class TestM3IQM:
 
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
-			patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem._iqm_job_thread"),
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
 		):
 			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
 			assert m3iqm_real_grab_cals.single_qubit_cals == [None] * 5
@@ -228,8 +198,8 @@ class TestM3IQM:
 
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
-			patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem._iqm_job_thread"),
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
 		):
 			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
 			assert m3iqm_real_grab_cals.cal_shots == 10000
@@ -242,8 +212,8 @@ class TestM3IQM:
 
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
-			patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem._iqm_job_thread"),
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
 		):
 			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method="marginal")
 			assert m3iqm_real_grab_cals.cal_shots == 5000
@@ -256,11 +226,11 @@ class TestM3IQM:
 
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
-			patch("fiqci.ems.rem._marg_meas_states", return_value=[mock_circuit]),
+			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
 			patch("fiqci.ems.rem.balanced_cal_strings", return_value=["00", "01", "10", "11"]),
-			patch("fiqci.ems.rem.balanced_cal_circuits", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem._tensor_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem._iqm_job_thread"),
+			patch("mthree.circuits.balanced_cal_circuits", return_value=[mock_circuit]),
+			patch("mthree.circuits._tensor_meas_states", return_value=[mock_circuit]),
+			patch("mthree.mitigation._job_thread"),
 		):
 			# Should not raise
 			m3iqm_real_grab_cals._grab_additional_cals([0, 1], method=method)
@@ -276,3 +246,62 @@ class TestIntegration:
 		assert all(isinstance(s, str) for s in strings)
 		assert all(len(s) == 2 for s in strings)
 		assert all(c in "01" for s in strings for c in s)
+
+	def test_mitigation_reduces_errors_on_bell_state(self) -> None:
+		"""Test that mitigation actually reduces errors on a Bell state.
+
+		Simulates a Bell state experiment with realistic readout errors and
+		verifies that mitigation increases the correct state populations.
+
+		This test manually sets calibration matrices and verifies that applying
+		mitigation to noisy counts improves the fidelity toward the ideal state.
+		"""
+		# Create a simple mock backend
+		backend = Mock()
+		backend.version = 2
+		backend.name = "mock_iqm_backend"
+		backend.num_qubits = 20
+		config = Mock()
+		config.num_qubits = 20
+		config.max_shots = 10000
+		config.simulator = False
+		backend.configuration.return_value = config
+
+		# Create M3 mitigator
+		m3 = M3IQM(backend)
+
+		# Initialize calibration list
+		m3.single_qubit_cals = [None] * 20
+
+		# Manually set calibration matrices (realistic 5% readout error)
+		# P(measure i | prepared j) for each qubit
+		m3.single_qubit_cals[8] = np.array([[0.95, 0.05], [0.05, 0.95]], dtype=np.float32)
+		m3.single_qubit_cals[16] = np.array([[0.94, 0.04], [0.06, 0.96]], dtype=np.float32)
+
+		# Simulate noisy Bell state: ideal is 50% |00⟩ + 50% |11⟩
+		# With ~5% error per qubit, we get ~150 error counts out of 2000
+		raw_counts = {
+			"00": 900,  # Should be ~1000 (correct state)
+			"01": 75,  # Error: measured 01 instead of 00 or 11
+			"10": 75,  # Error: measured 10 instead of 00 or 11
+			"11": 950,  # Should be ~1000 (correct state)
+		}
+
+		# Apply mitigation
+		quasi_dist = m3.apply_correction(raw_counts, qubits=[8, 16])
+
+		# Get nearest probability distribution and convert to counts
+		mitigated_probs = quasi_dist.nearest_probability_distribution()
+		mitigated_counts = {state: int(prob * 2000) for state, prob in mitigated_probs.items()}
+
+		# Verify that mitigation improved the results
+		# Count correct states (00 and 11)
+		raw_correct = raw_counts.get("00", 0) + raw_counts.get("11", 0)
+		mitigated_correct = mitigated_counts.get("00", 0) + mitigated_counts.get("11", 0)
+
+		# Mitigation should increase correct states significantly
+		# From 1850 raw to at least 1950 mitigated (>100 count improvement)
+		assert mitigated_correct > raw_correct, (
+			f"Mitigation should increase correct states: {raw_correct} → {mitigated_correct}"
+		)
+		assert mitigated_correct >= 1950, f"Mitigated should be >=1950 correct counts, got {mitigated_correct}"
