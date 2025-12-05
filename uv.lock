@@ -329,6 +329,7 @@ dependencies = [
 docs = [
     { name = "ipykernel" },
     { name = "ipywidgets" },
+    { name = "pylatexenc" },
 ]
 
 [package.dev-dependencies]
@@ -347,6 +348,7 @@ requires-dist = [
     { name = "iqm-client", extras = ["qiskit"], specifier = "==33.0.0" },
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "mthree", specifier = ">=3.0.0" },
+    { name = "pylatexenc", marker = "extra == 'docs'", specifier = ">=2.10" },
 ]
 provides-extras = ["docs"]
 
@@ -1278,6 +1280,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/e7/46/bd74733ff23167559
 wheels = [
     { url = "https://files.pythonhosted.org/packages/61/ad/689f02752eeec26aed679477e80e632ef1b682313be70793d798c1d5fc8f/PyJWT-2.10.1-py3-none-any.whl", hash = "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb", size = 22997, upload-time = "2024-11-28T03:43:27.893Z" },
 ]
+
+[[package]]
+name = "pylatexenc"
+version = "2.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/ab/34ec41718af73c00119d0351b7a2531d2ebddb51833a36448fc7b862be60/pylatexenc-2.10.tar.gz", hash = "sha256:3dd8fd84eb46dc30bee1e23eaab8d8fb5a7f507347b23e5f38ad9675c84f40d3", size = 162597, upload-time = "2021-04-06T07:56:07.854Z" }
 
 [[package]]
 name = "pyparsing"
