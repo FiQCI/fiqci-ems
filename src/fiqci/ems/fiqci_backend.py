@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
+from iqm.iqm_client.models import CircuitCompilationOptions, DDMode
 from mthree.utils import final_measurement_mapping
+from traitlets import Bool
 
 from fiqci.ems.rem import M3IQM
 from fiqci.ems.utils import probabilities_to_counts
@@ -146,11 +148,14 @@ class FiQCIBackend:
 
 		# Level 1: Readout error mitigation with M3
 		if self._mitigation_level == 1:
-			return self._run_with_m3_mitigation(circuits_list, shots, **kwargs)
+			return self._run_with_m3_mitigation(circuits_list, shots, dd=False, **kwargs)
+		
+		if self._mitigation_level == 2:
+			return self._run_with_m3_mitigation(circuits_list, shots, dd=True, **kwargs)
 
 		raise NotImplementedError(f"Mitigation level {self._mitigation_level} not yet implemented")
 
-	def _run_with_m3_mitigation(self, circuits: list[QuantumCircuit], shots: int, **kwargs: Any) -> MitigatedJob:
+	def _run_with_m3_mitigation(self, circuits: list[QuantumCircuit], shots: int, dd: Bool = False, **kwargs: Any) -> MitigatedJob:
 		"""Run circuits with M3 readout error mitigation.
 
 		Args:
@@ -191,7 +196,11 @@ class FiQCIBackend:
 			)
 
 		# Run circuits on backend
-		job = self._backend.run(circuits, shots=shots, **kwargs)
+		if dd:
+			circuit_compilation_options = CircuitCompilationOptions(dd_mode=DDMode.ENABLED)
+		else:
+			circuit_compilation_options = CircuitCompilationOptions(dd_mode=DDMode.DISABLED)
+		job = self._backend.run(circuits, shots=shots, circuit_compilation_options=circuit_compilation_options, **kwargs)
 		assert job is not None, "Backend returned None job"
 		result = job.result()
 
