@@ -64,7 +64,7 @@ class FiQCIBackend:
 		self._raw_counts_cache: list[dict[str, int]] | None = None
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
-		if self._mitigation_level == 1:
+		if self._mitigation_level > 0 and self._mitigation_level < 3:
 			self._mitigator = M3IQM(self._backend)
 
 			# Load calibration from file if it exists
