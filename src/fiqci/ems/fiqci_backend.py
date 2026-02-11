@@ -9,12 +9,13 @@ from typing import Any
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from iqm.iqm_client.models import CircuitCompilationOptions, DDMode
 from mthree.utils import final_measurement_mapping
-from traitlets import Bool
 
 from fiqci.ems.rem import M3IQM
 from fiqci.ems.utils import probabilities_to_counts
+from fiqci.ems.paulitwirl import PauliTwirl
 
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
+from qiskit.transpiler import PassManager
 from qiskit.providers import JobV1
 from qiskit.result import Result
 
@@ -62,9 +63,10 @@ class FiQCIBackend:
 		self._calibration_file = calibration_file
 		self._mitigator: M3IQM | None = None
 		self._raw_counts_cache: list[dict[str, int]] | None = None
+		self.num_pauli_twirls = 50 # Number of twirled circuits to generate
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
-		if self._mitigation_level > 0 and self._mitigation_level < 3:
+		if self._mitigation_level > 0 and self._mitigation_level < 4:
 			self._mitigator = M3IQM(self._backend)
 
 			# Load calibration from file if it exists
@@ -137,34 +139,68 @@ class FiQCIBackend:
 		# Normalize to list
 		circuits_list = circuits if isinstance(circuits, list) else [circuits]
 
+		# Track original circuit indices for level 3
+		circuit_groups: list[list[int]] = []
+		flattened_circuits: list[QuantumCircuit] = []
+
+		# Apply Pauli twirling for mitigation level 3
+		if self._mitigation_level == 3:
+			pm = PassManager([PauliTwirl()])
+
+			for circ in circuits_list:
+				start_idx = len(flattened_circuits)
+				twirled_qcs = [transpile(pm.run(circ), self._backend) for _ in range(self.num_pauli_twirls)]
+				twirled_qcs.append(circ)  # Include original circuit
+				flattened_circuits.extend(twirled_qcs)
+				# Track indices for this original circuit
+				circuit_groups.append(list(range(start_idx, len(flattened_circuits))))
+
+			circuits_list = flattened_circuits
+		else:
+			circuit_groups = [[i] for i in range(len(circuits_list))]
+
 		if not circuits_list:
 			raise ValueError("No circuits provided")
 
 		# Level 0: No mitigation, pass through to backend
 		if self._mitigation_level == 0:
-			job = self._backend.run(circuits, shots=shots, **kwargs)
+			job = self._backend.run(circuits_list, shots=shots, **kwargs)
 			assert job is not None, "Backend returned None job"
 			return job
 
 		# Level 1: Readout error mitigation with M3
 		if self._mitigation_level == 1:
-			return self._run_with_m3_mitigation(circuits_list, shots, dd=False, **kwargs)
+			return self._run_with_m3_mitigation(circuits_list, shots, dd=False, circuit_groups=None, **kwargs)
 		
+		# Level 2: Readout error mitigation with M3 and dynamical decoupling (DD)
 		if self._mitigation_level == 2:
-			return self._run_with_m3_mitigation(circuits_list, shots, dd=True, **kwargs)
+			return self._run_with_m3_mitigation(circuits_list, shots, dd=True, circuit_groups=None, **kwargs)
+
+		# Level 3: Pauli twirling + M3 mitigation
+		if self._mitigation_level == 3:
+			return self._run_with_m3_mitigation(circuits_list, shots, dd=False, circuit_groups=circuit_groups, **kwargs)
 
 		raise NotImplementedError(f"Mitigation level {self._mitigation_level} not yet implemented")
 
-	def _run_with_m3_mitigation(self, circuits: list[QuantumCircuit], shots: int, dd: Bool = False, **kwargs: Any) -> MitigatedJob:
+	def _run_with_m3_mitigation(
+		self, 
+		circuits: list[QuantumCircuit], 
+		shots: int, 
+		dd: bool = False, 
+		circuit_groups: list[list[int]] | None = None,
+		**kwargs: Any
+	) -> MitigatedJob:
 		"""Run circuits with M3 readout error mitigation.
 
 		Args:
 			circuits: List of quantum circuits to execute.
 			shots: Number of measurement shots.
+			dd: Whether to enable dynamical decoupling.
+			circuit_groups: For level 3, groups of circuit indices to average. None for levels 1-2.
 			**kwargs: Additional keyword arguments passed to backend.run().
 
 		Returns:
-			A JobV1 instance with mitigated results.
+			A MitigatedJob instance with mitigated results.
 		"""
 		# Get qubit mappings for each circuit
 		qubits_list = [final_measurement_mapping(circuit) for circuit in circuits]
@@ -189,7 +225,6 @@ class FiQCIBackend:
 					"Calibrating M3 mitigator for qubits %s with %d shots", calibration_qubits, self._calibration_shots
 				)
 
-			# M3's cals_from_system will automatically save to cals_file after calibration completes
 			assert self._mitigator is not None, "Mitigator should be initialized for level 1"
 			self._mitigator.cals_from_system(
 				calibration_qubits, shots=self._calibration_shots, cals_file=self._calibration_file
@@ -208,27 +243,106 @@ class FiQCIBackend:
 		raw_counts_list: list[dict[str, int]] = []
 		mitigated_counts_list: list[dict[str, int]] = []
 
-		for idx, circuit in enumerate(circuits):
-			raw_counts = result.get_counts(idx)
-			raw_counts_list.append(raw_counts)
-			qubits = qubits_list[idx]
+		# For level 3, we need to average the counts of twirled variants
+		if circuit_groups:
+        	# Process groups of circuits and average their results
+			for group_indices in circuit_groups:
+				group_raw_counts_list: list[dict[str, int]] = []
+				group_mitigated_counts_list: list[dict[str, int]] = []
 
-			# Apply M3 correction
-			assert self._mitigator is not None, "Mitigator should be initialized for level 1"
-			quasi_dist = self._mitigator.apply_correction(raw_counts, qubits)
-			mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
-			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
+				for idx in group_indices:
+					raw_counts = result.get_counts(idx)
+					group_raw_counts_list.append(raw_counts)
+					qubits = qubits_list[idx]
 
-			mitigated_counts_list.append(mitigated_counts[0])
+					# Apply M3 correction
+					assert self._mitigator is not None, "Mitigator should be initialized"
+					quasi_dist = self._mitigator.apply_correction(raw_counts, qubits)
+					mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
+					mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
+					group_mitigated_counts_list.append(mitigated_counts[0])
+
+				# Average the raw counts
+				averaged_raw = self._average_counts(group_raw_counts_list)
+				raw_counts_list.append(averaged_raw)
+
+				# Average the mitigated counts
+				averaged_mitigated = self._average_counts(group_mitigated_counts_list)
+				mitigated_counts_list.append(averaged_mitigated)
+		else:
+			# Level 1-2: Process each circuit individually
+			for idx, circuit in enumerate(circuits):
+				raw_counts = result.get_counts(idx)
+				raw_counts_list.append(raw_counts)
+				qubits = qubits_list[idx]
+
+				# Apply M3 correction
+				assert self._mitigator is not None, "Mitigator should be initialized for level 1"
+				quasi_dist = self._mitigator.apply_correction(raw_counts, qubits)
+				mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
+				mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
+				mitigated_counts_list.append(mitigated_counts[0])
 
 		# Cache raw counts for access via property
 		self._raw_counts_cache = raw_counts_list
 
 		# Create new result with mitigated counts and metadata
-		mitigated_result = self._create_mitigated_result(result, mitigated_counts_list, raw_counts_list)
+		# For level 3, trim result to only include original circuits (not twirled variants)
+		result_to_use = result
+		if circuit_groups:
+			# Create a trimmed result with only the averaged results
+			result_to_use = self._trim_result_to_groups(result, len(circuit_groups))
+    
+
+		# Create new result with mitigated counts and metadata
+		mitigated_result = self._create_mitigated_result(result_to_use, mitigated_counts_list, raw_counts_list)
 
 		# Wrap in job-like object
 		return MitigatedJob(job, mitigated_result)
+	
+	def _average_counts(self, counts_list: list[dict[str, int]]) -> dict[str, int]:
+		"""Average a list of count dictionaries.
+
+		Args:
+			counts_list: List of count dictionaries to average.
+
+		Returns:
+			Averaged count dictionary rounded to nearest integer.
+		"""
+		if not counts_list:
+			return {}
+
+		# Get all possible states
+		all_states = set()
+		for counts in counts_list:
+			all_states.update(counts.keys())
+
+		# Average the counts for each state
+		averaged = {}
+		for state in all_states:
+			total = sum(counts.get(state, 0) for counts in counts_list)
+			averaged[state] = round(total / len(counts_list))
+
+		return averaged
+
+	def _trim_result_to_groups(self, result: Result, num_groups: int) -> Result:
+		"""Trim result to keep only the first N experiments (for level 3 averaging).
+
+		Args:
+			result: Original result with all circuits.
+			num_groups: Number of groups (original circuits) to keep.
+
+		Returns:
+			Trimmed Result object.
+		"""
+		results_data = result.to_dict()
+		results_list = results_data.get("results", [])
+		
+		# Keep only the first num_groups results
+		results_data["results"] = results_list[:num_groups]
+		
+		from qiskit.result import Result as QiskitResult
+		return QiskitResult.from_dict(results_data)
 
 	def _create_mitigated_result(
 		self, original_result: Result, mitigated_counts: list[dict[str, int]], raw_counts: list[dict[str, int]]
