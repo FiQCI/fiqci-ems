@@ -176,9 +176,9 @@ class FiQCIBackend:
 		if self._mitigation_level == 2:
 			return self._run_with_m3_mitigation(circuits_list, shots, dd=True, circuit_groups=None, **kwargs)
 
-		# Level 3: Pauli twirling + M3 mitigation
+		# Level 3: Pauli twirling + M3 mitigation + dynmical decoupling
 		if self._mitigation_level == 3:
-			return self._run_with_m3_mitigation(circuits_list, shots, dd=False, circuit_groups=circuit_groups, **kwargs)
+			return self._run_with_m3_mitigation(circuits_list, shots, dd=True, circuit_groups=circuit_groups, **kwargs)
 
 		raise NotImplementedError(f"Mitigation level {self._mitigation_level} not yet implemented")
 
@@ -232,10 +232,19 @@ class FiQCIBackend:
 
 		# Run circuits on backend
 		if dd:
-			circuit_compilation_options = CircuitCompilationOptions(dd_mode=DDMode.ENABLED)
+			circuit_compilation_options_val = CircuitCompilationOptions(dd_mode=DDMode.ENABLED)
 		else:
-			circuit_compilation_options = CircuitCompilationOptions(dd_mode=DDMode.DISABLED)
-		job = self._backend.run(circuits, shots=shots, circuit_compilation_options=circuit_compilation_options, **kwargs)
+			circuit_compilation_options_val = CircuitCompilationOptions(dd_mode=DDMode.DISABLED)
+
+		# Avoid passing circuit_compilation_options twice
+		if "circuit_compilation_options" in kwargs:
+			logger.debug(
+				"Dropping user-provided circuit_compilation_options; using dd_mode=%s",
+				"ENABLED" if dd else "DISABLED",
+			)
+			kwargs.pop("circuit_compilation_options")
+		
+		job = self._backend.run(circuits, shots=shots, circuit_compilation_options=circuit_compilation_options_val, **kwargs)
 		assert job is not None, "Backend returned None job"
 		result = job.result()
 
