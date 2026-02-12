@@ -20,7 +20,7 @@ class FiQCIEstimator(BaseEstimatorV2):
         self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
 
     def _run(self, circuits, observables, shots=2048, **options):
-
+        
         x_meas = QuantumCircuit(1)
         x_meas.h(0)
         x_meas = transpile(x_meas, basis_gates=list(self.backend.target.operation_names))
@@ -37,21 +37,36 @@ class FiQCIEstimator(BaseEstimatorV2):
             "Y-meas": y_meas,
         }
 
-        measurement_settings = self._combine_pauli_ops(observables)
-
-        obs_circuits = _get_obs_subcircuits([circuits], measurement_settings, ops)
-
-        obs_circs_list = [obs_circuits[i][0] for i in range(len(obs_circuits))] #TODO handle multiple input circuits, with multiple input circuits return value becomes even more complicated :/
+        if isinstance(observables, list) and isinstance(circuits, list):
+            if len(observables) != len(circuits):
+                raise ValueError("Length of observables and circuits lists must match.")
+            else:
+                obs_circuits = [_get_obs_subcircuits([circ], self._combine_pauli_ops(obs), ops) for circ, obs in zip(circuits, observables)]
+        elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
+            obs_circuits = [_get_obs_subcircuits([circ], self._combine_pauli_ops(observables), ops) for circ in circuits]
+        else:
+            obs_circuits = [_get_obs_subcircuits([circuits], self._combine_pauli_ops(observables), ops)]
         
-        job = self.backend.run(obs_circs_list, shots=shots, **options)
+        expectation_values = []
 
-        results = job.result()
+        jobs = []
 
-        counts = results.get_counts()
+        for i, obs_circ_groups in enumerate(obs_circuits):
+            obs_circs_list = [group[0] for group in obs_circ_groups]
 
-        expectation_values = self.calculate_expectation_values(counts, observables, measurement_settings)
+            measurement_settings = self._combine_pauli_ops(observables if isinstance(observables, SparsePauliOp) else observables[i])
 
-        return FiQCIEstimatorJob(job, expectation_values, observables)
+            job = self.backend.run(obs_circs_list, shots=shots, **options)
+
+            jobs.append(job)
+
+            results = job.result()
+
+            counts = results.get_counts()
+
+            expectation_values.append(self.calculate_expectation_values(counts, observables if isinstance(observables, SparsePauliOp) else observables[i], measurement_settings))
+
+        return FiQCIEstimatorJobCollection(jobs, expectation_values, observables)
     
     def run(self, circuits, observables, shots=2048, **options):
         return self._run(circuits, observables, shots=shots, **options)
@@ -143,37 +158,25 @@ class FiQCIEstimator(BaseEstimatorV2):
         
         return combined_settings
 
-class FiQCIEstimatorJob:
+class FiQCIEstimatorJobCollection:
     """Wrapper for job results with mitigated data.
 
 	This class wraps the original job and provides access to mitigated results.
 	"""
-    def __init__(self, mitigated_job, expectation_values, observables) -> None:
+    def __init__(self, mitigated_jobs, expectation_values, observables) -> None:
         """Initialize mitigated job wrapper.
 
         Args:
             original_job: Original job from backend.
             mitigated_result: Result object with mitigated counts.
         """
-        self._original_job = mitigated_job._original_job
-        self._mitigated_result = mitigated_job._mitigated_result
+        self.mitigated_jobs = mitigated_jobs
         self._expectation_values = expectation_values
         self._observables = observables
 
-    def result(self, timeout: float | None = None) -> Result:
-        """Get the mitigated result.
-
-        Args:
-            timeout: Maximum time to wait for result (unused, job already complete).
-
-        Returns:
-            Result object with mitigated counts.
-        """
-        return self._mitigated_result
-
-    def __getattr__(self, name: str) -> Any:
-        """Delegate attribute access to original job object."""
-        return getattr(self._original_job, name)
+    def jobs(self):
+        """Get all jobs ran for this estimator."""
+        return self.mitigated_jobs
     
     def expectation_values(self, index: int | None = None) -> list[float]:
         """Get the calculated expectation values."""
