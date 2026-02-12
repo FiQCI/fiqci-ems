@@ -5,11 +5,13 @@ Only wraps FiQCIBackend and exposes a run method that calls the backend's run me
 
 from qiskit import QuantumCircuit, transpile
 from qiskit.providers import JobV1
+from qiskit.transpiler import PassManager
 from qiskit.result import Result
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.primitives import BaseEstimatorV2
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.basis_measurement import _get_obs_subcircuits
+from fiqci.ems.zne import ZNECircuits, exponential_extrapolation, richardson_extrapolation
 
 from typing import Any
 
@@ -17,7 +19,16 @@ from typing import Any
 class FiQCIEstimator(BaseEstimatorV2):
     def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
         super().__init__()
-        self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
+        self.mitigation_level = mitigation_level
+        
+        if mitigation_level == 3:
+            self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_files)
+            self._scale_factors = [1, 3, 5]
+            self._zne_extrapolation_method = "exponential"
+        else:
+            self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
+            self._scale_factors = None
+            self._zne_extrapolation_method = None
 
     def _run(self, circuits, observables, shots=2048, **options):
         
@@ -56,6 +67,9 @@ class FiQCIEstimator(BaseEstimatorV2):
 
             measurement_settings = self._combine_pauli_ops(observables if isinstance(observables, SparsePauliOp) else observables[i])
 
+            if self.mitigation_level == 3:
+                obs_circs_list = [PassManager(ZNECircuits(scale_factor=f)).run(circ) for circ in obs_circs_list for f in self._scale_factors]
+
             job = self.backend.run(obs_circs_list, shots=shots, **options)
 
             jobs.append(job)
@@ -64,7 +78,29 @@ class FiQCIEstimator(BaseEstimatorV2):
 
             counts = results.get_counts()
 
-            expectation_values.append(self.calculate_expectation_values(counts, observables if isinstance(observables, SparsePauliOp) else observables[i], measurement_settings))
+            if self.mitigation_level == 3:
+                split_counts = []
+                num_circs_per_zne = len(measurement_settings)
+
+                for j in range(0, len(counts), num_circs_per_zne):
+                    split_counts.append(counts[j:j + num_circs_per_zne])
+                
+                zne_expvs = []
+                for c in split_counts:
+                    expvs = self.calculate_expectation_values(c, observables if isinstance(observables, SparsePauliOp) else observables[i], measurement_settings)
+                    zne_expvs.append(expvs)
+
+                if self._zne_extrapolation_method == "exponential":
+                    expvs = exponential_extrapolation(zne_expvs, self._scale_factors)
+                elif self._zne_extrapolation_method == "richardson":
+                    expvs = richardson_extrapolation(zne_expvs, self._scale_factors)
+                elif self._zne_extrapolation_method == "linear":
+                    expvs = richardson_extrapolation(zne_expvs, self._scale_factors, degree=1)
+            else:
+
+                expvs = self.calculate_expectation_values(counts, observables if isinstance(observables, SparsePauliOp) else observables[i], measurement_settings)
+
+            expectation_values.append(expvs)
 
         return FiQCIEstimatorJobCollection(jobs, expectation_values, observables)
     

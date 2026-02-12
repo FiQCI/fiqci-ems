@@ -72,12 +72,13 @@ def exponential_extrapolation(expectation_values, scale_factors):
     """
     if len(expectation_values) < 2:
         raise ValueError("At least two expectation values are required for exponential extrapolation.")
-    
+
+
     x = np.array(scale_factors)  # Noise scale factors
     y = np.array(expectation_values)
 
     negative_index = []
-    for i, val in enumerate(y[0]):
+    for i, val in enumerate(y[0]) if isinstance(y[0], Iterable) else enumerate(y):
         if val < 0:
             negative_index.append(i)
 
@@ -92,7 +93,7 @@ def exponential_extrapolation(expectation_values, scale_factors):
 
     zero_noise_value = [-v if i in negative_index else v for i, v in enumerate(zero_noise_value)]
 
-    return zero_noise_value
+    return [float(v) for v in zero_noise_value]
 
 def richardson_extrapolation(expectation_values, scales, degree=None):
     """
@@ -128,4 +129,6 @@ def richardson_extrapolation(expectation_values, scales, degree=None):
         coeffs = np.polyfit(x[mask], y[mask, j], deg)
         out[j] = np.polyval(coeffs, 0.0)
 
-    return out if out.size > 1 else out[0]
+    res = out if out.size > 1 else out[0]
+
+    return [float(v) for v in res]
