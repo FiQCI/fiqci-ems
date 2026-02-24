@@ -4,7 +4,7 @@ name = "fiqci-ems"
 dynamic = ["version"]
 description = "FiQCI Error Mitigation Service"
 readme = "README.md"
-requires-python = ">=3.11, <3.12"
+requires-python = ">=3.11, <3.13"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "FiQCI", email = "servicedesk@csc.fi"}
@@ -20,11 +20,12 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "iqm-client[qiskit]==33.0.0",
+    "iqm-client[qiskit]==33.0.5",
     "matplotlib>=3.10.7",
     "mthree>=3.0.0",
 ]
