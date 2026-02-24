@@ -1,3 +1,7 @@
+## [0.1.1] - 24.02.2026
+
+- Bump to `iqm-client[qiskit]==33.0.5` for new IQM OS version.
+
 ## [0.1.0] - 05.12.2025
 
 - Enable publishing to PyPi
