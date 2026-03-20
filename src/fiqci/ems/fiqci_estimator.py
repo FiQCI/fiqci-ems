@@ -98,58 +98,6 @@ class FiQCIEstimator():
             else:
                 expectation_values.append(0)  # No measurement setting covers this observable
         return expectation_values
-    
-    def _combine_pauli_ops(self, op: SparsePauliOp) -> list[dict[int, str]]:  # noqa: C901
-        """Combine Pauli operators that have no conflicting non-identity components.
-        
-        Args:
-            op (SparsePauliOp): The SparsePauliOp to analyze.
-        
-        Returns:
-            list[dict[int, str]]: A list of combined measurement settings, where each dict
-                                maps qubit indices to Pauli basis measurements.
-        """
-
-        pauli_strings = [pauli.to_label()[::-1] for pauli in op.paulis]
-        
-        combined_settings = []
-        used = [False] * len(pauli_strings)
-        
-        for i, pauli_string in enumerate(pauli_strings):
-            if used[i]:
-                continue
-            
-            # Start a new combined setting with the current Pauli string
-            combined = {}
-            for qubit_index, pauli in enumerate(pauli_string):
-                if pauli != "I":
-                    combined[qubit_index] = pauli
-            
-            used[i] = True
-            
-            # Try to combine with remaining Pauli strings
-            for j in range(i + 1, len(pauli_strings)):
-                if used[j]:
-                    continue
-                
-                # Check if pauli_strings[j] can be combined with current combined setting
-                can_combine = True
-                for qubit_index, pauli in enumerate(pauli_strings[j]):
-                    if pauli != "I":
-                        if qubit_index in combined and combined[qubit_index] != pauli:
-                            can_combine = False
-                            break
-                
-                # If compatible, add to combined setting
-                if can_combine:
-                    for qubit_index, pauli in enumerate(pauli_strings[j]):
-                        if pauli != "I":
-                            combined[qubit_index] = pauli
-                    used[j] = True
-            
-            combined_settings.append(combined)
-        
-        return combined_settings
 
 class FiQCIEstimatorJobCollection:
     """Wrapper for job results with mitigated data.
