@@ -15,6 +15,14 @@ class FiQCIEstimator:
 
 		self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
 
+	def _make_meas_instruction(self, circuit: QuantumCircuit, label: str):
+		"""Transpile a measurement circuit to basis gates and wrap as an instruction."""
+		try:
+			circuit = transpile(circuit, basis_gates=list(self.backend.target.operation_names))
+		except ValueError:
+			pass
+		return circuit.to_instruction(label=label)
+
 	def _run(
 		self,
 		circuits: QuantumCircuit | list[QuantumCircuit],
@@ -24,16 +32,15 @@ class FiQCIEstimator:
 	):
 		x_meas = QuantumCircuit(1)
 		x_meas.h(0)
-		x_meas = transpile(x_meas, basis_gates=list(self.backend.target.operation_names))
-		x_meas = x_meas.to_instruction(label="X-meas")
 
 		y_meas = QuantumCircuit(1)
 		y_meas.sdg(0)
 		y_meas.h(0)
-		y_meas = transpile(y_meas, basis_gates=list(self.backend.target.operation_names))
-		y_meas = y_meas.to_instruction(label="Y-meas")
 
-		ops = {"X-meas": x_meas, "Y-meas": y_meas}
+		ops = {
+			"X-meas": self._make_meas_instruction(x_meas, "X-meas"),
+			"Y-meas": self._make_meas_instruction(y_meas, "Y-meas"),
+		}
 
 		# if observables and circuits are both lists, they must be of the same length and we pair them elementwise
 		if isinstance(observables, list) and isinstance(circuits, list):
