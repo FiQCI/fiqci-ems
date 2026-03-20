@@ -53,8 +53,10 @@ class FiQCIEstimator:
 			obs_circuits = [_get_obs_subcircuits([circ], _combine_pauli_ops(observables), ops) for circ in circuits]
 
 		# if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
-		else:
+		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, QuantumCircuit):
 			obs_circuits = [_get_obs_subcircuits([circuits], _combine_pauli_ops(observables), ops)]
+		else:
+			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
 		expectation_values = []
 
@@ -86,7 +88,7 @@ class FiQCIEstimator:
 	def run(self, circuits, observables, shots=2048, **options):
 		return self._run(circuits, observables, shots=shots, **options)
 
-	def calculate_expectation_values(self, counts, obs, measurement_settings):
+	def calculate_expectation_values(self, counts: dict[str, int] | list[dict[str, int]], obs: SparsePauliOp, measurement_settings: list[dict[int, str]]) -> list[float]:
 		if not isinstance(counts, list):
 			counts = [counts]
 		expectation_values = []

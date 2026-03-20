@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import TypedDict
 
 from qiskit import QuantumCircuit, ClassicalRegister
 from qiskit.circuit import Instruction
@@ -10,7 +11,7 @@ from qiskit.transpiler import PassManager
 from qiskit.transpiler.basepasses import TransformationPass
 
 from qiskit.transpiler.passes import RemoveFinalMeasurements
-from qiskit.quantum_info import SparsePauliOp
+from qiskit.quantum_info import Pauli, SparsePauliOp
 
 
 class _ModifyMeasurementBasis(TransformationPass):
@@ -83,15 +84,21 @@ def _get_obs_subcircuits(
 	return obs_subcircuits
 
 
-def _get_observable_circuit_index(pauli, combined: list[dict[int, str]]):
+class ObservableCircuitIndex(TypedDict):
+	circuit_index: int | None
+	obs_indices: list[int]
+	num_meas: int
+
+
+def _get_observable_circuit_index(pauli: Pauli, combined: list[dict[int, str]]) -> ObservableCircuitIndex:
 	"""Find which measurement setting covers the non-identity letters of `pauli`,
 	and return the indices of the qubits involved."""
-	label = pauli
-	non_identity = {i: p for i, p in enumerate(label) if p.to_label() != "I"}
+	label = pauli.to_label()[::-1]
+	non_identity = {i: p for i, p in enumerate(label) if p != "I"}
 
 	for idx, setting in enumerate(combined):
 		# All non-identity qubits must be measured in the matching basis
-		if all(setting.get(q) == p.to_label() for q, p in non_identity.items()):
+		if all(setting.get(q) == p for q, p in non_identity.items()):
 			return {"circuit_index": idx, "obs_indices": list(range(len(non_identity))), "num_meas": len(non_identity)}
 
 	return {"circuit_index": None, "obs_indices": [], "num_meas": 0}
