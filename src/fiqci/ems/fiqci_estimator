@@ -3,24 +3,16 @@ A class that runs quantum circuits and calculates expectation values of observab
 """
 
 from qiskit import QuantumCircuit, transpile
-from qiskit.transpiler import PassManager
 from qiskit.quantum_info import SparsePauliOp
 from fiqci.ems import FiQCIBackend
-from fiqci.ems.basis_measurement import _get_obs_subcircuits
+from fiqci.ems.basis_measurement import _get_obs_subcircuits, _get_observable_circuit_index, _combine_pauli_ops
 
 class FiQCIEstimator():
     def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
         super().__init__()
         self.mitigation_level = mitigation_level
         
-        if mitigation_level == 3:
-            self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_files)
-            self._scale_factors = [1, 3, 5]
-            self._zne_extrapolation_method = "exponential"
-        else:
-            self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
-            self._scale_factors = None
-            self._zne_extrapolation_method = None
+        self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
 
     def _run(self, circuits: QuantumCircuit | list[QuantumCircuit], observables: SparsePauliOp | list[SparsePauliOp], shots: int=2048, **options):
         
@@ -48,15 +40,15 @@ class FiQCIEstimator():
             
             # if lengths match, we pair them elementwise
             else:
-                obs_circuits = [_get_obs_subcircuits([circ], self._combine_pauli_ops(obs), ops) for circ, obs in zip(circuits, observables)]
+                obs_circuits = [_get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops) for circ, obs in zip(circuits, observables)]
         
         # if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
         elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
-            obs_circuits = [_get_obs_subcircuits([circ], self._combine_pauli_ops(observables), ops) for circ in circuits]
+            obs_circuits = [_get_obs_subcircuits([circ], _combine_pauli_ops(observables), ops) for circ in circuits]
 
         # if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
         else: 
-            obs_circuits = [_get_obs_subcircuits([circuits], self._combine_pauli_ops(observables), ops)]
+            obs_circuits = [_get_obs_subcircuits([circuits], _combine_pauli_ops(observables), ops)]
         
         expectation_values = []
 
@@ -65,7 +57,7 @@ class FiQCIEstimator():
         for i, obs_circ_groups in enumerate(obs_circuits):
             obs_circs_list = [group[0] for group in obs_circ_groups]
 
-            measurement_settings = self._combine_pauli_ops(observables if isinstance(observables, SparsePauliOp) else observables[i])
+            measurement_settings = _combine_pauli_ops(observables if isinstance(observables, SparsePauliOp) else observables[i])
 
 
             job = self.backend.run(obs_circs_list, shots=shots, **options)
@@ -85,25 +77,12 @@ class FiQCIEstimator():
     def run(self, circuits, observables, shots=2048, **options):
         return self._run(circuits, observables, shots=shots, **options)
     
-    def _get_observable_circuit_index(self, pauli, combined: list[dict[int, str]]):
-        """Find which measurement setting covers the non-identity letters of `pauli`,
-        and return the indices of the qubits involved."""
-        label = pauli
-        non_identity = {i: p for i, p in enumerate(label) if p.to_label() != "I"}
-
-        for idx, setting in enumerate(combined):
-            # All non-identity qubits must be measured in the matching basis
-            if all(setting.get(q) == p.to_label() for q, p in non_identity.items()):
-                return {"circuit_index": idx, "obs_indices": list(range(len(non_identity))), "num_meas": len(non_identity)}
-
-        return {"circuit_index": None, "obs_indices": [], "num_meas": 0}
-    
     def calculate_expectation_values(self, counts, obs, measurement_settings):
         if not isinstance(counts, list):
             counts = [counts]
         expectation_values = []
         for pauli in obs.paulis:
-            obs_info = self._get_observable_circuit_index(pauli, measurement_settings)
+            obs_info = _get_observable_circuit_index(pauli, measurement_settings)
             if obs_info["circuit_index"] is not None:
                 circuit_counts = counts[obs_info["circuit_index"]]
                 # Calculate expectation value from counts
