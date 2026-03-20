@@ -115,6 +115,10 @@ class FiQCIEstimatorJobCollection:
         self._expectation_values = expectation_values
         self._observables = observables
 
+    def results(self):
+        """Get all results for this estimator."""
+        return [job.result() for job in self.mitigated_jobs]
+
     def jobs(self):
         """Get all jobs ran for this estimator."""
         return self.mitigated_jobs
