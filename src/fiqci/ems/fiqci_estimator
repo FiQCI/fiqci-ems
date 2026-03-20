@@ -22,7 +22,7 @@ class FiQCIEstimator():
             self._scale_factors = None
             self._zne_extrapolation_method = None
 
-    def _run(self, circuits, observables, shots=2048, **options):
+    def _run(self, circuits: QuantumCircuit | list[QuantumCircuit], observables: SparsePauliOp | list[SparsePauliOp], shots: int=2048, **options):
         
         x_meas = QuantumCircuit(1)
         x_meas.h(0)
@@ -40,14 +40,22 @@ class FiQCIEstimator():
             "Y-meas": y_meas,
         }
 
+        # if observables and circuits are both lists, they must be of the same length and we pair them elementwise
         if isinstance(observables, list) and isinstance(circuits, list):
             if len(observables) != len(circuits):
+                # raise error if lengths don't match
                 raise ValueError("Length of observables and circuits lists must match.")
+            
+            # if lengths match, we pair them elementwise
             else:
                 obs_circuits = [_get_obs_subcircuits([circ], self._combine_pauli_ops(obs), ops) for circ, obs in zip(circuits, observables)]
+        
+        # if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
         elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
             obs_circuits = [_get_obs_subcircuits([circ], self._combine_pauli_ops(observables), ops) for circ in circuits]
-        else:
+
+        # if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
+        else: 
             obs_circuits = [_get_obs_subcircuits([circuits], self._combine_pauli_ops(observables), ops)]
         
         expectation_values = []
