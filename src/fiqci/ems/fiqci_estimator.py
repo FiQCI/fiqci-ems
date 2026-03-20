@@ -1,22 +1,15 @@
 """ 
-For now just to test how BaseEstimator works.
-Only wraps FiQCIBackend and exposes a run method that calls the backend's run method.
+A class that runs quantum circuits and calculates expectation values of observables with error mitigation techniques.
 """
 
 from qiskit import QuantumCircuit, transpile
-from qiskit.providers import JobV1
 from qiskit.transpiler import PassManager
-from qiskit.result import Result
 from qiskit.quantum_info import SparsePauliOp
-from qiskit.primitives import BaseEstimatorV2
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.basis_measurement import _get_obs_subcircuits
 from fiqci.ems.zne import ZNECircuits, exponential_extrapolation, richardson_extrapolation
 
-from typing import Any
-
-
-class FiQCIEstimator(BaseEstimatorV2):
+class FiQCIEstimator():
     def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
         super().__init__()
         self.mitigation_level = mitigation_level

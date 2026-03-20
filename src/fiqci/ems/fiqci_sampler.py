@@ -1,5 +1,4 @@
 """ 
-For now just to test how BaseSampler works.
 Only wraps FiQCIBackend and exposes a run method that calls the backend's run method.
 """
 
