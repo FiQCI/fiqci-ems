@@ -31,19 +31,19 @@ class TestFiQCISampler:
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
 	def test_init_creates_fiqci_backend(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that FiQCISampler creates a FiQCIBackend on init."""
-		sampler = FiQCISampler(mock_backend, mitigation_level=1, calibration_shots=2000)
+		_sampler = FiQCISampler(mock_backend, mitigation_level=1, calibration_shots=2000)
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 2000, None)
 
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
 	def test_init_default_parameters(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that default parameters are passed to FiQCIBackend."""
-		sampler = FiQCISampler(mock_backend)
+		_sampler = FiQCISampler(mock_backend)
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, None)
 
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
 	def test_init_with_calibration_files(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that calibration_files parameter is forwarded."""
-		sampler = FiQCISampler(mock_backend, calibration_files="cal.json")
+		_sampler = FiQCISampler(mock_backend, calibration_files="cal.json")
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, "cal.json")
 
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
