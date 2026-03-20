@@ -58,7 +58,13 @@ class TestFiQCIEstimator:
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, "cal.json")
 
 	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
-	def test_run_delegates_to_internal_run(self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit, single_observable: SparsePauliOp) -> None:
+	def test_run_delegates_to_internal_run(
+		self,
+		mock_fiqci_backend_class: Mock,
+		mock_backend: Mock,
+		mock_circuit: QuantumCircuit,
+		single_observable: SparsePauliOp,
+	) -> None:
 		"""Test that run() delegates to _run()."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
@@ -86,7 +92,9 @@ class TestFiQCIEstimator:
 			estimator.run(circuits, observables)
 
 	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
-	def test_run_single_circuit_single_observable(self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+	def test_run_single_circuit_single_observable(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
 		"""Test run with a single circuit and single observable."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
@@ -145,10 +153,7 @@ class TestFiQCIEstimator:
 			qc.h(0)
 			qc.cx(0, 1)
 
-		observables = [
-			SparsePauliOp.from_list([("ZZ", 1.0)]),
-			SparsePauliOp.from_list([("XX", 1.0)]),
-		]
+		observables = [SparsePauliOp.from_list([("ZZ", 1.0)]), SparsePauliOp.from_list([("XX", 1.0)])]
 
 		estimator = FiQCIEstimator(mock_backend)
 		result = estimator.run(circuits, observables)
@@ -157,7 +162,9 @@ class TestFiQCIEstimator:
 		assert mock_fiqci_backend.run.call_count == 2
 
 	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
-	def test_run_default_shots(self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+	def test_run_default_shots(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
 		"""Test that default shots is 2048."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
@@ -324,10 +331,7 @@ class TestFiQCIEstimatorJobCollection:
 
 	def test_observables_by_index(self) -> None:
 		"""Test that observables(index) returns specific observable."""
-		obs_list = [
-			SparsePauliOp.from_list([("ZZ", 1.0)]),
-			SparsePauliOp.from_list([("XX", 1.0)]),
-		]
+		obs_list = [SparsePauliOp.from_list([("ZZ", 1.0)]), SparsePauliOp.from_list([("XX", 1.0)])]
 		collection = FiQCIEstimatorJobCollection([Mock()], [[0.5], [0.3]], obs_list)
 
 		assert collection.observables(0) == obs_list[0]

@@ -47,7 +47,9 @@ class TestFiQCISampler:
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, "cal.json")
 
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
-	def test_run_delegates_to_backend(self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+	def test_run_delegates_to_backend(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
 		"""Test that run() delegates to FiQCIBackend.run()."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.run.return_value = Mock()
@@ -59,7 +61,9 @@ class TestFiQCISampler:
 		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048)
 
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
-	def test_run_default_shots(self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+	def test_run_default_shots(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
 		"""Test that _run uses default 2048 shots when not specified."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.run.return_value = Mock()
@@ -71,7 +75,9 @@ class TestFiQCISampler:
 		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048)
 
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
-	def test_run_passes_kwargs(self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+	def test_run_passes_kwargs(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
 		"""Test that run() passes extra keyword arguments through."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.run.return_value = Mock()
@@ -83,7 +89,9 @@ class TestFiQCISampler:
 		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=512, some_option="value")
 
 	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
-	def test_run_returns_backend_result(self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+	def test_run_returns_backend_result(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
 		"""Test that run() returns the result from FiQCIBackend.run()."""
 		mock_fiqci_backend = Mock()
 		expected_result = Mock()
