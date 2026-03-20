@@ -88,7 +88,12 @@ class FiQCIEstimator:
 	def run(self, circuits, observables, shots=2048, **options):
 		return self._run(circuits, observables, shots=shots, **options)
 
-	def calculate_expectation_values(self, counts: dict[str, int] | list[dict[str, int]], obs: SparsePauliOp, measurement_settings: list[dict[int, str]]) -> list[float]:
+	def calculate_expectation_values(
+		self,
+		counts: dict[str, int] | list[dict[str, int]],
+		obs: SparsePauliOp,
+		measurement_settings: list[dict[int, str]],
+	) -> list[float]:
 		if not isinstance(counts, list):
 			counts = [counts]
 		expectation_values = []
@@ -109,6 +114,10 @@ class FiQCIEstimator:
 			else:
 				expectation_values.append(0)  # No measurement setting covers this observable
 		return expectation_values
+
+	def rem(self, enable):
+		"""Enable or disable readout error mitigation."""
+		self.backend.rem(enable)
 
 
 class FiQCIEstimatorJobCollection:

@@ -123,10 +123,8 @@ class TestFiQCIBackend:
 
 	def test_run_with_level_2_raises_not_implemented(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
 		"""Test that level 2 raises NotImplementedError."""
-		mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=2)
-
 		with pytest.raises(NotImplementedError, match="Mitigation level 2 not yet implemented"):
-			mitigated_backend.run(mock_circuit, shots=1024)
+			_mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=2)
 
 	def test_getattr_delegates_to_backend(self, mock_backend: Mock) -> None:
 		"""Test that attribute access is delegated to underlying backend."""

@@ -15,3 +15,6 @@ class FiQCISampler:
 
 	def run(self, circuits, **options):
 		return self._run(circuits, **options)
+
+	def rem(self, enable):
+		self.backend.rem(enable)

@@ -61,38 +61,15 @@ class FiQCIBackend:
 		self._mitigator: M3IQM | None = None
 		self._raw_counts_cache: list[dict[str, int]] | None = None
 
-		# Initialize mitigator for level 1 (readout error mitigation using M3)
-		if self._mitigation_level == 1:
-			self._mitigator = M3IQM(self._backend)
+		self._rem = False
 
-			# Load calibration from file if it exists
-			if self._calibration_file:
-				cal_path = Path(self._calibration_file)
-				if cal_path.exists():
-					try:
-						# M3IQM.cals_from_file will validate calibration_set_id matches
-						self._mitigator.cals_from_file(self._calibration_file, validate_calibration_set=True)
-						logger.info("Loaded existing M3 calibration from %s", self._calibration_file)
-					except Exception as e:
-						# Log the specific error and fall back to calibration
-						error_msg = str(e)
-						if "Calibration set ID mismatch" in error_msg:
-							logger.error(
-								"Calibration set ID mismatch: %s. Backend configuration has changed. "
-								"Will recalibrate on first run.",
-								error_msg,
-							)
-						else:
-							logger.warning(
-								"Could not load calibration from %s: %s. Will calibrate on first run.",
-								self._calibration_file,
-								e,
-							)
-				else:
-					logger.info(
-						"Calibration file %s does not exist yet. Will calibrate and save on first run.",
-						self._calibration_file,
-					)
+		# Initialize mitigator for level 1 (readout error mitigation using M3)
+		if self._mitigation_level == 0:
+			pass  # No mitigation, just pass through to backend
+		elif self._mitigation_level == 1:
+			self.init_rem()
+		else:
+			raise NotImplementedError(f"Mitigation level {mitigation_level} not yet implemented")
 
 	@property
 	def backend(self) -> IQMBackendBase:
@@ -112,6 +89,52 @@ class FiQCIBackend:
 			List of raw count dictionaries, or None if no run has been performed yet.
 		"""
 		return self._raw_counts_cache
+
+	def init_rem(self) -> None:
+		self._rem = True
+
+		self._mitigator = M3IQM(self._backend)
+
+		# Load calibration from file if it exists
+		if self._calibration_file:
+			cal_path = Path(self._calibration_file)
+			if cal_path.exists():
+				try:
+					# M3IQM.cals_from_file will validate calibration_set_id matches
+					self._mitigator.cals_from_file(self._calibration_file, validate_calibration_set=True)
+					logger.info("Loaded existing M3 calibration from %s", self._calibration_file)
+				except Exception as e:
+					# Log the specific error and fall back to calibration
+					error_msg = str(e)
+					if "Calibration set ID mismatch" in error_msg:
+						logger.error(
+							"Calibration set ID mismatch: %s. Backend configuration has changed. "
+							"Will recalibrate on first run.",
+							error_msg,
+						)
+					else:
+						logger.warning(
+							"Could not load calibration from %s: %s. Will calibrate on first run.",
+							self._calibration_file,
+							e,
+						)
+			else:
+				logger.info(
+					"Calibration file %s does not exist yet. Will calibrate and save on first run.",
+					self._calibration_file,
+				)
+
+	def rem(self, enable: bool = True) -> None:
+		"""Enable or disable readout error mitigation (M3).
+
+		Args:
+			enable: If True, enable M3 readout error mitigation. If False, disable it.
+		"""
+		if enable and not self._rem:
+			self.init_rem()
+		elif not enable and self._rem:
+			self._rem = False
+			self._mitigator = None
 
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
@@ -139,16 +162,17 @@ class FiQCIBackend:
 			raise ValueError("No circuits provided")
 
 		# Level 0: No mitigation, pass through to backend
-		if self._mitigation_level == 0:
+		if not self._rem:
 			job = self._backend.run(circuits, shots=shots, **kwargs)
 			assert job is not None, "Backend returned None job"
 			return job
 
 		# Level 1: Readout error mitigation with M3
-		if self._mitigation_level == 1:
+		elif self._rem:
 			return self._run_with_m3_mitigation(circuits_list, shots, **kwargs)
 
-		raise NotImplementedError(f"Mitigation level {self._mitigation_level} not yet implemented")
+		else:
+			raise NotImplementedError(f"Mitigation level {self._mitigation_level} not implemented")
 
 	def _run_with_m3_mitigation(self, circuits: list[QuantumCircuit], shots: int, **kwargs: Any) -> MitigatedJob:
 		"""Run circuits with M3 readout error mitigation.
