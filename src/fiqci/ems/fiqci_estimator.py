@@ -8,6 +8,7 @@ from fiqci.ems import FiQCIBackend
 from fiqci.ems.basis_measurement import _get_obs_subcircuits, _get_observable_circuit_index, _combine_pauli_ops
 from .utils import _remove_idle_wires
 
+
 class FiQCIEstimator:
 	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
 		super().__init__()
