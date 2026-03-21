@@ -6,7 +6,7 @@ from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import SparsePauliOp
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.basis_measurement import _get_obs_subcircuits, _get_observable_circuit_index, _combine_pauli_ops
-
+from .utils import _remove_idle_wires
 
 class FiQCIEstimator:
 	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
@@ -17,10 +17,8 @@ class FiQCIEstimator:
 
 	def _make_meas_instruction(self, circuit: QuantumCircuit, label: str):
 		"""Transpile a measurement circuit to basis gates and wrap as an instruction."""
-		try:
-			circuit = transpile(circuit, basis_gates=list(self.backend.target.operation_names))
-		except ValueError:
-			pass
+		circuit = transpile(circuit, target=self.backend.target, optimization_level=3)
+		circuit = _remove_idle_wires(circuit)
 		return circuit.to_instruction(label=label)
 
 	def _run(
