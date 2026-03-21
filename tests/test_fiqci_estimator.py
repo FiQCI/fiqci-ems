@@ -4,9 +4,23 @@ from unittest.mock import Mock, patch
 
 import pytest
 from qiskit import QuantumCircuit
+from qiskit.circuit.library import HGate, CXGate, RZGate, SXGate, XGate, SdgGate
 from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler import Target
 
 from fiqci.ems.fiqci_estimator import FiQCIEstimator, FiQCIEstimatorJobCollection
+
+
+def _make_target(num_qubits=5):
+	"""Create a minimal real Qiskit Target for use in tests."""
+	target = Target(num_qubits=num_qubits)
+	target.add_instruction(HGate())
+	target.add_instruction(CXGate())
+	target.add_instruction(RZGate(0.0))
+	target.add_instruction(SXGate())
+	target.add_instruction(XGate())
+	target.add_instruction(SdgGate())
+	return target
 
 
 class TestFiQCIEstimator:
@@ -18,7 +32,7 @@ class TestFiQCIEstimator:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
-		backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
+		backend.target = _make_target()
 		return backend
 
 	@pytest.fixture
@@ -67,7 +81,7 @@ class TestFiQCIEstimator:
 	) -> None:
 		"""Test that run() delegates to _run()."""
 		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
+		mock_fiqci_backend.target = _make_target()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
@@ -80,7 +94,7 @@ class TestFiQCIEstimator:
 	def test_run_mismatched_list_lengths_raises_error(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that mismatched list lengths raise ValueError."""
 		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
+		mock_fiqci_backend.target = _make_target()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
@@ -97,7 +111,7 @@ class TestFiQCIEstimator:
 	) -> None:
 		"""Test run with a single circuit and single observable."""
 		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
+		mock_fiqci_backend.target = _make_target()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 500, "11": 500}
@@ -116,7 +130,7 @@ class TestFiQCIEstimator:
 	def test_run_list_circuits_single_observable(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with list of circuits and a single observable."""
 		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
+		mock_fiqci_backend.target = _make_target()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 500, "11": 500}
@@ -140,7 +154,7 @@ class TestFiQCIEstimator:
 	def test_run_paired_lists(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with paired lists of circuits and observables."""
 		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
+		mock_fiqci_backend.target = _make_target()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 500, "11": 500}
@@ -167,7 +181,7 @@ class TestFiQCIEstimator:
 	) -> None:
 		"""Test that default shots is 2048."""
 		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target.operation_names = ["h", "cx", "rz", "sx", "x", "sdg"]
+		mock_fiqci_backend.target = _make_target()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 1024, "11": 1024}
