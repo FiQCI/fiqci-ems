@@ -6,7 +6,6 @@ from typing import TypedDict
 
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import SparsePauliOp
-from qiskit.transpiler import PassManager
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
 	_get_obs_subcircuits,
@@ -134,7 +133,9 @@ class FiQCIEstimator:
 				if self._zne["extrapolation_method"] == "exponential":
 					expvs = exponential_extrapolation(zne_expvs, self._zne["scale_factors"])
 				elif self._zne["extrapolation_method"] == "richardson":
-					expvs = richardson_extrapolation(zne_expvs, self._zne["scale_factors"], degree=self._zne["extrapolation_degree"])
+					expvs = richardson_extrapolation(
+						zne_expvs, self._zne["scale_factors"], degree=self._zne["extrapolation_degree"]
+					)
 				elif self._zne["extrapolation_method"] == "linear":
 					expvs = richardson_extrapolation(zne_expvs, self._zne["scale_factors"], degree=1)
 			else:
