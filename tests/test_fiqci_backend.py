@@ -182,6 +182,85 @@ class TestFiQCIBackend:
 			assert mock_mitigator.cals_from_system.call_count == 1
 
 
+class TestREMSettings:
+	"""Tests for changing REM settings via the rem() method."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		"""Create a mock IQM backend."""
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	@pytest.fixture
+	def backend_level0(self, mock_backend: Mock) -> FiQCIBackend:
+		"""Create a FiQCIBackend with mitigation level 0 (no mitigation)."""
+		return FiQCIBackend(mock_backend, mitigation_level=0)
+
+	@pytest.fixture
+	def backend_level1(self, mock_backend: Mock) -> FiQCIBackend:
+		"""Create a FiQCIBackend with mitigation level 1."""
+		with patch("fiqci.ems.fiqci_backend.M3IQM"):
+			return FiQCIBackend(mock_backend, mitigation_level=1)
+
+	def test_rem_enable_on_level0(self, mock_backend: Mock, backend_level0: FiQCIBackend) -> None:
+		"""Test enabling REM on a level 0 backend."""
+		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+			backend_level0.rem(enable=True, calibration_shots=500)
+			assert backend_level0._rem["enabled"] is True
+			assert backend_level0._rem["calibration_shots"] == 500
+			mock_m3iqm.assert_called_once_with(mock_backend)
+
+	def test_rem_disable(self, backend_level1: FiQCIBackend) -> None:
+		"""Test disabling REM clears mitigator."""
+		assert backend_level1._rem["enabled"] is True
+		backend_level1.rem(enable=False)
+		assert backend_level1._rem["enabled"] is False
+		assert backend_level1._rem["mitigator"] is None
+
+	def test_rem_enable_after_disable(self, mock_backend: Mock, backend_level1: FiQCIBackend) -> None:
+		"""Test re-enabling REM after disabling it."""
+		backend_level1.rem(enable=False)
+		assert backend_level1._rem["enabled"] is False
+
+		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+			backend_level1.rem(enable=True, calibration_shots=2048)
+			assert backend_level1._rem["enabled"] is True
+			assert backend_level1._rem["calibration_shots"] == 2048
+			mock_m3iqm.assert_called_once_with(mock_backend)
+
+	def test_rem_change_calibration_shots_reinitializes(self, mock_backend: Mock, backend_level1: FiQCIBackend) -> None:
+		"""Test that changing calibration_shots triggers reinitialization."""
+		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+			backend_level1.rem(enable=True, calibration_shots=4096)
+			assert backend_level1._rem["calibration_shots"] == 4096
+			mock_m3iqm.assert_called_once_with(mock_backend)
+
+	def test_rem_change_calibration_file_reinitializes(self, mock_backend: Mock, backend_level1: FiQCIBackend) -> None:
+		"""Test that changing calibration_file triggers reinitialization."""
+		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+			backend_level1.rem(enable=True, calibration_file="/tmp/new_cal.json")
+			assert backend_level1._rem["calibration_file"] == "/tmp/new_cal.json"
+			mock_m3iqm.assert_called_once_with(mock_backend)
+
+	def test_rem_same_settings_does_not_reinitialize(self, backend_level1: FiQCIBackend) -> None:
+		"""Test that calling rem() with same settings does not reinitialize."""
+		original_mitigator = backend_level1._rem["mitigator"]
+		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+			backend_level1.rem(enable=True)
+			mock_m3iqm.assert_not_called()
+			assert backend_level1._rem["mitigator"] is original_mitigator
+
+	def test_rem_disable_preserves_settings(self, backend_level1: FiQCIBackend) -> None:
+		"""Test that disabling REM preserves calibration settings."""
+		with patch("fiqci.ems.fiqci_backend.M3IQM"):
+			backend_level1.rem(enable=True, calibration_shots=2048, calibration_file="/tmp/cal.json")
+		backend_level1.rem(enable=False)
+		assert backend_level1._rem["calibration_shots"] == 2048
+		assert backend_level1._rem["calibration_file"] == "/tmp/cal.json"
+
+
 class TestMitigatedJob:
 	"""Tests for MitigatedJob class."""
 
