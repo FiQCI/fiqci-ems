@@ -259,8 +259,8 @@ class FiQCIBackend:
 			qubits = qubits_list[idx]
 
 			# Apply M3 correction
-			assert self._mitigator is not None, "Mitigator should be initialized for level 1"
-			quasi_dist = self._mitigator.apply_correction(raw_counts, qubits)
+			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
+			quasi_dist = self._rem["mitigator"].apply_correction(raw_counts, qubits)
 			mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
 			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
 
@@ -306,7 +306,7 @@ class FiQCIBackend:
 					results_list[idx]["header"]["fiqci_ems"] = {  # type: ignore[index]
 						"mitigation_level": self._mitigation_level,
 						"mitigation_method": "M3" if self._mitigation_level == 1 else None,
-						"calibration_shots": self._calibration_shots if self._mitigation_level == 1 else None,
+						"calibration_shots": self._rem["calibration_shots"] if self._mitigation_level == 1 else None,
 						"raw_counts": raw_counts[idx],
 					}
 

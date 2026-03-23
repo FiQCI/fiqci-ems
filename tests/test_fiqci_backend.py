@@ -44,12 +44,12 @@ class TestFiQCIBackend:
 		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
 			mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=1)
 			mock_m3iqm.assert_called_once_with(mock_backend)
-			assert mitigated_backend._mitigator is not None
+			assert mitigated_backend._rem["mitigator"] is not None
 
 	def test_init_no_mitigator_for_level_0(self, mock_backend: Mock) -> None:
 		"""Test that no mitigator is created for level 0."""
 		mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=0)
-		assert mitigated_backend._mitigator is None
+		assert mitigated_backend._rem["mitigator"] is None
 
 	def test_run_with_level_0_passes_through(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
 		"""Test that level 0 passes through to backend without mitigation."""
@@ -138,7 +138,7 @@ class TestFiQCIBackend:
 		"""Test that calibration_shots parameter is stored."""
 		mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=1, calibration_shots=2048)
 
-		assert mitigated_backend._calibration_shots == 2048
+		assert mitigated_backend._rem["calibration_shots"] == 2048
 
 	def test_run_calibrates_only_once(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
 		"""Test that M3 calibration happens only once, even for multiple runs."""
