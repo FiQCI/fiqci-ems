@@ -127,21 +127,16 @@ class FiQCIBackend:
 						)
 					else:
 						logger.warning(
-							"Could not load calibration from %s: %s. Will calibrate on first run.",
-							calibration_file,
-							e,
+							"Could not load calibration from %s: %s. Will calibrate on first run.", calibration_file, e
 						)
 			else:
 				self._rem["calibration_shots"] = calibration_shots
 				logger.info(
-					"Calibration file %s does not exist yet. Will calibrate and save on first run.",
-					calibration_file,
+					"Calibration file %s does not exist yet. Will calibrate and save on first run.", calibration_file
 				)
 		else:
 			self._rem["calibration_shots"] = calibration_shots
-			logger.info(
-				"Calibration shots set to %d. Will calibrate on first run.", calibration_shots
-			)
+			logger.info("Calibration shots set to %d. Will calibrate on first run.", calibration_shots)
 
 	def rem(self, enable: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Enable or disable readout error mitigation (M3).
@@ -157,8 +152,7 @@ class FiQCIBackend:
 			return
 
 		settings_changed = (
-			calibration_shots != self._rem["calibration_shots"]
-			or calibration_file != self._rem["calibration_file"]
+			calibration_shots != self._rem["calibration_shots"] or calibration_file != self._rem["calibration_file"]
 		)
 		if not self._rem["enabled"] or settings_changed:
 			self.init_rem(calibration_shots, calibration_file)
@@ -232,7 +226,9 @@ class FiQCIBackend:
 				)
 			else:
 				logger.info(
-					"Calibrating M3 mitigator for qubits %s with %d shots", calibration_qubits, self._rem["calibration_shots"]
+					"Calibrating M3 mitigator for qubits %s with %d shots",
+					calibration_qubits,
+					self._rem["calibration_shots"],
 				)
 
 			# M3's cals_from_system will automatically save to cals_file after calibration completes
