@@ -9,7 +9,7 @@ from typing import Any, TypedDict
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
 
-from fiqci.ems.rem import M3IQM
+from fiqci.ems.mitigators.rem import M3IQM
 from fiqci.ems.utils import probabilities_to_counts
 
 from qiskit import QuantumCircuit
