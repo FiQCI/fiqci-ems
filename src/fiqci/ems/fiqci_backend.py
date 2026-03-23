@@ -144,15 +144,15 @@ class FiQCIBackend:
 			self._rem["calibration_shots"] = calibration_shots
 			logger.info("Calibration shots set to %d. Will calibrate on first run.", calibration_shots)
 
-	def rem(self, enable: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
+	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Enable or disable readout error mitigation (M3).
 
 		Args:
-			enable: If True, enable M3 readout error mitigation. If False, disable it.
+			enabled: If True, enable M3 readout error mitigation. If False, disable it.
 			calibration_shots: Number of shots for calibration circuits. Default is 1000.
 			calibration_file: Path to the calibration file. Default is None.
 		"""
-		if not enable:
+		if not enabled:
 			self._rem["enabled"] = False
 			self._rem["mitigator"] = None
 			return
