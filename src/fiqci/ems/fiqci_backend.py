@@ -163,6 +163,10 @@ class FiQCIBackend:
 		if not self._rem["enabled"] or settings_changed:
 			self.init_rem(calibration_shots, calibration_file)
 
+	def mitigator_options(self):
+		"""Get current mitigator settings."""
+		return {"rem": self._rem}
+
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
 	) -> JobV1 | MitigatedJob:

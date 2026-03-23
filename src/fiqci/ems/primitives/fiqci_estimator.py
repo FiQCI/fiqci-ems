@@ -180,9 +180,13 @@ class FiQCIEstimator:
 				expectation_values.append(0)  # No measurement setting covers this observable
 		return expectation_values
 
-	def rem(self, enable, calibration_shots=1000, calibration_file=None):
+	def rem(self, enabled, calibration_shots=1000, calibration_file=None):
 		"""Enable or disable readout error mitigation."""
-		self.backend.rem(enable, calibration_shots, calibration_file)
+		self.backend.rem(enabled, calibration_shots, calibration_file)
+
+	def mitigator_options(self):
+		"""Get current mitigator settings."""
+		return {"zne": self._zne, **self.backend.mitigator_options()}
 
 	def zne(
 		self,
