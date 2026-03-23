@@ -2,6 +2,7 @@
 A class that runs quantum circuits and calculates expectation values of observables with error mitigation techniques.
 """
 
+import warnings
 from typing import TypedDict, cast
 
 from qiskit import QuantumCircuit, transpile
@@ -14,7 +15,7 @@ from fiqci.ems.transpiler_passes.basis_measurement import (
 )
 from fiqci.ems.utils import _remove_idle_wires
 from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
-from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation
+from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
 
 
 class FiQCIEstimator:
@@ -133,11 +134,13 @@ class FiQCIEstimator:
 				if self._zne["extrapolation_method"] == "exponential":
 					expvs = exponential_extrapolation(zne_expvs, self._zne["scale_factors"])
 				elif self._zne["extrapolation_method"] == "richardson":
-					expvs = richardson_extrapolation(
+					expvs = richardson_extrapolation(zne_expvs, self._zne["scale_factors"])
+				elif self._zne["extrapolation_method"] == "polynomial":
+					expvs = polynomial_extrapolation(
 						zne_expvs, self._zne["scale_factors"], degree=self._zne["extrapolation_degree"]
 					)
 				elif self._zne["extrapolation_method"] == "linear":
-					expvs = richardson_extrapolation(zne_expvs, self._zne["scale_factors"], degree=1)
+					expvs = polynomial_extrapolation(zne_expvs, self._zne["scale_factors"], degree=1)
 			else:
 				expvs = self.calculate_expectation_values(
 					counts,
@@ -200,7 +203,7 @@ class FiQCIEstimator:
 		# TODO: Local and global folding
 		# TODO: More extrapolation methods, allow user-defined extrapolation functions
 		"""Configure zero-noise extrapolation settings."""
-		if extrapolation_method not in ["exponential", "richardson", "linear"]:
+		if extrapolation_method not in ["exponential", "richardson", "polynomial", "linear"]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
 		if (
 			isinstance(scale_factors, list)
@@ -210,22 +213,22 @@ class FiQCIEstimator:
 			raise ValueError("Scale factors must be positive odd integers.")
 		if fold_gates is not None and not isinstance(fold_gates, list):
 			raise ValueError("fold_gates must be a list of gate names or None.")
-		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "richardson":
-			raise ValueError("Extrapolation degree must be at least 1 for Richardson extrapolation.")
-		if extrapolation_method != "richardson" and extrapolation_degree is not None:
-			Warning(
-				"Extrapolation degree is only applicable for Richardson extrapolation and will be ignored for other methods."
+		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "polynomial":
+			raise ValueError("Extrapolation degree must be at least 1 for polynomial extrapolation.")
+		if extrapolation_method not in ("polynomial") and extrapolation_degree is not None:
+			warnings.warn(
+				"Extrapolation degree is only applicable for polynomial extrapolation and will be ignored for other methods."
 			)
-		if extrapolation_method == "richardson" and extrapolation_degree == 1:
-			Warning(
-				"Extrapolation degree of 1 for Richardson extrapolation is equivalent to linear extrapolation. Consider using 'linear' as the extrapolation method instead."
+		if extrapolation_method == "polynomial" and extrapolation_degree == 1:
+			warnings.warn(
+				"Extrapolation degree of 1 for polynomial extrapolation is equivalent to linear extrapolation. Consider using 'linear' as the extrapolation method instead."
 			)
 
 		self._zne["enabled"] = enabled
 		self._zne["fold_gates"] = fold_gates
 		self._zne["scale_factors"] = scale_factors
 		self._zne["extrapolation_method"] = extrapolation_method
-		if extrapolation_method == "richardson":
+		if extrapolation_method in ("polynomial", "linear"):
 			self._zne["extrapolation_degree"] = extrapolation_degree
 		else:
 			self._zne["extrapolation_degree"] = None

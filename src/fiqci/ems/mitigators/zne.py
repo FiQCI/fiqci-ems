@@ -38,14 +38,54 @@ def exponential_extrapolation(expectation_values, scale_factors):
 	return [float(v) for v in zero_noise_value]
 
 
-def richardson_extrapolation(expectation_values, scales, degree=None):
+def richardson_extrapolation(expectation_values, scales):
 	"""
-	Polynomial (Richardson) extrapolation to estimate the zero-noise value.
+	Richardson extrapolation to estimate the zero-noise value.
+
+	Computes exact Lagrange interpolation coefficients evaluated at x=0:
+	    cᵢ = ∏_{j≠i} λⱼ / (λⱼ - λᵢ)
+	and returns E(0) = Σᵢ cᵢ · E(λᵢ).
 
 	Args:
 	    expectation_values: Array-like of shape (n_scales, n_obs) or (n_scales,)
 	    scales: Noise scale factors used (e.g., [1, 3, 5])
-	    degree: Optional polynomial degree; defaults to min(n_scales-1, 2)
+
+	Returns:
+	    Zero-noise estimate(s) per observable.
+	"""
+
+	y = np.asarray(expectation_values, dtype=float)
+	x = np.asarray(scales, dtype=float)
+
+	if y.ndim == 1:
+		y = y[:, None]
+
+	if len(x) != y.shape[0]:
+		raise ValueError("Length mismatch between scales and expectation_values.")
+
+	n = len(x)
+	coeffs = np.empty(n)
+	for i in range(n):
+		mask = np.arange(n) != i
+		num = np.prod(x[mask])
+		den = np.prod(x[mask] - x[i])
+		coeffs[i] = num / den
+
+	out = coeffs @ y
+	return [float(v) for v in out]
+
+
+def polynomial_extrapolation(expectation_values, scales, degree=None):
+	"""
+	Polynomial least-squares extrapolation to estimate the zero-noise value.
+
+	Fits a polynomial of the given degree to the (scale, expectation_value)
+	data and evaluates it at x=0.
+
+	Args:
+	    expectation_values: Array-like of shape (n_scales, n_obs) or (n_scales,)
+	    scales: Noise scale factors used (e.g., [1, 3, 5])
+	    degree: Polynomial degree. Defaults to min(n_scales - 1, 2).
 
 	Returns:
 	    Zero-noise estimate(s) per observable.
@@ -71,6 +111,4 @@ def richardson_extrapolation(expectation_values, scales, degree=None):
 		coeffs = np.polyfit(x[mask], y[mask, j], deg)
 		out[j] = np.polyval(coeffs, 0.0)
 
-	res = out if out.size > 1 else out[0]
-
-	return [float(v) for v in res]
+	return [float(v) for v in out]
