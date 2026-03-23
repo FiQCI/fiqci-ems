@@ -18,7 +18,7 @@ class FiQCISampler:
 
 	def rem(self, enable, calibration_shots=1000, calibration_file=None):
 		self.backend.rem(enable, calibration_shots, calibration_file)
-	
+
 	def mitigator_options(self):
 		"""Get current mitigator settings."""
 		return {**self.backend.mitigator_options()}

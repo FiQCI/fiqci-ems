@@ -196,11 +196,18 @@ class FiQCIEstimator:
 		extrapolation_method: str = "exponential",
 		extrapolation_degree: int | None = None,
 	):
+		# TODO: Support any real >= 1 scale factor
+		# TODO: Local and global folding
+		# TODO: More extrapolation methods, allow user-defined extrapolation functions
 		"""Configure zero-noise extrapolation settings."""
 		if extrapolation_method not in ["exponential", "richardson", "linear"]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
-		if isinstance(scale_factors, list) and any(s <= 0 for s in scale_factors):
-			raise ValueError("Scale factors must be positive integers.")
+		if (
+			isinstance(scale_factors, list)
+			and any(s <= 0 for s in scale_factors)
+			and any(s % 2 == 0 for s in scale_factors)
+		):
+			raise ValueError("Scale factors must be positive odd integers.")
 		if fold_gates is not None and not isinstance(fold_gates, list):
 			raise ValueError("fold_gates must be a list of gate names or None.")
 		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "richardson":
