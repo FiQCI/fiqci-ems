@@ -5,8 +5,8 @@ A class that runs quantum circuits and calculates expectation values of observab
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import SparsePauliOp
 from fiqci.ems import FiQCIBackend
-from fiqci.ems.basis_measurement import _get_obs_subcircuits, _get_observable_circuit_index, _combine_pauli_ops
-from .utils import _remove_idle_wires
+from fiqci.ems.transpiler_passes.basis_measurement import _get_obs_subcircuits, _get_observable_circuit_index, _combine_pauli_ops
+from fiqci.ems.utils import _remove_idle_wires
 
 
 class FiQCIEstimator:
