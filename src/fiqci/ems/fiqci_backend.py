@@ -83,7 +83,7 @@ class FiQCIBackend:
 			self.init_rem(calibration_shots, calibration_file)
 			# TODO: Add dynamical decoupling + Pauli twirling
 		else:
-			raise NotImplementedError(f"Unknown mitigation level {mitigation_level}")
+			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
 	@property
 	def backend(self) -> IQMBackendBase:
