@@ -2,10 +2,10 @@
 A class that runs quantum circuits and calculates expectation values of observables with error mitigation techniques.
 """
 
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from qiskit import QuantumCircuit, transpile
-from qiskit.quantum_info import SparsePauliOp
+from qiskit.quantum_info import SparsePauliOp, Pauli, PauliList
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
 	_get_obs_subcircuits,
@@ -25,7 +25,7 @@ class FiQCIEstimator:
 		class ZNESettings(TypedDict):
 			enabled: bool
 			fold_gates: list | None
-			scale_factors: list[int] | None
+			scale_factors: list[int]
 			extrapolation_method: str
 			extrapolation_degree: int | None
 
@@ -162,6 +162,7 @@ class FiQCIEstimator:
 			counts = [counts]
 		expectation_values = []
 		for pauli in obs.paulis:
+			pauli = cast(Pauli, pauli)
 			obs_info = _get_observable_circuit_index(pauli, measurement_settings)
 			if obs_info["circuit_index"] is not None:
 				circuit_counts = counts[obs_info["circuit_index"]]
@@ -187,7 +188,7 @@ class FiQCIEstimator:
 		self,
 		enabled: bool,
 		fold_gates: list | None = None,
-		scale_factors: list[int] | None = [1, 3, 5],
+		scale_factors: list[int] = [1, 3, 5],
 		extrapolation_method: str = "exponential",
 		extrapolation_degree: int | None = None,
 	):

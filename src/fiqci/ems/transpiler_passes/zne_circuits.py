@@ -11,7 +11,7 @@ from typing import Iterable, Optional
 class ZNECircuits(TransformationPass):
 	"""A pass to generate circuits for zero-noise extrapolation (ZNE) by folding gates."""
 
-	def __init__(self, fold_gates: Optional[Iterable[str]] = None, scale_factor: int = None):
+	def __init__(self, fold_gates: Optional[Iterable[str]] = None, scale_factor: int = 1):
 		"""
 		Initialize the ZNECircuits pass.
 
@@ -66,6 +66,8 @@ def _get_zne_circuits(
 	    A list of DAGCircuits with folded gates for ZNE.
 	"""
 	zne_circuits = []
+	if scale_factors is None:
+		scale_factors = [1, 3, 5]
 	for circuit in circuits:
 		for scale in scale_factors:
 			pm = PassManager(ZNECircuits(fold_gates=fold_gates, scale_factor=scale))

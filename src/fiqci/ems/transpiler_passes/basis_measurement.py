@@ -115,7 +115,7 @@ def _combine_pauli_ops(op: SparsePauliOp) -> list[dict[int, str]]:  # noqa: C901
 	                        maps qubit indices to Pauli basis measurements.
 	"""
 
-	pauli_strings = [pauli.to_label()[::-1] for pauli in op.paulis]
+	pauli_strings = [label[::-1] for label in op.paulis.to_labels()]
 
 	combined_settings = []
 	used = [False] * len(pauli_strings)
