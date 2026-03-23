@@ -2,19 +2,49 @@
 A class that runs quantum circuits and calculates expectation values of observables with error mitigation techniques.
 """
 
+from typing import TypedDict
+
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler import PassManager
 from fiqci.ems import FiQCIBackend
-from fiqci.ems.transpiler_passes.basis_measurement import _get_obs_subcircuits, _get_observable_circuit_index, _combine_pauli_ops
+from fiqci.ems.transpiler_passes.basis_measurement import (
+	_get_obs_subcircuits,
+	_get_observable_circuit_index,
+	_combine_pauli_ops,
+)
 from fiqci.ems.utils import _remove_idle_wires
+from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
+from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation
 
 
 class FiQCIEstimator:
 	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
 		super().__init__()
-		self.mitigation_level = mitigation_level
+		self._mitigation_level = mitigation_level
 
-		self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
+		class ZNESettings(TypedDict):
+			enabled: bool
+			fold_gates: list | None
+			scale_factors: list[int] | None
+			extrapolation_method: str
+			extrapolation_degree: int | None
+
+		self._zne: ZNESettings = {
+			"enabled": mitigation_level == 3,
+			"fold_gates": None,
+			"scale_factors": [1, 3, 5],
+			"extrapolation_method": "exponential",  # exponential, richardson, linear
+			"extrapolation_degree": None,  # only for richardson
+		}
+
+		if self._mitigation_level in [0, 1, 2]:
+			self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
+		elif self._mitigation_level == 3:
+			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_files)
+			self.zne(enabled=True)
+		else:
+			raise NotImplementedError(f"Unknown mitigation level {mitigation_level}")
 
 	def _make_meas_instruction(self, circuit: QuantumCircuit, label: str):
 		"""Transpile a measurement circuit to basis gates and wrap as an instruction."""
@@ -75,6 +105,9 @@ class FiQCIEstimator:
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
 			)
 
+			if self._zne["enabled"]:
+				obs_circs_list = _get_zne_circuits(obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"])
+
 			job = self.backend.run(obs_circs_list, shots=shots, **options)
 
 			jobs.append(job)
@@ -83,9 +116,33 @@ class FiQCIEstimator:
 
 			counts = results.get_counts()
 
-			expvs = self.calculate_expectation_values(
-				counts, observables if isinstance(observables, SparsePauliOp) else observables[i], measurement_settings
-			)
+			if self._zne["enabled"]:
+				split_counts = []
+				num_circs_per_zne = len(measurement_settings)
+				for j in range(0, len(counts), num_circs_per_zne):
+					split_counts.append(counts[j : j + num_circs_per_zne])
+
+				zne_expvs = []
+				for c in split_counts:
+					expvs = self.calculate_expectation_values(
+						c,
+						observables if isinstance(observables, SparsePauliOp) else observables[i],
+						measurement_settings,
+					)
+					zne_expvs.append(expvs)
+
+				if self._zne["extrapolation_method"] == "exponential":
+					expvs = exponential_extrapolation(zne_expvs, self._zne["scale_factors"])
+				elif self._zne["extrapolation_method"] == "richardson":
+					expvs = richardson_extrapolation(zne_expvs, self._zne["scale_factors"], degree=self._zne["extrapolation_degree"])
+				elif self._zne["extrapolation_method"] == "linear":
+					expvs = richardson_extrapolation(zne_expvs, self._zne["scale_factors"], degree=1)
+			else:
+				expvs = self.calculate_expectation_values(
+					counts,
+					observables if isinstance(observables, SparsePauliOp) else observables[i],
+					measurement_settings,
+				)
 
 			expectation_values.append(expvs)
 
@@ -124,6 +181,41 @@ class FiQCIEstimator:
 	def rem(self, enable, calibration_shots=1000, calibration_file=None):
 		"""Enable or disable readout error mitigation."""
 		self.backend.rem(enable, calibration_shots, calibration_file)
+
+	def zne(
+		self,
+		enabled: bool,
+		fold_gates: list | None = None,
+		scale_factors: list[int] | None = [1, 3, 5],
+		extrapolation_method: str = "exponential",
+		extrapolation_degree: int | None = None,
+	):
+		"""Configure zero-noise extrapolation settings."""
+		if extrapolation_method not in ["exponential", "richardson", "linear"]:
+			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
+		if isinstance(scale_factors, list) and any(s <= 0 for s in scale_factors):
+			raise ValueError("Scale factors must be positive integers.")
+		if fold_gates is not None and not isinstance(fold_gates, list):
+			raise ValueError("fold_gates must be a list of gate names or None.")
+		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "richardson":
+			raise ValueError("Extrapolation degree must be at least 1 for Richardson extrapolation.")
+		if extrapolation_method != "richardson" and extrapolation_degree is not None:
+			Warning(
+				"Extrapolation degree is only applicable for Richardson extrapolation and will be ignored for other methods."
+			)
+		if extrapolation_method == "richardson" and extrapolation_degree == 1:
+			Warning(
+				"Extrapolation degree of 1 for Richardson extrapolation is equivalent to linear extrapolation. Consider using 'linear' as the extrapolation method instead."
+			)
+
+		self._zne["enabled"] = enabled
+		self._zne["fold_gates"] = fold_gates
+		self._zne["scale_factors"] = scale_factors
+		self._zne["extrapolation_method"] = extrapolation_method
+		if extrapolation_method == "richardson":
+			self._zne["extrapolation_degree"] = extrapolation_degree
+		else:
+			self._zne["extrapolation_degree"] = None
 
 
 class FiQCIEstimatorJobCollection:
