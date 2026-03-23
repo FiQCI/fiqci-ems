@@ -76,8 +76,14 @@ class FiQCIBackend:
 			pass  # No mitigation, just pass through to backend
 		elif self._mitigation_level == 1:
 			self.init_rem(calibration_shots, calibration_file)
+		elif self._mitigation_level == 2:
+			self.init_rem(calibration_shots, calibration_file)
+			# TODO: Add dynamical decoupling
+		elif self._mitigation_level == 3:
+			self.init_rem(calibration_shots, calibration_file)
+			# TODO: Add dynamical decoupling + Pauli twirling
 		else:
-			raise NotImplementedError(f"Mitigation level {mitigation_level} not yet implemented")
+			raise NotImplementedError(f"Unknown mitigation level {mitigation_level}")
 
 	@property
 	def backend(self) -> IQMBackendBase:
