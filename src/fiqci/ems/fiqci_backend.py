@@ -56,9 +56,6 @@ class FiQCIBackend:
 
 		self._backend = backend
 		self._mitigation_level = mitigation_level
-		#self._calibration_shots = calibration_shots
-		#self._calibration_file = calibration_file
-		#self._mitigator: M3IQM | None = None
 		self._raw_counts_cache: list[dict[str, int]] | None = None
 
 		class REMSettings(TypedDict):
