@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
@@ -56,18 +56,29 @@ class FiQCIBackend:
 
 		self._backend = backend
 		self._mitigation_level = mitigation_level
-		self._calibration_shots = calibration_shots
-		self._calibration_file = calibration_file
-		self._mitigator: M3IQM | None = None
+		#self._calibration_shots = calibration_shots
+		#self._calibration_file = calibration_file
+		#self._mitigator: M3IQM | None = None
 		self._raw_counts_cache: list[dict[str, int]] | None = None
 
-		self._rem = False
+		class REMSettings(TypedDict):
+			enabled: bool
+			calibration_shots: int
+			calibration_file: str | None
+			mitigator: M3IQM | None
+
+		self._rem: REMSettings = {
+			"enabled": False,
+			"calibration_shots": calibration_shots,
+			"calibration_file": calibration_file,
+			"mitigator": None,
+		}
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
 		if self._mitigation_level == 0:
 			pass  # No mitigation, just pass through to backend
 		elif self._mitigation_level == 1:
-			self.init_rem()
+			self.init_rem(calibration_shots, calibration_file)
 		else:
 			raise NotImplementedError(f"Mitigation level {mitigation_level} not yet implemented")
 
@@ -90,21 +101,26 @@ class FiQCIBackend:
 		"""
 		return self._raw_counts_cache
 
-	def init_rem(self) -> None:
-		self._rem = True
+	def init_rem(self, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
+		"""Initialize readout error mitigation (M3).
 
-		self._mitigator = M3IQM(self._backend)
+		Args:
+			calibration_shots: Number of shots for calibration circuits. Default is 1000.
+			calibration_file: Path to save/load calibration data. Default is None.
+		"""
+		self._rem["enabled"] = True
+		self._rem["calibration_file"] = calibration_file
+		self._rem["mitigator"] = M3IQM(self._backend)
 
-		# Load calibration from file if it exists
-		if self._calibration_file:
-			cal_path = Path(self._calibration_file)
+		# Try to load calibration from file if specified
+		# Do not load if calibration_shots has changed since last calibration, as the calibration data would be invalid
+		if calibration_file and (calibration_shots == self._rem["calibration_shots"]):
+			cal_path = Path(calibration_file)
 			if cal_path.exists():
 				try:
-					# M3IQM.cals_from_file will validate calibration_set_id matches
-					self._mitigator.cals_from_file(self._calibration_file, validate_calibration_set=True)
-					logger.info("Loaded existing M3 calibration from %s", self._calibration_file)
+					self._rem["mitigator"].cals_from_file(calibration_file, validate_calibration_set=True)
+					logger.info("Loaded existing M3 calibration from %s", calibration_file)
 				except Exception as e:
-					# Log the specific error and fall back to calibration
 					error_msg = str(e)
 					if "Calibration set ID mismatch" in error_msg:
 						logger.error(
@@ -115,26 +131,40 @@ class FiQCIBackend:
 					else:
 						logger.warning(
 							"Could not load calibration from %s: %s. Will calibrate on first run.",
-							self._calibration_file,
+							calibration_file,
 							e,
 						)
 			else:
+				self._rem["calibration_shots"] = calibration_shots
 				logger.info(
 					"Calibration file %s does not exist yet. Will calibrate and save on first run.",
-					self._calibration_file,
+					calibration_file,
 				)
+		else:
+			self._rem["calibration_shots"] = calibration_shots
+			logger.info(
+				"Calibration shots set to %d. Will calibrate on first run.", calibration_shots
+			)
 
-	def rem(self, enable: bool = True) -> None:
+	def rem(self, enable: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Enable or disable readout error mitigation (M3).
 
 		Args:
 			enable: If True, enable M3 readout error mitigation. If False, disable it.
+			calibration_shots: Number of shots for calibration circuits. Default is 1000.
+			calibration_file: Path to the calibration file. Default is None.
 		"""
-		if enable and not self._rem:
-			self.init_rem()
-		elif not enable and self._rem:
-			self._rem = False
-			self._mitigator = None
+		if not enable:
+			self._rem["enabled"] = False
+			self._rem["mitigator"] = None
+			return
+
+		settings_changed = (
+			calibration_shots != self._rem["calibration_shots"]
+			or calibration_file != self._rem["calibration_file"]
+		)
+		if not self._rem["enabled"] or settings_changed:
+			self.init_rem(calibration_shots, calibration_file)
 
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
@@ -162,13 +192,13 @@ class FiQCIBackend:
 			raise ValueError("No circuits provided")
 
 		# Level 0: No mitigation, pass through to backend
-		if not self._rem:
+		if not self._rem["enabled"]:
 			job = self._backend.run(circuits, shots=shots, **kwargs)
 			assert job is not None, "Backend returned None job"
 			return job
 
 		# Level 1: Readout error mitigation with M3
-		elif self._rem:
+		elif self._rem["enabled"]:
 			return self._run_with_m3_mitigation(circuits_list, shots, **kwargs)
 
 		else:
@@ -189,29 +219,29 @@ class FiQCIBackend:
 		qubits_list = [final_measurement_mapping(circuit) for circuit in circuits]
 
 		# Calibrate M3 mitigator if not already done
-		if self._mitigator is not None and self._mitigator.single_qubit_cals is None:
+		if self._rem["mitigator"] is not None and self._rem["mitigator"].single_qubit_cals is None:
 			# Extract unique qubits from all circuits for calibration
 			all_qubits: set[int] = set()
 			for qubit_mapping in qubits_list:
 				all_qubits.update(qubit_mapping.values())  # type: ignore[arg-type]
 			calibration_qubits = sorted(all_qubits)
 
-			if self._calibration_file:
+			if self._rem["calibration_file"]:
 				logger.info(
 					"Calibrating M3 mitigator for qubits %s with %d shots and saving to %s",
 					calibration_qubits,
-					self._calibration_shots,
-					self._calibration_file,
+					self._rem["calibration_shots"],
+					self._rem["calibration_file"],
 				)
 			else:
 				logger.info(
-					"Calibrating M3 mitigator for qubits %s with %d shots", calibration_qubits, self._calibration_shots
+					"Calibrating M3 mitigator for qubits %s with %d shots", calibration_qubits, self._rem["calibration_shots"]
 				)
 
 			# M3's cals_from_system will automatically save to cals_file after calibration completes
-			assert self._mitigator is not None, "Mitigator should be initialized for level 1"
-			self._mitigator.cals_from_system(
-				calibration_qubits, shots=self._calibration_shots, cals_file=self._calibration_file
+			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
+			self._rem["mitigator"].cals_from_system(
+				calibration_qubits, shots=self._rem["calibration_shots"], cals_file=self._rem["calibration_file"]
 			)
 
 		# Run circuits on backend
