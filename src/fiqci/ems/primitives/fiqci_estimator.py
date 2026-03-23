@@ -5,7 +5,7 @@ A class that runs quantum circuits and calculates expectation values of observab
 from typing import TypedDict, cast
 
 from qiskit import QuantumCircuit, transpile
-from qiskit.quantum_info import SparsePauliOp, Pauli, PauliList
+from qiskit.quantum_info import SparsePauliOp, Pauli
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
 	_get_obs_subcircuits,
