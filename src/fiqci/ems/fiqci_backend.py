@@ -168,7 +168,6 @@ class FiQCIBackend:
 		"""Get current mitigator settings."""
 		return {"rem": self._rem}
 
-
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
 	) -> JobV1 | MitigatedJob:
