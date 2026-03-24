@@ -8,11 +8,7 @@ import pytest
 from qiskit import QuantumCircuit
 from qiskit.transpiler import PassManager
 
-from fiqci.ems.mitigators.zne import (
-	exponential_extrapolation,
-	polynomial_extrapolation,
-	richardson_extrapolation,
-)
+from fiqci.ems.mitigators.zne import exponential_extrapolation, polynomial_extrapolation, richardson_extrapolation
 from fiqci.ems.transpiler_passes.zne_circuits import ZNECircuits, _get_zne_circuits
 
 
@@ -54,9 +50,7 @@ class TestExponentialExtrapolation:
 	def test_multiple_observables(self) -> None:
 		"""Test extrapolation with multiple observables per scale factor."""
 		scale_factors = [1, 3, 5]
-		expectation_values = [
-			[0.8 * np.exp(-0.1 * s), 0.5 * np.exp(-0.2 * s)] for s in scale_factors
-		]
+		expectation_values = [[0.8 * np.exp(-0.1 * s), 0.5 * np.exp(-0.2 * s)] for s in scale_factors]
 
 		result = exponential_extrapolation(expectation_values, scale_factors)
 
@@ -73,6 +67,7 @@ class TestExponentialExtrapolation:
 		"""Test that empty list raises ValueError."""
 		with pytest.raises(ValueError, match="At least two expectation values"):
 			exponential_extrapolation([], [])
+
 
 class TestRichardsonExtrapolation:
 	"""Tests for richardson_extrapolation function."""
@@ -112,10 +107,7 @@ class TestRichardsonExtrapolation:
 	def test_multiple_observables(self) -> None:
 		"""Test with multiple observables."""
 		scale_factors = [1, 3]
-		expectation_values = [
-			[0.9, 0.8],
-			[0.7, 0.6],
-		]
+		expectation_values = [[0.9, 0.8], [0.7, 0.6]]
 
 		result = richardson_extrapolation(expectation_values, scale_factors)
 
@@ -174,11 +166,7 @@ class TestPolynomialExtrapolation:
 	def test_multiple_observables(self) -> None:
 		"""Test with multiple observables."""
 		scale_factors = [1, 3, 5]
-		expectation_values = [
-			[0.9, 0.8],
-			[0.7, 0.6],
-			[0.5, 0.4],
-		]
+		expectation_values = [[0.9, 0.8], [0.7, 0.6], [0.5, 0.4]]
 
 		result = polynomial_extrapolation(expectation_values, scale_factors, degree=1)
 
@@ -384,12 +372,7 @@ class TestEstimatorZNESettings:
 		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
 
 		estimator = FiQCIEstimator(Mock())
-		estimator.zne(
-			enabled=True,
-			fold_gates=["cx"],
-			scale_factors=[1, 3],
-			extrapolation_method="richardson",
-		)
+		estimator.zne(enabled=True, fold_gates=["cx"], scale_factors=[1, 3], extrapolation_method="richardson")
 
 		assert estimator._zne["enabled"] is True
 		assert estimator._zne["fold_gates"] == ["cx"]

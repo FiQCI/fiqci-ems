@@ -12,7 +12,9 @@ from typing import Iterable, Optional
 class ZNECircuits(TransformationPass):
 	"""A pass to generate circuits for zero-noise extrapolation (ZNE) by folding gates."""
 
-	def __init__(self, fold_gates: Optional[Iterable[str]] = None, scale_factor: int = 1, folding_method: str = "local"):
+	def __init__(
+		self, fold_gates: Optional[Iterable[str]] = None, scale_factor: int = 1, folding_method: str = "local"
+	):
 		"""
 		Initialize the ZNECircuits pass.
 
@@ -54,7 +56,7 @@ class ZNECircuits(TransformationPass):
 						mini_dag.apply_operation_back(node.op, [register[0], register[1]])
 
 					cloned_dag.substitute_node_with_dag(node, mini_dag)
-		
+
 		elif self.folding_method == "global":
 			original_dag = deepcopy(cloned_dag)
 			original_no_meas = deepcopy(cloned_dag)
@@ -77,7 +79,10 @@ class ZNECircuits(TransformationPass):
 
 
 def _get_zne_circuits(
-	circuits: DAGCircuit, fold_gates: Optional[Iterable[str]] = None, scale_factors: Optional[Iterable[int]] = [1, 3, 5], folding_method: str = "local"
+	circuits: DAGCircuit,
+	fold_gates: Optional[Iterable[str]] = None,
+	scale_factors: Optional[Iterable[int]] = [1, 3, 5],
+	folding_method: str = "local",
 ) -> list[DAGCircuit]:
 	"""Generate ZNE circuits by folding gates in the input DAGCircuit.
 
