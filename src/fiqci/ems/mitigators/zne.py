@@ -2,8 +2,7 @@ import numpy as np
 
 from typing import Iterable
 
-
-def exponential_extrapolation(expectation_values, scale_factors):
+def exponential_extrapolation(expectation_values: list[float] | list[list[float]], scale_factors: list[int]) -> list[float]:
 	"""
 	Perform exponential extrapolation to estimate the zero-noise value.
 
@@ -38,7 +37,7 @@ def exponential_extrapolation(expectation_values, scale_factors):
 	return [float(v) for v in zero_noise_value]
 
 
-def richardson_extrapolation(expectation_values, scales):
+def richardson_extrapolation(expectation_values: list[float] | list[list[float]], scales: list[int]) -> list[float]:
 	"""
 	Richardson extrapolation to estimate the zero-noise value.
 
@@ -75,7 +74,7 @@ def richardson_extrapolation(expectation_values, scales):
 	return [float(v) for v in out]
 
 
-def polynomial_extrapolation(expectation_values, scales, degree=None):
+def polynomial_extrapolation(expectation_values: list[float] | list[list[float]], scales: list[int], degree: int | None = None) -> list[float]:
 	"""
 	Polynomial least-squares extrapolation to estimate the zero-noise value.
 
