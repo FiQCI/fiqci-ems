@@ -1,4 +1,11 @@
-"""FiQCI backend wrapper for seamless error mitigation."""
+"""
+FiQCI backend wrapper for seamless error mitigation.
+
+FiQCIBackend wraps an IQM backend and applies error mitigation (e.g. M3 readout
+error correction) to every circuit execution. It handles calibration, caching, and result
+post-processing automatically, so users get mitigated results through the standard Qiskit
+backend interface without additional code.
+"""
 
 from __future__ import annotations
 
@@ -138,7 +145,7 @@ class FiQCIBackend:
 			self._rem["calibration_shots"] = calibration_shots
 			logger.info("Calibration shots set to %d. Will calibrate on first run.", calibration_shots)
 
-	def rem(self, enable: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
+	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Enable or disable readout error mitigation (M3).
 
 		Args:
@@ -146,7 +153,7 @@ class FiQCIBackend:
 			calibration_shots: Number of shots for calibration circuits. Default is 1000.
 			calibration_file: Path to the calibration file. Default is None.
 		"""
-		if not enable:
+		if not enabled:
 			self._rem["enabled"] = False
 			self._rem["mitigator"] = None
 			return
@@ -156,6 +163,11 @@ class FiQCIBackend:
 		)
 		if not self._rem["enabled"] or settings_changed:
 			self.init_rem(calibration_shots, calibration_file)
+
+	def mitigator_options(self):
+		"""Get current mitigator settings."""
+		return {"rem": self._rem}
+
 
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
