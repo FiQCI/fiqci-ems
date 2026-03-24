@@ -1,8 +1,7 @@
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.circuit import Measure, QuantumRegister, ClassicalRegister
+from qiskit.circuit import QuantumRegister
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler import PassManager
-from qiskit.transpiler.passes import RemoveFinalMeasurements
 
 from copy import deepcopy
 
