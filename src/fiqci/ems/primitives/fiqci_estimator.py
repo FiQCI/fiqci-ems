@@ -1,5 +1,9 @@
 """
 A class that runs quantum circuits and calculates expectation values of observables with error mitigation techniques.
+
+FiQCIEstimator wraps a backend with built-in error mitigation (readout error mitigation via M3,
+zero-noise extrapolation) and computes expectation values of observables directly from circuits,
+eliminating the need for manual post-processing of measurement counts.
 """
 
 import warnings
@@ -108,7 +112,9 @@ class FiQCIEstimator:
 			)
 
 			if self._zne["enabled"]:
-				obs_circs_list = _get_zne_circuits(obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"], self._zne["folding_method"])
+				obs_circs_list = _get_zne_circuits(
+					obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"], self._zne["folding_method"]
+				)
 
 			job = self.backend.run(obs_circs_list, shots=shots, **options)
 
@@ -211,7 +217,7 @@ class FiQCIEstimator:
 			raise ValueError(f"Unsupported folding method: {folding_method}")
 		if folding_method == "global" and fold_gates is not None:
 			warnings.warn("fold_gates is not applicable for global folding and will be ignored.")
-			fold_gates = None			
+			fold_gates = None
 		if len(scale_factors) < 2:
 			raise ValueError("At least two scale factors are required for extrapolation.")
 		if (

@@ -1,5 +1,10 @@
 """
-Only wraps FiQCIBackend and exposes a run method that calls the backend's run method.
+A lightweight wrapper around FiQCIBackend for sampling quantum circuits with error mitigation.
+
+FiQCISampler provides a simple interface for running circuits and obtaining mitigated measurement
+counts without needing to configure the backend directly. It applies readout error mitigation
+based on the chosen mitigation level and chosen settings, so users get improved sampling results
+with minimal setup.
 """
 
 from fiqci.ems import FiQCIBackend

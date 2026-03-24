@@ -1,4 +1,11 @@
-"""FiQCI backend wrapper for seamless error mitigation."""
+"""
+FiQCI backend wrapper for seamless error mitigation.
+
+FiQCIBackend wraps an IQM backend and applies error mitigation (e.g. M3 readout
+error correction) to every circuit execution. It handles calibration, caching, and result
+post-processing automatically, so users get mitigated results through the standard Qiskit
+backend interface without additional code.
+"""
 
 from __future__ import annotations
 
