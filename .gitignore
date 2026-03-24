@@ -17,4 +17,3 @@ build/
 .mypy_cache/
 .coverage
 .ruff_cache
-test-local/
