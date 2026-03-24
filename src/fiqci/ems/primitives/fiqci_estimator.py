@@ -27,6 +27,7 @@ class FiQCIEstimator:
 			enabled: bool
 			fold_gates: list | None
 			scale_factors: list[int]
+			folding_method: str
 			extrapolation_method: str
 			extrapolation_degree: int | None
 
@@ -34,8 +35,9 @@ class FiQCIEstimator:
 			"enabled": mitigation_level == 3,
 			"fold_gates": None,
 			"scale_factors": [1, 3, 5],
-			"extrapolation_method": "exponential",  # exponential, richardson, linear
-			"extrapolation_degree": None,  # only for richardson
+			"folding_method": "local",  # global or local folding
+			"extrapolation_method": "exponential",  # exponential, richardson, linear, polynomial
+			"extrapolation_degree": None,  # only for polynomial
 		}
 
 		if self._mitigation_level in [0, 1, 2]:
@@ -106,7 +108,7 @@ class FiQCIEstimator:
 			)
 
 			if self._zne["enabled"]:
-				obs_circs_list = _get_zne_circuits(obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"])
+				obs_circs_list = _get_zne_circuits(obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"], self._zne["folding_method"])
 
 			job = self.backend.run(obs_circs_list, shots=shots, **options)
 
@@ -196,15 +198,20 @@ class FiQCIEstimator:
 		enabled: bool,
 		fold_gates: list | None = None,
 		scale_factors: list[int] = [1, 3, 5],
+		folding_method: str = "local",
 		extrapolation_method: str = "exponential",
 		extrapolation_degree: int | None = None,
 	):
 		# TODO: Support any real >= 1 scale factor
-		# TODO: Local and global folding
 		# TODO: More extrapolation methods, allow user-defined extrapolation functions
 		"""Configure zero-noise extrapolation settings."""
 		if extrapolation_method not in ["exponential", "richardson", "polynomial", "linear"]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
+		if folding_method not in ["local", "global"]:
+			raise ValueError(f"Unsupported folding method: {folding_method}")
+		if folding_method == "global" and fold_gates is not None:
+			warnings.warn("fold_gates is not applicable for global folding and will be ignored.")
+			fold_gates = None			
 		if len(scale_factors) < 2:
 			raise ValueError("At least two scale factors are required for extrapolation.")
 		if (
