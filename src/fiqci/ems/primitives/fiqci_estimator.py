@@ -205,6 +205,8 @@ class FiQCIEstimator:
 		"""Configure zero-noise extrapolation settings."""
 		if extrapolation_method not in ["exponential", "richardson", "polynomial", "linear"]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
+		if len(scale_factors) < 2:
+			raise ValueError("At least two scale factors are required for extrapolation.")
 		if (
 			isinstance(scale_factors, list)
 			and any(s <= 0 for s in scale_factors)
