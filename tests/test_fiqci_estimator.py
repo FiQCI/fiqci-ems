@@ -8,7 +8,7 @@ from qiskit.circuit.library import HGate, CXGate, RZGate, SXGate, XGate, SdgGate
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler import Target
 
-from fiqci.ems.fiqci_estimator import FiQCIEstimator, FiQCIEstimatorJobCollection
+from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator, FiQCIEstimatorJobCollection
 
 
 def _make_target(num_qubits=5):
@@ -53,25 +53,25 @@ class TestFiQCIEstimator:
 		"""Create a multi-term SparsePauliOp observable."""
 		return SparsePauliOp.from_list([("ZZ", 0.5), ("XX", 0.3), ("ZI", 0.2)])
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_init_creates_fiqci_backend(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that FiQCIEstimator creates a FiQCIBackend on init."""
 		_estimator = FiQCIEstimator(mock_backend, mitigation_level=1, calibration_shots=2000)
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 2000, None)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_init_default_parameters(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that default parameters are passed to FiQCIBackend."""
 		_estimator = FiQCIEstimator(mock_backend)
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, None)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_init_with_calibration_files(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that calibration_files parameter is forwarded."""
 		_estimator = FiQCIEstimator(mock_backend, calibration_files="cal.json")
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, "cal.json")
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_delegates_to_internal_run(
 		self,
 		mock_fiqci_backend_class: Mock,
@@ -90,7 +90,7 @@ class TestFiQCIEstimator:
 			estimator.run(mock_circuit, single_observable, shots=512)
 			mock_internal_run.assert_called_once_with(mock_circuit, single_observable, shots=512)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_mismatched_list_lengths_raises_error(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that mismatched list lengths raise ValueError."""
 		mock_fiqci_backend = Mock()
@@ -105,7 +105,7 @@ class TestFiQCIEstimator:
 		with pytest.raises(ValueError, match="Length of observables and circuits lists must match"):
 			estimator.run(circuits, observables)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_single_circuit_single_observable(
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
@@ -126,7 +126,7 @@ class TestFiQCIEstimator:
 		assert isinstance(result, FiQCIEstimatorJobCollection)
 		mock_fiqci_backend.run.assert_called_once()
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_list_circuits_single_observable(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with list of circuits and a single observable."""
 		mock_fiqci_backend = Mock()
@@ -150,7 +150,7 @@ class TestFiQCIEstimator:
 		assert isinstance(result, FiQCIEstimatorJobCollection)
 		assert mock_fiqci_backend.run.call_count == 2
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_paired_lists(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with paired lists of circuits and observables."""
 		mock_fiqci_backend = Mock()
@@ -175,7 +175,7 @@ class TestFiQCIEstimator:
 		assert isinstance(result, FiQCIEstimatorJobCollection)
 		assert mock_fiqci_backend.run.call_count == 2
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_default_shots(
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
@@ -200,7 +200,7 @@ class TestFiQCIEstimator:
 class TestCalculateExpectationValues:
 	"""Tests for calculate_expectation_values method."""
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_single_z_observable(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test expectation value for a single Z observable."""
 		mock_backend = Mock()
@@ -221,7 +221,7 @@ class TestCalculateExpectationValues:
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(0.4)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zz_observable(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test expectation value for ZZ observable."""
 		mock_backend = Mock()
@@ -240,7 +240,7 @@ class TestCalculateExpectationValues:
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(0.6)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_single_counts_dict_wrapped_in_list(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test that a single counts dict is automatically wrapped in a list."""
 		mock_backend = Mock()
@@ -258,7 +258,7 @@ class TestCalculateExpectationValues:
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(0.0)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_no_matching_measurement_setting(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test that observables with no matching setting return 0."""
 		mock_backend = Mock()
@@ -276,7 +276,7 @@ class TestCalculateExpectationValues:
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == 0
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_all_zeros_counts(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test expectation value when all counts are in the 0 state."""
 		mock_backend = Mock()
@@ -293,7 +293,7 @@ class TestCalculateExpectationValues:
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(1.0)
 
-	@patch("fiqci.ems.fiqci_estimator.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_all_ones_counts(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test expectation value when all counts are in the 1 state."""
 		mock_backend = Mock()

@@ -1,9 +1,9 @@
 """"""
 
 from fiqci.ems.fiqci_backend import FiQCIBackend
-from fiqci.ems.rem import M3IQM
-from fiqci.ems.fiqci_estimator import FiQCIEstimator
-from fiqci.ems.fiqci_sampler import FiQCISampler
+from fiqci.ems.mitigators.rem import M3IQM
+from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+from fiqci.ems.primitives.fiqci_sampler import FiQCISampler
 
 
 __all__ = ["FiQCIBackend", "M3IQM", "FiQCIEstimator", "FiQCISampler"]

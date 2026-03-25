@@ -4,7 +4,11 @@ import pytest
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
-from fiqci.ems.basis_measurement import _get_obs_subcircuits, _combine_pauli_ops, _get_observable_circuit_index
+from fiqci.ems.transpiler_passes.basis_measurement import (
+	_get_obs_subcircuits,
+	_combine_pauli_ops,
+	_get_observable_circuit_index,
+)
 
 
 class TestCombinePauliOps:
