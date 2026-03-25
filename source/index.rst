@@ -1,13 +1,14 @@
-Welcome to Getting Started with Sphinx's documentation!
-=======================================================
-.. automodule:: fiqci.ems
-    :members:
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+FiQCI EMS Documentation
+========================
 
-Indices and tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+FiQCI Error Mitigation Service
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contents
+
+   Api
+   Guides
+   Examples
+
+
