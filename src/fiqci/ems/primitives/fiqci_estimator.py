@@ -37,8 +37,8 @@ class FiQCIEstimator:
 
 		self._zne: ZNESettings = {
 			"enabled": mitigation_level == 3,
-			"fold_gates": None,
-			"scale_factors": [1, 3, 5],
+			"fold_gates": None, # if None, fold all gates. Otherwise, should be a list of gate names to fold (e.g. ["cx", "u3"])
+			"scale_factors": [1, 3, 5], # odd integers
 			"folding_method": "local",  # global or local folding
 			"extrapolation_method": "exponential",  # exponential, richardson, linear, polynomial
 			"extrapolation_degree": None,  # only for polynomial
@@ -89,6 +89,8 @@ class FiQCIEstimator:
 					_get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops)
 					for circ, obs in zip(circuits, observables)
 				]
+		# TODO: Better batching for estimator. No need to run multiple separate jobs if total number of circuits
+		# is not too large. We can just combine circuits into a single job and split the results afterwards.
 
 		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
