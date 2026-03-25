@@ -84,6 +84,7 @@ dev = [
     "pytest>=9.0.1",
     "pytest-cov>=6.0.0",
     "ruff>=0.14.7",
+    "sphinx>=9.0.4",
 ]
 
 [tool.pytest.ini_options]
