@@ -197,7 +197,7 @@ class FiQCIBackend:
 		# TODO: Batching for large number of circuits.
 		# Will be relevant especially in the future if one wants to use both
 		# Pauli Twirling and Zero Noise Extrapolation.
-		
+
 		# PLAN: Add an attribute max_batch_size to FiQCIBackend that can be set by the user (default to something large like 100),
 		# and if len(circuits) > max_batch_size, split into batches and run them sequentially.
 		# Once all bathes are done aggregate into a single result.
