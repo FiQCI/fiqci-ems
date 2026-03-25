@@ -30,8 +30,8 @@ class FiQCIBackend:
 	"""FiQCI backend wrapper that applies error mitigation automatically.
 
 	Mitigation levels:
-		0: No error mitigation (raw results)
-		1: Readout error mitigation using M3 (default)
+		- 0: No error mitigation (raw results)
+		- 1: Readout error mitigation using M3 (default)
 
 	Args:
 		backend: An IQMBackendBase instance to wrap.
@@ -82,7 +82,7 @@ class FiQCIBackend:
 		if self._mitigation_level == 0:
 			pass  # No mitigation, just pass through to backend
 		elif self._mitigation_level == 1:
-			self.init_rem(calibration_shots, calibration_file)
+			self._init_rem(calibration_shots, calibration_file)
 		else:
 			raise NotImplementedError(f"Mitigation level {mitigation_level} not yet implemented")
 
@@ -105,7 +105,17 @@ class FiQCIBackend:
 		"""
 		return self._raw_counts_cache
 
-	def init_rem(self, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
+	@property
+	def mitigator_options(self) -> dict[str, Any]:
+		"""
+		Get current mitigator settings.
+		
+		Returns:
+			A dictionary of current mitigator settings and their values.
+		"""
+		return {"rem": self._rem}
+
+	def _init_rem(self, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Initialize readout error mitigation (M3).
 
 		Args:
@@ -146,12 +156,13 @@ class FiQCIBackend:
 			logger.info("Calibration shots set to %d. Will calibrate on first run.", calibration_shots)
 
 	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
-		"""Enable or disable readout error mitigation (M3).
+		"""
+		Set readout error mitigation settings for the backend.
 
 		Args:
-			enable: If True, enable M3 readout error mitigation. If False, disable it.
-			calibration_shots: Number of shots for calibration circuits. Default is 1000.
-			calibration_file: Path to the calibration file. Default is None.
+			enabled: Whether to enable readout error mitigation.
+			calibration_shots: Number of shots to use for calibration circuits (default: 1000).
+			calibration_file: Optional calibration file to use for readout error mitigation.
 		"""
 		if not enabled:
 			self._rem["enabled"] = False
@@ -163,10 +174,6 @@ class FiQCIBackend:
 		)
 		if not self._rem["enabled"] or settings_changed:
 			self.init_rem(calibration_shots, calibration_file)
-
-	def mitigator_options(self):
-		"""Get current mitigator settings."""
-		return {"rem": self._rem}
 
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any

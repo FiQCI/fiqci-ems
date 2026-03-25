@@ -18,3 +18,4 @@ build/
 .coverage
 .ruff_cache
 test-local/
+_build/

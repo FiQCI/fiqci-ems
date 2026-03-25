@@ -85,6 +85,7 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.14.7",
     "sphinx>=9.0.4",
+    "sphinx-book-theme>=1.2.0",
 ]
 
 [tool.pytest.ini_options]

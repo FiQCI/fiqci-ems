@@ -15,6 +15,16 @@ from qiskit.quantum_info import Pauli, SparsePauliOp
 
 
 class _ModifyMeasurementBasis(TransformationPass):
+
+	"""
+	A transpiler pass that modifies the measurement basis of a circuit according to specified settings. It adds the necessary gates to change the measurement basis to X or Y as needed, and appends measurements in the Z basis.
+	This allows for flexible measurement settings to be applied to circuits before execution, enabling the calculation of expectation values for different observables without needing to manually modify the circuits.
+
+	Args:
+		measurement_settings: A list of dictionaries, where each dictionary maps qubit indices to measurement bases ("X", "Y", or "Z"). Each dictionary represents a different measurement setting to apply to the circuit.
+		ops: An optional dictionary mapping measurement basis labels (e.g., "X-meas", "Y-meas") to custom Instruction objects that implement the necessary basis change. If provided, these custom instructions will be used instead of the default H and Sdg+H gates for X and Y basis changes, respectively.
+	"""
+
 	def __init__(self, measurement_settings: list[dict[int, str]], ops: dict[str, Instruction] | None = None):
 		self.measurement_settings = measurement_settings
 		self.ops = ops
@@ -61,11 +71,26 @@ class _ModifyMeasurementBasis(TransformationPass):
 		return cloned_dag
 
 
-def _get_obs_subcircuits(
+def get_obs_subcircuits(
 	subcircuits: list[QuantumCircuit],
 	measurement_settings: list[dict[int, str]],
 	ops: dict[str, Instruction] | None = None,
 ) -> list[dict[int, QuantumCircuit]]:
+	"""
+	Generate modified subcircuits for each measurement setting by applying the _ModifyMeasurementBasis transpiler pass. This function takes a list of subcircuits and a list of measurement settings, 
+	and returns a list of dictionaries mapping circuit indices to their corresponding modified subcircuits for each measurement setting.
+
+	TODO: pass observables direclty to this function and determine measerement_settings here. Easier manual use if desired and cleaner code.
+
+	Args:
+		subcircuits: A list of QuantumCircuit objects.
+		measurement_settings: A list of dictionaries mapping qubit indices to measurement bases.
+		ops: An optional dictionary mapping measurement basis labels to custom Instruction objects.
+
+	Returns:
+		A list of dictionaries mapping circuit indices to their corresponding modified subcircuits for each measurement setting.
+	"""
+
 	pms = [PassManager([_ModifyMeasurementBasis([setting], ops)]) for setting in measurement_settings]
 
 	remove_meas_pm = PassManager([RemoveFinalMeasurements()])
