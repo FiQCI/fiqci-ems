@@ -15,6 +15,7 @@ from typing import Any, TypedDict
 
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
+import warnings
 
 from fiqci.ems.mitigators.rem import M3IQM
 from fiqci.ems.utils import probabilities_to_counts
@@ -85,10 +86,12 @@ class FiQCIBackend:
 			self.init_rem(calibration_shots, calibration_file)
 		elif self._mitigation_level == 2:
 			self.init_rem(calibration_shots, calibration_file)
+			warnings.warn("Mitigation level 2 (M3 + Dynamical Decoupling) not implemented yet. Level 2 will currently only apply M3 readout error mitigation without dynamical decoupling.")
 			# TODO: Add dynamical decoupling
 		elif self._mitigation_level == 3:
 			self.init_rem(calibration_shots, calibration_file)
 			# TODO: Add dynamical decoupling + Pauli twirling
+			warnings.warn("Mitigation level 3 (M3 + Dynamical Decoupling + Pauli Twirling) not implemented yet. Level 3 will currently only apply M3 readout error mitigation without dynamical decoupling or Pauli twirling.")
 		else:
 			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
