@@ -1,5 +1,5 @@
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.circuit import QuantumRegister
+from qiskit.circuit import QuantumCircuit, QuantumRegister
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler import PassManager
 
@@ -78,19 +78,20 @@ class ZNECircuits(TransformationPass):
 
 
 def _get_zne_circuits(
-	circuits: DAGCircuit,
-	fold_gates: Optional[Iterable[str]] = None,
-	scale_factors: Optional[Iterable[int]] = [1, 3, 5],
-	folding_method: str = "local",
-) -> list[DAGCircuit]:
-	"""Generate ZNE circuits by folding gates in the input DAGCircuit.
+	circuits: list[QuantumCircuit], # list of QuantumCircuits to generate ZNE circuits from
+	fold_gates: Optional[Iterable[str]] = None, # list of gate names to fold, if None, all gates two qubit gates will be folded
+	scale_factors: Optional[Iterable[int]] = [1, 3, 5], # list of atleast two odd ints
+	folding_method: str = "local", # "local" or "global"
+) -> list[QuantumCircuit]:
+	"""Generate ZNE circuits by folding gates in the input QuantumCircuit.
 
 	Args:
-	    circuits: The input DAGCircuit to transform.
+	    circuits: The input QuantumCircuit to transform.
 	    fold_gates: An optional iterable of gate names to fold. If None, all gates will be folded.
-	    scale_factors: An optional iterable of scale factors for folding. If None, defaults to [1, 3, 5].
+	    scale_factors: An optional iterable of odd integer scale factors for folding. If None, defaults to [1, 3, 5].
+		folding_method: The method to use for folding gates ("local" or "global").
 	Returns:
-	    A list of DAGCircuits with folded gates for ZNE.
+	    A list of QuantumCircuits with folded gates for ZNE.
 	"""
 	zne_circuits = []
 	if scale_factors is None:
