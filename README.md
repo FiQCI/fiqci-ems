@@ -60,7 +60,11 @@ from fiqci.ems import FiQCISampler
 
 # Using mitigation_level
 sampler = FiQCISampler(backend, mitigation_level=1)
+
+# Execute the job
 job = sampler.run(qc_transpiled, shots=2048)
+
+# Get results
 result = job.result()
 
 # Or manually set mitigation options
@@ -86,7 +90,11 @@ observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
 
 # Map observables to transpiled layout
 device_observables = observables.apply_layout(qc_transpiled.layout)
+
+# Execute the job
 job_collection = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+
+# Get expectation values
 evs = job_collection.expectation_values()
 
 # Access all jobs executed by estimator
@@ -108,7 +116,11 @@ from fiqci.ems import FiQCIBackend
 
 # Using mitigation_level
 backend = FiQCIBackend(backend, mitigation_level=1)
+
+# Execute the job
 job = backend.run(circuit, shots=1024)
+
+# Get the results
 result = job.result()
 
 # Or manually set mitigation options
