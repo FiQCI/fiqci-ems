@@ -29,13 +29,24 @@ Requires Python 3.11 or 3.12.
 
 ## Usage
 
-Start by initialising your IQM backend.
+Start by initialising your IQM backend and a quantum circuit.
 
 ```python
 from iqm.qiskit_iqm import IQMProvider
+from qiskit import QuantumCircuit, transpile
 
+# Initialise backend
 provider = IQMProvider()
 backend = provider.get_backend()
+
+# Define a quantum circuit
+qc = QuantumCircuit(2)
+qc.h(0)
+qc.cx(0, 1)
+qc.measure_all()
+
+# Transpile the circuit
+qc_transpiled = transpile(qc, backend=backend, initial_layout=qubit_indices)
 ```
 
 EMS provides three interfaces depending on your use case.
@@ -49,7 +60,7 @@ from fiqci.ems import FiQCISampler
 
 # Using mitigation_level
 sampler = FiQCISampler(backend, mitigation_level=1)
-job = sampler.run(circuits, shots=2048)
+job = sampler.run(qc_transpiled, shots=2048)
 result = job.result()
 
 # Or manually set mitigation options
@@ -69,8 +80,17 @@ from qiskit.quantum_info import SparsePauliOp
 
 # Using mitigation_level
 estimator = FiQCIEstimator(backend, mitigation_level=1)
-job_collection = estimator.run(circuits, observables=[SparsePauliOp("ZZ")])
+
+# Define observables
+observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
+
+# Map observables to transpiled layout
+device_observables = observables.apply_layout(qc_transpiled.layout)
+job_collection = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
 evs = job_collection.expectation_values()
+
+# Access all jobs executed by estimator
+jobs = job_collection.jobs()
 
 # Or manually set mitigation options
 estimator.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
