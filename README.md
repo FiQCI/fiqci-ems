@@ -52,7 +52,7 @@ sampler = FiQCISampler(backend, mitigation_level=1)
 job = sampler.run(circuits, shots=2048)
 result = job.result()
 
-# Manually set mitigation options
+# Or manually set mitigation options
 sampler.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
 # See applied and available options
@@ -72,7 +72,7 @@ estimator = FiQCIEstimator(backend, mitigation_level=1)
 job_collection = estimator.run(circuits, observables=[SparsePauliOp("ZZ")])
 evs = job_collection.expectation_values()
 
-# Manually set mitigation options
+# Or manually set mitigation options
 estimator.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
 # See applied and available options
@@ -91,7 +91,7 @@ backend = FiQCIBackend(backend, mitigation_level=1)
 job = backend.run(circuit, shots=1024)
 result = job.result()
 
-# Manually set mitigation options
+# Or manually set mitigation options
 backend.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
 # See applied and available options
