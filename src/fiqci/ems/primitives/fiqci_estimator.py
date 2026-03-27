@@ -37,11 +37,11 @@ class FiQCIEstimator:
 
 		self._zne: ZNESettings = {
 			"enabled": mitigation_level == 3,
-			"fold_gates": None,  # if None, fold all gates. Otherwise, should be a list of gate names to fold (e.g. ["cx", "u3"])
+			"fold_gates": None,  # if None, fold all gates. Otherwise, should be a list of gate names to fold (e.g. ["cx", "cz"])
 			"scale_factors": [1, 3, 5],  # odd integers
 			"folding_method": "local",  # global or local folding
 			"extrapolation_method": "exponential",  # exponential, richardson, linear, polynomial
-			"extrapolation_degree": None,  # only for polynomial
+			"extrapolation_degree": None,  # int only for polynomial, None defaults to min(n_scales - 1, 2), where n_scales is the number of scale factors
 		}
 
 		if self._mitigation_level in [0, 1, 2]:
