@@ -7,8 +7,8 @@ FiQCI Error Mitigation Service
    :maxdepth: 1
    :caption: Contents
 
-   Api
-   Guides
-   Examples
+   pages/Api
+   pages/Guides
+   pages/Examples
 
 

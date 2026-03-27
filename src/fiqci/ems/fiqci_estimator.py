@@ -37,7 +37,7 @@ class FiQCIEstimator:
 	@property
 	def mitigator_options(self) -> dict[str, Any]:
 		"""Get current mitigator settings."""
-		return {**self.backend.mitigator_options()}
+		return {**self.backend.mitigator_options}
 
 	def _make_meas_instruction(self, circuit: QuantumCircuit, label: str):
 		"""Transpile a measurement circuit to basis gates and wrap as an instruction."""

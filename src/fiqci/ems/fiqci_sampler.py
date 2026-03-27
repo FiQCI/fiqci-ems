@@ -33,7 +33,7 @@ class FiQCISampler:
 	@property
 	def mitigator_options(self) -> dict[str, Any]:
 		"""Get current mitigator settings."""
-		return {**self.backend.mitigator_options()}
+		return {**self.backend.mitigator_options}
 	
 
 	def _run(self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int=2048, **options) -> JobV1 | MitigatedJob:

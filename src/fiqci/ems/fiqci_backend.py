@@ -173,7 +173,7 @@ class FiQCIBackend:
 			calibration_shots != self._rem["calibration_shots"] or calibration_file != self._rem["calibration_file"]
 		)
 		if not self._rem["enabled"] or settings_changed:
-			self.init_rem(calibration_shots, calibration_file)
+			self._init_rem(calibration_shots, calibration_file)
 
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
