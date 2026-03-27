@@ -78,10 +78,12 @@ class ZNECircuits(TransformationPass):
 
 
 def _get_zne_circuits(
-	circuits: list[QuantumCircuit], # list of QuantumCircuits to generate ZNE circuits from
-	fold_gates: Optional[Iterable[str]] = None, # list of gate names to fold, if None, all gates two qubit gates will be folded
-	scale_factors: Optional[Iterable[int]] = [1, 3, 5], # list of atleast two odd ints
-	folding_method: str = "local", # "local" or "global"
+	circuits: list[QuantumCircuit],  # list of QuantumCircuits to generate ZNE circuits from
+	fold_gates: Optional[
+		Iterable[str]
+	] = None,  # list of gate names to fold, if None, all gates two qubit gates will be folded
+	scale_factors: Optional[Iterable[int]] = [1, 3, 5],  # list of atleast two odd ints
+	folding_method: str = "local",  # "local" or "global"
 ) -> list[QuantumCircuit]:
 	"""Generate ZNE circuits by folding gates in the input QuantumCircuit.
 
