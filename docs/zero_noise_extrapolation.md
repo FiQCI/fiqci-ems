@@ -16,39 +16,25 @@ Because noise grows predictably with circuit depth, measuring at multiple noise 
 
 FiQCI EMS supports two methods for amplifying noise by increasing the effective circuit depth.
 
-### Local Folding
+- **Local folding**: Local folding replaces individual two-qubit gates $G$ with $G G G$ (for scale factor 3), $G G G G G$ (for scale factor 5), and so on. Each gate is repeated `scale_factor` times in place.
+    - Only two-qubit gates are folded (single-qubit gate errors are typically negligible).
+    - The `fold_gates` parameter can restrict folding to specific gate names. If `None`, all two-qubit gates are folded.
 
-Local folding replaces individual two-qubit gates $G$ with $G G G$ (for scale factor 3), $G G G G G$ (for scale factor 5), and so on. Each gate is repeated `scale_factor` times in place.
-
-- Only two-qubit gates are folded (single-qubit gate errors are typically negligible).
-- The `fold_gates` parameter can restrict folding to specific gate names. If `None`, all two-qubit gates are folded.
-
-### Global Folding
-
-Global folding appends the entire circuit and its inverse in alternating sequence. For a circuit $C$ with scale factor 3, the result is $C C^\dagger C$, and for scale factor 5: $C C^\dagger C C^\dagger C$.
-
-- This uniformly amplifies noise across all gates.
-- The `fold_gates` parameter is not applicable and will be ignored if set.
+- **Global folding**: Global folding appends the entire circuit and its inverse in alternating sequence. For a circuit $C$ with scale factor 3, the result is $C C^\dagger C$, and for scale factor 5: $C C^\dagger C C^\dagger C$.
+    - This uniformly amplifies noise across all gates.
+    - The `fold_gates` parameter is not applicable and will be ignored if set.
 
 ## Extrapolation Methods
 
 After running circuits at each scale factor, the expectation values are extrapolated to zero noise. FiQCI EMS provides four extrapolation methods:
 
-### Exponential
+- **Exponential**: Fits an exponential decay model and works well when noise causes exponential decay of expectation values, which is common for depolarizing noise.
 
-Fits an exponential decay model $E(\lambda) = A \cdot \exp(B \cdot \lambda)$ to the data and evaluates at $\lambda = 0$. Works well when noise causes exponential decay of expectation values, which is common for depolarizing noise.
+- **Richardson**: Uses Lagrange interpolation to compute exact coefficients that combine the measured values into a zero-noise estimate. This is a model-free method that makes no assumptions about the noise shape.
 
-### Richardson
+- **Polynomial**: Fits a polynomial of a given degree to the data. The degree defaults to `min(n_scales - 1, 2)` and can be set with the `extrapolation_degree` parameter.
 
-Uses Lagrange interpolation to compute exact coefficients that combine the measured values into a zero-noise estimate. This is a model-free method that makes no assumptions about the noise shape. It uses all data points and becomes exact when the noise is polynomial in the scale factor up to degree $n - 1$ (where $n$ is the number of scale factors).
-
-### Polynomial
-
-Fits a polynomial of a given degree to the data and evaluates at $\lambda = 0$. The degree defaults to `min(n_scales - 1, 2)` and can be set with the `extrapolation_degree` parameter.
-
-### Linear
-
-A special case of polynomial extrapolation with degree 1. Fits a straight line through the data points.
+- **Linear**: A special case of polynomial extrapolation with degree 1. Fits a straight line through the data points.
 
 ## Usage
 
