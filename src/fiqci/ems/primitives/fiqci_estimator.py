@@ -161,8 +161,7 @@ class FiQCIEstimator:
 			expectation_values.append(expvs)
 
 		if self._zne["enabled"] and len(zne_expvs) > 0:
-			return FiQCIEstimatorJobCollection(
-				jobs, expectation_values, observables, zne_expvs)
+			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, zne_expvs)
 		else:
 			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
 
