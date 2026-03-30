@@ -317,21 +317,21 @@ class TestFiQCIEstimatorJobCollection:
 	def test_jobs_returns_all_jobs(self) -> None:
 		"""Test that jobs() returns the list of mitigated jobs."""
 		mock_jobs = [Mock(), Mock()]
-		collection = FiQCIEstimatorJobCollection(mock_jobs, [[0.5], [0.3]], Mock())
+		collection = FiQCIEstimatorJobCollection(mock_jobs, [[0.5], [0.3]], Mock(), [[0.5], [0.3]])
 
 		assert collection.jobs() == mock_jobs
 
 	def test_expectation_values_returns_all(self) -> None:
 		"""Test that expectation_values() returns all values when no index given."""
 		exp_vals = [[0.5, 0.3], [0.1, -0.2]]
-		collection = FiQCIEstimatorJobCollection([Mock()], exp_vals, Mock())
+		collection = FiQCIEstimatorJobCollection([Mock()], exp_vals, Mock(), exp_vals)
 
 		assert collection.expectation_values() == exp_vals
 
 	def test_expectation_values_by_index(self) -> None:
 		"""Test that expectation_values(index) returns values for specific circuit."""
 		exp_vals = [[0.5, 0.3], [0.1, -0.2]]
-		collection = FiQCIEstimatorJobCollection([Mock()], exp_vals, Mock())
+		collection = FiQCIEstimatorJobCollection([Mock()], exp_vals, Mock(), exp_vals)
 
 		assert collection.expectation_values(0) == [0.5, 0.3]
 		assert collection.expectation_values(1) == [0.1, -0.2]
@@ -339,14 +339,14 @@ class TestFiQCIEstimatorJobCollection:
 	def test_observables_returns_all(self) -> None:
 		"""Test that observables() returns all observables when no index given."""
 		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
-		collection = FiQCIEstimatorJobCollection([Mock()], [[0.5]], obs)
+		collection = FiQCIEstimatorJobCollection([Mock()], [[0.5]], obs, [[0.5]])
 
 		assert collection.observables() is obs
 
 	def test_observables_by_index(self) -> None:
 		"""Test that observables(index) returns specific observable."""
 		obs_list = [SparsePauliOp.from_list([("ZZ", 1.0)]), SparsePauliOp.from_list([("XX", 1.0)])]
-		collection = FiQCIEstimatorJobCollection([Mock()], [[0.5], [0.3]], obs_list)
+		collection = FiQCIEstimatorJobCollection([Mock()], [[0.5], [0.3]], obs_list, [[0.5], [0.3]])
 
 		assert collection.observables(0) == obs_list[0]
 		assert collection.observables(1) == obs_list[1]
