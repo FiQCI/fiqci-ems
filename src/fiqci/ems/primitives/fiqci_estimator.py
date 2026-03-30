@@ -160,7 +160,7 @@ class FiQCIEstimator:
 
 			expectation_values.append(expvs)
 
-		return FiQCIEstimatorJobCollection(jobs, expectation_values, observables)
+		return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, zne_expvs if self._zne["enabled"] else expectation_values)
 
 	def run(self, circuits, observables, shots=2048, **options):
 		return self._run(circuits, observables, shots=shots, **options)
@@ -257,15 +257,18 @@ class FiQCIEstimatorJobCollection:
 	This class wraps the original job and provides access to mitigated results.
 	"""
 
-	def __init__(self, mitigated_jobs, expectation_values, observables) -> None:
-		"""Initialize mitigated job wrapper.
+	def __init__(self, mitigated_jobs, expectation_values, observables, raw_expectation_values) -> None:
+		"""Initialize the FiQCIEstimatorJobCollection with mitigated results.
 
 		Args:
-		    original_job: Original job from backend.
-		    mitigated_result: Result object with mitigated counts.
+		    mitigated_jobs: List of original jobs that were run for each circuit/observable pair.
+		    expectation_values: List of mitigated expectation values corresponding to each job.
+		    observables: List of observables for which expectation values were calculated.
+		    raw_expectation_values: List of raw (unmitigated) expectation values before extrapolation
 		"""
 		self.mitigated_jobs = mitigated_jobs
 		self._expectation_values = expectation_values
+		self._raw_expectation_values = raw_expectation_values  # Store raw expectation values before extrapolation
 		self._observables = observables
 
 	def results(self):
@@ -275,6 +278,12 @@ class FiQCIEstimatorJobCollection:
 	def jobs(self):
 		"""Get all jobs ran for this estimator."""
 		return self.mitigated_jobs
+	
+	def raw_expectation_values(self, index: int | None = None) -> list[float]:
+		"""Get the raw (unmitigated) expectation values before extrapolation."""
+		if index is not None:
+			return self._raw_expectation_values[index]
+		return self._raw_expectation_values
 
 	def expectation_values(self, index: int | None = None) -> list[float]:
 		"""Get the calculated expectation values."""
