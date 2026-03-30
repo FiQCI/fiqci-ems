@@ -103,6 +103,7 @@ class FiQCIEstimator:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
 		expectation_values = []
+		zne_expvs = []
 
 		jobs = []
 
@@ -132,7 +133,6 @@ class FiQCIEstimator:
 				for j in range(0, len(counts), num_circs_per_zne):
 					split_counts.append(counts[j : j + num_circs_per_zne])
 
-				zne_expvs = []
 				for c in split_counts:
 					expvs = self.calculate_expectation_values(
 						c,
@@ -160,7 +160,11 @@ class FiQCIEstimator:
 
 			expectation_values.append(expvs)
 
-		return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, zne_expvs if self._zne["enabled"] else expectation_values)
+		if self._zne["enabled"] and len(zne_expvs) > 0:
+			return FiQCIEstimatorJobCollection(
+				jobs, expectation_values, observables, zne_expvs)
+		else:
+			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
 
 	def run(self, circuits, observables, shots=2048, **options):
 		return self._run(circuits, observables, shots=shots, **options)
@@ -278,7 +282,7 @@ class FiQCIEstimatorJobCollection:
 	def jobs(self):
 		"""Get all jobs ran for this estimator."""
 		return self.mitigated_jobs
-	
+
 	def raw_expectation_values(self, index: int | None = None) -> list[float]:
 		"""Get the raw (unmitigated) expectation values before extrapolation."""
 		if index is not None:
