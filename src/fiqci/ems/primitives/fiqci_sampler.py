@@ -9,6 +9,7 @@ from qiskit import QuantumCircuit
 from qiskit.providers import JobV1
 from fiqci.ems.fiqci_backend import MitigatedJob
 
+
 class FiQCISampler:
 	"""
 	FiQCISampler provides a simple interface for running circuits and obtaining mitigated measurement
@@ -19,13 +20,14 @@ class FiQCISampler:
 	Mitigation levels:
 		- 0: No error mitigation (raw results)
 		- 1: Readout error mitigation using M3 (default)
-	
+
 	Args:
 		backend: An IQMBackendBase instance to wrap.
 		mitigation_level: Level of error mitigation to apply (default: 1).
 		calibration_shots: Number of shots to use for calibration circuits (default: 1000).
 		calibration_files: Optional list of calibration files to use for readout error mitigation.
 	"""
+
 	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
 		super().__init__()
 		self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
@@ -34,12 +36,15 @@ class FiQCISampler:
 	def mitigator_options(self) -> dict[str, Any]:
 		"""Get current mitigator settings."""
 		return {**self.backend.mitigator_options}
-	
 
-	def _run(self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int=2048, **options) -> JobV1 | MitigatedJob:
+	def _run(
+		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, **options
+	) -> JobV1 | MitigatedJob:
 		return self.backend.run(circuits, shots=shots, **options)
 
-	def run(self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int=2048, **options) -> JobV1 | MitigatedJob:
+	def run(
+		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, **options
+	) -> JobV1 | MitigatedJob:
 		"""
 		Execute the given circuits on the backend and return mitigated measurement counts.
 
@@ -47,13 +52,13 @@ class FiQCISampler:
 			circuits: A QuantumCircuit or list of QuantumCircuits to execute.
 			shots: Number of shots to execute each circuit (default: 2048).
 			**options: Additional options to pass to the backend's run method.
-		
+
 		Returns:
 			A JobV1 or MitigatedJob instance containing the results of the execution.
 		"""
 		return self._run(circuits, shots, **options)
 
-	def rem(self, enabled: bool, calibration_shots: int=1000, calibration_file:str | None =None) -> None:
+	def rem(self, enabled: bool, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
 		Set readout error mitigation settings for the sampler. This will configure the underlying backend's
 		readout error mitigation accordingly.

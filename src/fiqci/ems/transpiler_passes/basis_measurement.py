@@ -15,7 +15,6 @@ from qiskit.quantum_info import Pauli, SparsePauliOp
 
 
 class ModifyMeasurementBasis(TransformationPass):
-
 	"""
 	A transpiler pass that modifies the measurement basis of a circuit according to specified settings. It adds the necessary gates to change the measurement basis to X or Y as needed, and appends measurements in the Z basis.
 	This allows for flexible measurement settings to be applied to circuits before execution, enabling the calculation of expectation values for different observables without needing to manually modify the circuits.
@@ -70,6 +69,7 @@ class ModifyMeasurementBasis(TransformationPass):
 
 		return cloned_dag
 
+
 # TODO: refactor for better batching in estimator
 def get_obs_subcircuits(
 	subcircuits: list[QuantumCircuit],
@@ -77,7 +77,7 @@ def get_obs_subcircuits(
 	ops: dict[str, Instruction] | None = None,
 ) -> list[dict[int, QuantumCircuit]]:
 	"""
-	Generate modified subcircuits for each measurement setting by applying the _ModifyMeasurementBasis transpiler pass. This function takes a list of subcircuits and a list of measurement settings, 
+	Generate modified subcircuits for each measurement setting by applying the _ModifyMeasurementBasis transpiler pass. This function takes a list of subcircuits and a list of measurement settings,
 	and returns a list of dictionaries mapping circuit indices to their corresponding modified subcircuits for each measurement setting.
 
 	TODO: pass observables direclty to this function and determine measerement_settings here. Easier manual use if desired and cleaner code.

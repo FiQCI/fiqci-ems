@@ -122,7 +122,7 @@ class FiQCIBackend:
 	def mitigator_options(self) -> dict[str, Any]:
 		"""
 		Get current mitigator settings.
-		
+
 		Returns:
 			A dictionary of current mitigator settings and their values.
 		"""

@@ -28,7 +28,7 @@ class FiQCIEstimator:
 	Mitigation levels:
 		- 0: No error mitigation (raw results)
 		- 1: Readout error mitigation using M3 (default)
-	
+
 	Args:
 		backend: An IQMBackendBase instance to wrap.
 		mitigation_level: Level of error mitigation to apply (default: 1).
@@ -36,7 +36,7 @@ class FiQCIEstimator:
 		calibration_files: Optional list of calibration files to use for readout error mitigation.
 
 	"""
-	
+
 	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
 		super().__init__()
 		self._mitigation_level = mitigation_level
@@ -83,7 +83,7 @@ class FiQCIEstimator:
 		observables: SparsePauliOp | list[SparsePauliOp],
 		shots: int = 2048,
 		**options,
-	) -> FiQCIEstimatorJobCollection: 
+	) -> FiQCIEstimatorJobCollection:
 		x_meas = QuantumCircuit(1)
 		x_meas.h(0)
 
@@ -184,7 +184,13 @@ class FiQCIEstimator:
 		else:
 			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
 
-	def run(self, circuits: QuantumCircuit | list[QuantumCircuit], observables: SparsePauliOp | list[SparsePauliOp], shots: int = 2048, **options) -> FiQCIEstimatorJobCollection:
+	def run(
+		self,
+		circuits: QuantumCircuit | list[QuantumCircuit],
+		observables: SparsePauliOp | list[SparsePauliOp],
+		shots: int = 2048,
+		**options,
+	) -> FiQCIEstimatorJobCollection:
 		"""
 		Execute the given circuits on the backend and calculate expectation values for the provided observables.
 
@@ -193,7 +199,7 @@ class FiQCIEstimator:
 			observables: A SparsePauliOp or list of SparsePauliOps representing the observables for which to calculate expectation values.
 			shots: Number of shots to execute each circuit (default: 2048).
 			**options: Additional options to pass to the backend's run method.
-		
+
 		Returns:
 			A FiQCIEstimatorJobCollection containing the jobs and calculated expectation values.
 		"""
