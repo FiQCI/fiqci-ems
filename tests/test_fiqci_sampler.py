@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 from qiskit import QuantumCircuit
 
-from fiqci.ems.fiqci_sampler import FiQCISampler
+from fiqci.ems.primitives.fiqci_sampler import FiQCISampler
 
 
 class TestFiQCISampler:
@@ -28,25 +28,25 @@ class TestFiQCISampler:
 		qc.measure_all()
 		return qc
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_init_creates_fiqci_backend(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that FiQCISampler creates a FiQCIBackend on init."""
 		_sampler = FiQCISampler(mock_backend, mitigation_level=1, calibration_shots=2000)
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 2000, None)
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_init_default_parameters(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that default parameters are passed to FiQCIBackend."""
 		_sampler = FiQCISampler(mock_backend)
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, None)
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_init_with_calibration_files(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that calibration_files parameter is forwarded."""
 		_sampler = FiQCISampler(mock_backend, calibration_files="cal.json")
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, "cal.json")
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_delegates_to_backend(
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
@@ -60,7 +60,7 @@ class TestFiQCISampler:
 
 		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048)
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_default_shots(
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
@@ -74,7 +74,7 @@ class TestFiQCISampler:
 
 		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048)
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_passes_kwargs(
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
@@ -88,7 +88,7 @@ class TestFiQCISampler:
 
 		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=512, some_option="value")
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_returns_backend_result(
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
@@ -103,7 +103,7 @@ class TestFiQCISampler:
 
 		assert result is expected_result
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_with_circuit_list(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that run() works with a list of circuits."""
 		mock_fiqci_backend = Mock()
@@ -116,7 +116,7 @@ class TestFiQCISampler:
 
 		mock_fiqci_backend.run.assert_called_once_with(circuits, shots=1024)
 
-	@patch("fiqci.ems.fiqci_sampler.FiQCIBackend")
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_backend_attribute_is_fiqci_backend(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that the backend attribute is the FiQCIBackend instance."""
 		mock_fiqci_backend = Mock()

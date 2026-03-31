@@ -11,7 +11,7 @@ from mthree.exceptions import M3Error
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-from fiqci.ems.rem import M3IQM, _balanced_cal_strings
+from fiqci.ems.mitigators.rem import M3IQM, _balanced_cal_strings
 
 
 class TestBalancedCalStrings:
@@ -227,7 +227,7 @@ class TestM3IQM:
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
 			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.rem._balanced_cal_strings", return_value=["00", "01", "10", "11"]),
+			patch("fiqci.ems.mitigators.rem._balanced_cal_strings", return_value=["00", "01", "10", "11"]),
 			patch("mthree.circuits.balanced_cal_circuits", return_value=[mock_circuit]),
 			patch("mthree.circuits._tensor_meas_states", return_value=[mock_circuit]),
 			patch("mthree.mitigation._job_thread"),

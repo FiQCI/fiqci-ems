@@ -11,7 +11,7 @@ This python package can be pre-installed on a HPC system or installed by the use
 | 0 | None | Raw results |
 | 1 | Readout Error Mitigation | M3 (matrix-free measurement mitigation) |
 | 2 | Level 1 + additional | TBD |
-| 3 | Level 2 + additional | TBD |
+| 3 | Level 2 + Zero Noise Extrapolation | Extrapolation |
 
 The default is level 1, which applies M3 readout error mitigation.
 

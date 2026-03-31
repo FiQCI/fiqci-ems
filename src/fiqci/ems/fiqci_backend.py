@@ -15,8 +15,9 @@ from typing import Any, TypedDict
 
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
+import warnings
 
-from fiqci.ems.rem import M3IQM
+from fiqci.ems.mitigators.rem import M3IQM
 from fiqci.ems.utils import probabilities_to_counts
 
 from qiskit import QuantumCircuit
@@ -83,8 +84,20 @@ class FiQCIBackend:
 			pass  # No mitigation, just pass through to backend
 		elif self._mitigation_level == 1:
 			self._init_rem(calibration_shots, calibration_file)
+		elif self._mitigation_level == 2:
+			self._init_rem(calibration_shots, calibration_file)
+			warnings.warn(
+				"Mitigation level 2 (M3 + Dynamical Decoupling) not implemented yet. Level 2 will currently only apply M3 readout error mitigation without dynamical decoupling."
+			)
+			# TODO: Add dynamical decoupling
+		elif self._mitigation_level == 3:
+			self.init_rem(calibration_shots, calibration_file)
+			# TODO: Add dynamical decoupling + Pauli twirling
+			warnings.warn(
+				"Mitigation level 3 (M3 + Dynamical Decoupling + Pauli Twirling) not implemented yet. Level 3 will currently only apply M3 readout error mitigation without dynamical decoupling or Pauli twirling."
+			)
 		else:
-			raise NotImplementedError(f"Mitigation level {mitigation_level} not yet implemented")
+			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
 	@property
 	def backend(self) -> IQMBackendBase:
@@ -194,6 +207,15 @@ class FiQCIBackend:
 		Raises:
 			ValueError: If circuits is empty or invalid.
 		"""
+
+		# TODO: Batching for large number of circuits.
+		# Will be relevant especially in the future if one wants to use both
+		# Pauli Twirling and Zero Noise Extrapolation.
+
+		# PLAN: Add an attribute max_batch_size to FiQCIBackend that can be set by the user (default to something large like 100),
+		# and if len(circuits) > max_batch_size, split into batches and run them sequentially.
+		# Once all bathes are done aggregate into a single result.
+
 		# Normalize to list
 		circuits_list = circuits if isinstance(circuits, list) else [circuits]
 

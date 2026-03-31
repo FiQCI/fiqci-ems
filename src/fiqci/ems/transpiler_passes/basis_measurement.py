@@ -70,7 +70,7 @@ class ModifyMeasurementBasis(TransformationPass):
 
 		return cloned_dag
 
-
+# TODO: refactor for better batching in estimator
 def get_obs_subcircuits(
 	subcircuits: list[QuantumCircuit],
 	measurement_settings: list[dict[int, str]],
@@ -140,7 +140,7 @@ def _combine_pauli_ops(op: SparsePauliOp) -> list[dict[int, str]]:  # noqa: C901
 	                        maps qubit indices to Pauli basis measurements.
 	"""
 
-	pauli_strings = [pauli.to_label()[::-1] for pauli in op.paulis]
+	pauli_strings = [label[::-1] for label in op.paulis.to_labels()]
 
 	combined_settings = []
 	used = [False] * len(pauli_strings)

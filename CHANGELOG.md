@@ -1,3 +1,21 @@
+## [0.3.0] - 30.3.2026
+
+### Added
+- Zero Noise Extrapolation (ZNE) for `FiQCIEstimator` as `mitigation_level=3` (readout error mitigation + ZNE)
+- `FiQCIEstimator.zne()` method for manual ZNE configuration with the following options:
+  - `fold_gates`: list of gate names to fold, or `None` to fold all two-qubit gates
+  - `scale_factors`: list of at least two odd integers (default `[1, 3, 5]`)
+  - `folding_method`: `"local"` (per-gate) or `"global"` (whole circuit)
+  - `extrapolation_method`: `"exponential"`, `"richardson"`, `"linear"`, or `"polynomial"`
+  - `extrapolation_degree`: degree for polynomial extrapolation
+- `transpiler_passes/zne_circuits.py`: transpiler pass for generating noise-scaled circuits global or local folding
+- `mitigators/zne.py`: extrapolation methods for ZNE post-processing
+
+### Changed
+- Restructured package layout: mitigation methods moved to `mitigators/`, execution primitives to `primitives/`, circuit modification passes to `transpiler_passes/`
+
+[https://github.com/FiQCI/fiqci-ems/pull/8](https://github.com/FiQCI/fiqci-ems/pull/8)
+
 ## [0.2.0] - 24.3.2026
 
 ### Added
