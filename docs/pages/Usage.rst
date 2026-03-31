@@ -60,19 +60,6 @@ Mitigation Levels
 
 The default is level 1, which applies M3 readout error mitigation.
 
-Installation
-------------
-
-`Uv <https://docs.astral.sh/uv/getting-started/installation/>`_ is recommended for installation
-
-.. code-block:: bash
-    
-    uv pip install fiqci-ems
-    #or
-    uv add fiqci-ems
-
-Requires Python 3.11 or 3.12.
-
 Usage
 -----
 
@@ -98,6 +85,9 @@ Start by initialising your IQM backend and a quantum circuit.
 
 
 For executing quantum jobs EMS provides three interfaces depending on your use case.
+
+.. _usage-sampler:
+.. _usage-estimator:
 
 .. tab-set::
 
@@ -215,8 +205,3 @@ All three interfaces accept the same core options:
      - Path to save/load calibration data (JSON)
 
 Mitigation can also be configured directly. See the docs for ``FiQCISampler``, ``FiQCIEstimator``, and ``FiQCIBackend`` to see all available options.
-
-Having trouble?
----------------
-
-Contact `servicedesk@csc.fi <mailto:servicedesk@csc.fi>`_ or raise an issue here.
