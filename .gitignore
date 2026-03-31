@@ -20,3 +20,4 @@ build/
 test-local/
 _build/
 docs/jupyter_execute/
+docs/cals.json
