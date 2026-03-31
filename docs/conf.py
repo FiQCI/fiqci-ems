@@ -59,4 +59,5 @@ html_theme_options = {"collapse_navigation": True}
 html_logo = "_static/images/FiQCI-logo.png"
 html_favicon = "_static/images/FiQCI-logo.png"
 html_title = "FiQCI EMS"
+html_baseurl = "https://fiqci.fi/fiqci-ems/docs/"
 html_static_path = ["_static"]
