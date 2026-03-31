@@ -172,7 +172,8 @@ Mitigation can also be configured directly. See the docs for `FiQCISampler`, `Fi
 
 ## Documentation
 
-Full documentation including API reference, guides, and Jupyter notebook examples is available at [docs](link)
+Full documentation including API reference, guides, and Jupyter notebook examples is available at [docs](https://fiqci.fi/fiqci-ems)
+
 ## Development
 
 ```bash
