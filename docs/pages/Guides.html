@@ -51,7 +51,7 @@
     <link rel="icon" href="../_static/FiQCI-logo.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="FiQCISampler" href="FiQCISampler.html" />
+    <link rel="next" title="FiQCISampler" href="FiQCISamplerUsage.html" />
     <link rel="prev" title="Usage" href="Usage.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -152,8 +152,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Guides</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="FiQCISampler.html">FiQCI Sampler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="FiQCIEstimator.html">FiQCI Estimator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FiQCISamplerUsage.html">FiQCI Sampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="logging.html">Logging</a></li>
@@ -166,24 +166,27 @@
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/zero_noise_extrapolation_example.html">Using Zero Noise Extrapolation</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="api/index.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api/mitigators/index.html">Mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="api/mitigators/rem.html">Readout Error Mitigation (REM)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="api/mitigators/zne.html">Zero Noise Extrapolation (ZNE)</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="Api.html">Api Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="api/fiqci.ems.html">fiqci.ems</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api/primitives/index.html">Primitives</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="api/primitives/fiqci_estimator.html">FiQCIEstimator</a></li>
-<li class="toctree-l3"><a class="reference internal" href="api/primitives/fiqci_sampler.html">FiQCISampler</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/fiqci.ems.primitives.html">fiqci.ems.primitives</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html">fiqci.ems.primitives.fiqci_estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_sampler.html">fiqci.ems.primitives.fiqci_sampler</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api/transpiler_passes/index.html">Transpiler Passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="api/transpiler_passes/basis_measurement.html">Basis Measurement</a></li>
-<li class="toctree-l3"><a class="reference internal" href="api/transpiler_passes/zne_circuits.html">ZNE Circuits</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="api/fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2"><a class="reference internal" href="api/fiqci_backend.html">FiQCI Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/utils.html">Utilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fiqci.ems.utils.html">fiqci.ems.utils</a></li>
+</ul>
+</details></li>
 </ul>
 </details></li>
 </ul>
@@ -338,8 +341,8 @@
 <div class="toctree-wrapper compound">
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Guides</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="FiQCISampler.html">FiQCI Sampler</a></li>
-<li class="toctree-l1"><a class="reference internal" href="FiQCIEstimator.html">FiQCI Estimator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FiQCISamplerUsage.html">FiQCI Sampler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="logging.html">Logging</a></li>
@@ -368,7 +371,7 @@
       </div>
     </a>
     <a class="right-next"
-       href="FiQCISampler.html"
+       href="FiQCISamplerUsage.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>

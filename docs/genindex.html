@@ -151,8 +151,8 @@
 <li class="toctree-l1"><a class="reference internal" href="pages/Installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="pages/Usage.html">Usage</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="pages/Guides.html">Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="pages/FiQCISampler.html">FiQCI Sampler</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pages/FiQCIEstimator.html">FiQCI Estimator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pages/FiQCISamplerUsage.html">FiQCI Sampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pages/FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pages/readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pages/logging.html">Logging</a></li>
@@ -165,24 +165,27 @@
 <li class="toctree-l2"><a class="reference internal" href="notebooks/zero_noise_extrapolation_example.html">Using Zero Noise Extrapolation</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="pages/api/index.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="pages/api/mitigators/index.html">Mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="pages/api/mitigators/rem.html">Readout Error Mitigation (REM)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="pages/api/mitigators/zne.html">Zero Noise Extrapolation (ZNE)</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="pages/Api.html">Api Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="pages/api/fiqci.ems.html">fiqci.ems</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="pages/api/fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pages/api/fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="pages/api/primitives/index.html">Primitives</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="pages/api/primitives/fiqci_estimator.html">FiQCIEstimator</a></li>
-<li class="toctree-l3"><a class="reference internal" href="pages/api/primitives/fiqci_sampler.html">FiQCISampler</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pages/api/fiqci.ems.primitives.html">fiqci.ems.primitives</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.primitives.fiqci_estimator.html">fiqci.ems.primitives.fiqci_estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.primitives.fiqci_sampler.html">fiqci.ems.primitives.fiqci_sampler</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="pages/api/transpiler_passes/index.html">Transpiler Passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="pages/api/transpiler_passes/basis_measurement.html">Basis Measurement</a></li>
-<li class="toctree-l3"><a class="reference internal" href="pages/api/transpiler_passes/zne_circuits.html">ZNE Circuits</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="pages/api/fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2"><a class="reference internal" href="pages/api/fiqci_backend.html">FiQCI Backend</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pages/api/utils.html">Utilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pages/api/fiqci.ems.utils.html">fiqci.ems.utils</a></li>
+</ul>
+</details></li>
 </ul>
 </details></li>
 </ul>
@@ -307,24 +310,24 @@
 <h2 id="_">_</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.Config.__init__">__init__() (Config method)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.Config.__init__">__init__() (Config method)</a>
 
       <ul>
-        <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.__init__">(FiQCIBackend method)</a>
+        <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.__init__">(FiQCIBackend method)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.__init__">[1]</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.__init__">(FiQCIEstimator method)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.__init__">(FiQCIEstimator method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.__init__">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator.__init__">[2]</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.__init__">(FiQCIEstimatorJobCollection method)</a>
+        <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.__init__">(FiQCIEstimatorJobCollection method)</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.__init__">(FiQCISampler method)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler.__init__">(FiQCISampler method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.__init__">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler.__init__">[2]</a>
 </li>
-        <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.__init__">(M3IQM method)</a>
+        <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.__init__">(M3IQM method)</a>
 </li>
-        <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob.__init__">(MitigatedJob method)</a>
+        <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob.__init__">(MitigatedJob method)</a>
 </li>
-        <li><a href="pages/api/transpiler_passes/basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis.__init__">(ModifyMeasurementBasis method)</a>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis.__init__">(ModifyMeasurementBasis method)</a>
 </li>
-        <li><a href="pages/api/transpiler_passes/zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__">(ZNECircuits method)</a>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__">(ZNECircuits method)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -333,7 +336,7 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.backend">backend (FiQCIBackend property)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.backend">backend (FiQCIBackend property)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.backend">[1]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -341,19 +344,19 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.cal_method">cal_method (M3IQM attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.cal_method">cal_method (M3IQM attribute)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.cal_timestamp">cal_timestamp (M3IQM attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.cal_timestamp">cal_timestamp (M3IQM attribute)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.cals_from_file">cals_from_file() (M3IQM method)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.cals_from_file">cals_from_file() (M3IQM method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.cals_from_system">cals_from_system() (M3IQM method)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.cals_from_system">cals_from_system() (M3IQM method)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.cals_to_file">cals_to_file() (M3IQM method)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.cals_to_file">cals_to_file() (M3IQM method)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.Config">Config (class in fiqci.ems.mitigators.rem)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.Config">Config (class in fiqci.ems.mitigators.rem)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -361,11 +364,11 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.expectation_values">expectation_values() (FiQCIEstimatorJobCollection method)</a>
+      <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.expectation_values">expectation_values() (FiQCIEstimatorJobCollection method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/zne.html#fiqci.ems.mitigators.zne.exponential_extrapolation">exponential_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.zne.html#fiqci.ems.mitigators.zne.exponential_extrapolation">exponential_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -374,78 +377,122 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
+    fiqci.ems
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.html#module-fiqci.ems">module</a>
+</li>
+      </ul></li>
+      <li>
     fiqci.ems.fiqci_backend
 
       <ul>
-        <li><a href="pages/api/fiqci_backend.html#module-fiqci.ems.fiqci_backend">module</a>
+        <li><a href="pages/api/fiqci.ems.fiqci_backend.html#module-fiqci.ems.fiqci_backend">module</a>
+</li>
+      </ul></li>
+      <li>
+    fiqci.ems.mitigators
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.mitigators.html#module-fiqci.ems.mitigators">module</a>
 </li>
       </ul></li>
       <li>
     fiqci.ems.mitigators.rem
 
       <ul>
-        <li><a href="pages/api/mitigators/rem.html#module-fiqci.ems.mitigators.rem">module</a>
+        <li><a href="pages/api/fiqci.ems.mitigators.rem.html#module-fiqci.ems.mitigators.rem">module</a>
 </li>
       </ul></li>
       <li>
     fiqci.ems.mitigators.zne
 
       <ul>
-        <li><a href="pages/api/mitigators/zne.html#module-fiqci.ems.mitigators.zne">module</a>
+        <li><a href="pages/api/fiqci.ems.mitigators.zne.html#module-fiqci.ems.mitigators.zne">module</a>
+</li>
+      </ul></li>
+      <li>
+    fiqci.ems.primitives
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.primitives.html#module-fiqci.ems.primitives">module</a>
 </li>
       </ul></li>
       <li>
     fiqci.ems.primitives.fiqci_estimator
 
       <ul>
-        <li><a href="pages/api/primitives/fiqci_estimator.html#module-fiqci.ems.primitives.fiqci_estimator">module</a>
+        <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#module-fiqci.ems.primitives.fiqci_estimator">module</a>
 </li>
       </ul></li>
       <li>
     fiqci.ems.primitives.fiqci_sampler
 
       <ul>
-        <li><a href="pages/api/primitives/fiqci_sampler.html#module-fiqci.ems.primitives.fiqci_sampler">module</a>
+        <li><a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#module-fiqci.ems.primitives.fiqci_sampler">module</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
+    fiqci.ems.transpiler_passes
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.html#module-fiqci.ems.transpiler_passes">module</a>
+</li>
+      </ul></li>
+      <li>
     fiqci.ems.transpiler_passes.basis_measurement
 
       <ul>
-        <li><a href="pages/api/transpiler_passes/basis_measurement.html#module-fiqci.ems.transpiler_passes.basis_measurement">module</a>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#module-fiqci.ems.transpiler_passes.basis_measurement">module</a>
 </li>
       </ul></li>
       <li>
     fiqci.ems.transpiler_passes.zne_circuits
 
       <ul>
-        <li><a href="pages/api/transpiler_passes/zne_circuits.html#module-fiqci.ems.transpiler_passes.zne_circuits">module</a>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#module-fiqci.ems.transpiler_passes.zne_circuits">module</a>
 </li>
       </ul></li>
       <li>
     fiqci.ems.utils
 
       <ul>
-        <li><a href="pages/api/utils.html#module-fiqci.ems.utils">module</a>
+        <li><a href="pages/api/fiqci.ems.utils.html#module-fiqci.ems.utils">module</a>
 </li>
       </ul></li>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend">FiQCIBackend (class in fiqci.ems.fiqci_backend)</a>
+      <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend">FiQCIBackend (class in fiqci.ems)</a>
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend">(class in fiqci.ems.fiqci_backend)</a>
 </li>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator">FiQCIEstimator (class in fiqci.ems.primitives.fiqci_estimator)</a>
+      </ul></li>
+      <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator">FiQCIEstimator (class in fiqci.ems)</a>
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator">(class in fiqci.ems.primitives)</a>
 </li>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection">FiQCIEstimatorJobCollection (class in fiqci.ems.primitives.fiqci_estimator)</a>
+        <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator">(class in fiqci.ems.primitives.fiqci_estimator)</a>
 </li>
-      <li><a href="pages/api/primitives/fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler">FiQCISampler (class in fiqci.ems.primitives.fiqci_sampler)</a>
+      </ul></li>
+      <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection">FiQCIEstimatorJobCollection (class in fiqci.ems.primitives.fiqci_estimator)</a>
 </li>
+      <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler">FiQCISampler (class in fiqci.ems)</a>
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler">(class in fiqci.ems.primitives)</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler">(class in fiqci.ems.primitives.fiqci_sampler)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/transpiler_passes/basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.get_obs_subcircuits">get_obs_subcircuits() (in module fiqci.ems.transpiler_passes.basis_measurement)</a>
+      <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.get_obs_subcircuits">get_obs_subcircuits() (in module fiqci.ems.transpiler_passes.basis_measurement)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -453,7 +500,7 @@
 <h2 id="J">J</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.jobs">jobs() (FiQCIEstimatorJobCollection method)</a>
+      <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.jobs">jobs() (FiQCIEstimatorJobCollection method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -461,49 +508,55 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM">M3IQM (class in fiqci.ems.mitigators.rem)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM">M3IQM (class in fiqci.ems.mitigators.rem)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.Config.max_circuits">max_circuits (Config attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.Config.max_circuits">max_circuits (Config attribute)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.Config.max_experiments">max_experiments (Config attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.Config.max_experiments">max_experiments (Config attribute)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.Config.max_shots">max_shots (Config attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.Config.max_shots">max_shots (Config attribute)</a>
 </li>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob">MitigatedJob (class in fiqci.ems.fiqci_backend)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob">MitigatedJob (class in fiqci.ems.fiqci_backend)</a>
 </li>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.mitigation_level">mitigation_level (FiQCIBackend property)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.mitigation_level">mitigation_level (FiQCIBackend property)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.mitigation_level">[1]</a>
 </li>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.mitigator_options">mitigator_options (FiQCIBackend property)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.mitigator_options">mitigator_options (FiQCIBackend property)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.mitigator_options">[1]</a>
 
       <ul>
-        <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.mitigator_options">(FiQCIEstimator property)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.mitigator_options">(FiQCIEstimator property)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.mitigator_options">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator.mitigator_options">[2]</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.mitigator_options">(FiQCISampler property)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler.mitigator_options">(FiQCISampler property)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.mitigator_options">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler.mitigator_options">[2]</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/transpiler_passes/basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis">ModifyMeasurementBasis (class in fiqci.ems.transpiler_passes.basis_measurement)</a>
+      <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis">ModifyMeasurementBasis (class in fiqci.ems.transpiler_passes.basis_measurement)</a>
 </li>
       <li>
     module
 
       <ul>
-        <li><a href="pages/api/fiqci_backend.html#module-fiqci.ems.fiqci_backend">fiqci.ems.fiqci_backend</a>
+        <li><a href="pages/api/fiqci.ems.html#module-fiqci.ems">fiqci.ems</a>
 </li>
-        <li><a href="pages/api/mitigators/rem.html#module-fiqci.ems.mitigators.rem">fiqci.ems.mitigators.rem</a>
+        <li><a href="pages/api/fiqci.ems.fiqci_backend.html#module-fiqci.ems.fiqci_backend">fiqci.ems.fiqci_backend</a>
 </li>
-        <li><a href="pages/api/mitigators/zne.html#module-fiqci.ems.mitigators.zne">fiqci.ems.mitigators.zne</a>
+        <li><a href="pages/api/fiqci.ems.mitigators.html#module-fiqci.ems.mitigators">fiqci.ems.mitigators</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_estimator.html#module-fiqci.ems.primitives.fiqci_estimator">fiqci.ems.primitives.fiqci_estimator</a>
+        <li><a href="pages/api/fiqci.ems.mitigators.rem.html#module-fiqci.ems.mitigators.rem">fiqci.ems.mitigators.rem</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_sampler.html#module-fiqci.ems.primitives.fiqci_sampler">fiqci.ems.primitives.fiqci_sampler</a>
+        <li><a href="pages/api/fiqci.ems.mitigators.zne.html#module-fiqci.ems.mitigators.zne">fiqci.ems.mitigators.zne</a>
 </li>
-        <li><a href="pages/api/transpiler_passes/basis_measurement.html#module-fiqci.ems.transpiler_passes.basis_measurement">fiqci.ems.transpiler_passes.basis_measurement</a>
+        <li><a href="pages/api/fiqci.ems.primitives.html#module-fiqci.ems.primitives">fiqci.ems.primitives</a>
 </li>
-        <li><a href="pages/api/transpiler_passes/zne_circuits.html#module-fiqci.ems.transpiler_passes.zne_circuits">fiqci.ems.transpiler_passes.zne_circuits</a>
+        <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#module-fiqci.ems.primitives.fiqci_estimator">fiqci.ems.primitives.fiqci_estimator</a>
 </li>
-        <li><a href="pages/api/utils.html#module-fiqci.ems.utils">fiqci.ems.utils</a>
+        <li><a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#module-fiqci.ems.primitives.fiqci_sampler">fiqci.ems.primitives.fiqci_sampler</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.html#module-fiqci.ems.transpiler_passes">fiqci.ems.transpiler_passes</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#module-fiqci.ems.transpiler_passes.basis_measurement">fiqci.ems.transpiler_passes.basis_measurement</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#module-fiqci.ems.transpiler_passes.zne_circuits">fiqci.ems.transpiler_passes.zne_circuits</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.utils.html#module-fiqci.ems.utils">fiqci.ems.utils</a>
 </li>
       </ul></li>
   </ul></td>
@@ -512,7 +565,7 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.Config.num_qubits">num_qubits (Config attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.Config.num_qubits">num_qubits (Config attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -520,7 +573,7 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.observables">observables() (FiQCIEstimatorJobCollection method)</a>
+      <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.observables">observables() (FiQCIEstimatorJobCollection method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -528,11 +581,11 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/zne.html#fiqci.ems.mitigators.zne.polynomial_extrapolation">polynomial_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.zne.html#fiqci.ems.mitigators.zne.polynomial_extrapolation">polynomial_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/utils.html#fiqci.ems.utils.probabilities_to_counts">probabilities_to_counts() (in module fiqci.ems.utils)</a>
+      <li><a href="pages/api/fiqci.ems.utils.html#fiqci.ems.utils.probabilities_to_counts">probabilities_to_counts() (in module fiqci.ems.utils)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -540,36 +593,36 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.raw_counts">raw_counts (FiQCIBackend property)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.raw_counts">raw_counts (FiQCIBackend property)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.raw_counts">[1]</a>
 </li>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.raw_expectation_values">raw_expectation_values() (FiQCIEstimatorJobCollection method)</a>
+      <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.raw_expectation_values">raw_expectation_values() (FiQCIEstimatorJobCollection method)</a>
 </li>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.rem">rem() (FiQCIBackend method)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.rem">rem() (FiQCIBackend method)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.rem">[1]</a>
 
       <ul>
-        <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.rem">(FiQCIEstimator method)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.rem">(FiQCIEstimator method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.rem">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator.rem">[2]</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.rem">(FiQCISampler method)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler.rem">(FiQCISampler method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.rem">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler.rem">[2]</a>
 </li>
       </ul></li>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob.result">result() (MitigatedJob method)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob.result">result() (MitigatedJob method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.results">results() (FiQCIEstimatorJobCollection method)</a>
+      <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.results">results() (FiQCIEstimatorJobCollection method)</a>
 </li>
-      <li><a href="pages/api/mitigators/zne.html#fiqci.ems.mitigators.zne.richardson_extrapolation">richardson_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.zne.html#fiqci.ems.mitigators.zne.richardson_extrapolation">richardson_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
 </li>
-      <li><a href="pages/api/fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.run">run() (FiQCIBackend method)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.run">run() (FiQCIBackend method)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.run">[1]</a>
 
       <ul>
-        <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.run">(FiQCIEstimator method)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.run">(FiQCIEstimator method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.run">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator.run">[2]</a>
 </li>
-        <li><a href="pages/api/primitives/fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.run">(FiQCISampler method)</a>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler.run">(FiQCISampler method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.run">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler.run">[2]</a>
 </li>
-        <li><a href="pages/api/transpiler_passes/basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis.run">(ModifyMeasurementBasis method)</a>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis.run">(ModifyMeasurementBasis method)</a>
 </li>
-        <li><a href="pages/api/transpiler_passes/zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run">(ZNECircuits method)</a>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run">(ZNECircuits method)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -578,15 +631,15 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.Config.simulator">simulator (Config attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.Config.simulator">simulator (Config attribute)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.single_qubit_cals">single_qubit_cals (M3IQM attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.single_qubit_cals">single_qubit_cals (M3IQM attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.system">system (M3IQM attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.system">system (M3IQM attribute)</a>
 </li>
-      <li><a href="pages/api/mitigators/rem.html#fiqci.ems.mitigators.rem.M3IQM.system_info">system_info (M3IQM attribute)</a>
+      <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.system_info">system_info (M3IQM attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -594,11 +647,11 @@
 <h2 id="Z">Z</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/primitives/fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne">zne() (FiQCIEstimator method)</a>
+      <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.zne">zne() (FiQCIEstimator method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator.zne">[2]</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/transpiler_passes/zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits">ZNECircuits (class in fiqci.ems.transpiler_passes.zne_circuits)</a>
+      <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits">ZNECircuits (class in fiqci.ems.transpiler_passes.zne_circuits)</a>
 </li>
   </ul></td>
 </tr></table>
