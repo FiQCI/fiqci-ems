@@ -6,8 +6,8 @@ This python package can be pre-installed on a HPC system or installed by the use
 
 ## Mitigation Levels
 
-<details style="border: 2px solid #1a3a6b; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
-<summary><h3 style="display:inline;">Sampler</h3></summary>
+<details>
+<summary><b>Sampler</b></summary>
 
 | Level | Mitigation Applied | Technique |
 |:-----:|------------|-----------|
@@ -18,8 +18,8 @@ This python package can be pre-installed on a HPC system or installed by the use
 
 </details>
 
-<details style="border: 2px solid #1a3a6b; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
-<summary><h3 style="display:inline;">Estimator</h3></summary>
+<details>
+<summary><b>Estimator</b></summary>
 
 | Level | Mitigation Applied | Technique |
 |:-----:|------------|-----------|
