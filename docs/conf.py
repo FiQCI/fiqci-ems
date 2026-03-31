@@ -64,14 +64,16 @@ nb_execution_mode = "off"
 
 add_module_names = False
 
-sys.path.insert(0, os.path.abspath('../src/fiqci/ems'))
+sys.path.insert(0, os.path.abspath('../src'))
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "sphinx_book_theme"
 html_theme_options = {
-    "show_navbar_depth": 2,
     "collapse_navigation": True,
 }
+html_logo = "_static/images/FiQCI-logo.png"
+html_favicon = "_static/images/FiQCI-logo.png"
+html_title = "FiQCI EMS"
 html_static_path = ['_static']
