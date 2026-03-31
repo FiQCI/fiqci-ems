@@ -14,7 +14,7 @@ from qiskit.transpiler.passes import RemoveFinalMeasurements
 from qiskit.quantum_info import Pauli, SparsePauliOp
 
 
-class _ModifyMeasurementBasis(TransformationPass):
+class ModifyMeasurementBasis(TransformationPass):
 
 	"""
 	A transpiler pass that modifies the measurement basis of a circuit according to specified settings. It adds the necessary gates to change the measurement basis to X or Y as needed, and appends measurements in the Z basis.
@@ -91,7 +91,7 @@ def get_obs_subcircuits(
 		A list of dictionaries mapping circuit indices to their corresponding modified subcircuits for each measurement setting.
 	"""
 
-	pms = [PassManager([_ModifyMeasurementBasis([setting], ops)]) for setting in measurement_settings]
+	pms = [PassManager([ModifyMeasurementBasis([setting], ops)]) for setting in measurement_settings]
 
 	remove_meas_pm = PassManager([RemoveFinalMeasurements()])
 
@@ -109,13 +109,13 @@ def get_obs_subcircuits(
 	return obs_subcircuits
 
 
-class ObservableCircuitIndex(TypedDict):
+class _ObservableCircuitIndex(TypedDict):
 	circuit_index: int | None
 	obs_indices: list[int]
 	num_meas: int
 
 
-def _get_observable_circuit_index(pauli: Pauli, combined: list[dict[int, str]]) -> ObservableCircuitIndex:
+def _get_observable_circuit_index(pauli: Pauli, combined: list[dict[int, str]]) -> _ObservableCircuitIndex:
 	"""Find which measurement setting covers the non-identity letters of `pauli`,
 	and return the indices of the qubits involved."""
 	label = pauli.to_label()[::-1]

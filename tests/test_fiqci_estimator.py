@@ -214,7 +214,7 @@ class TestCalculateExpectationValues:
 		# counts where qubit 0 is measured: '0' 700 times, '1' 300 times
 		counts = [{"0": 700, "1": 300}]
 
-		exp_vals = estimator.calculate_expectation_values(counts, obs, measurement_settings)
+		exp_vals = estimator._calculate_expectation_values(counts, obs, measurement_settings)
 
 		# parity: '0' -> +1, '1' -> -1
 		# exp_val = (700 * 1 + 300 * (-1)) / 1000 = 0.4
@@ -234,7 +234,7 @@ class TestCalculateExpectationValues:
 		# '00' -> parity +1, '01' -> -1, '10' -> -1, '11' -> +1
 		counts = [{"00": 400, "01": 100, "10": 100, "11": 400}]
 
-		exp_vals = estimator.calculate_expectation_values(counts, obs, measurement_settings)
+		exp_vals = estimator._calculate_expectation_values(counts, obs, measurement_settings)
 
 		# exp_val = (400 + 400 - 100 - 100) / 1000 = 0.6
 		assert len(exp_vals) == 1
@@ -253,7 +253,7 @@ class TestCalculateExpectationValues:
 		# Pass counts as a single dict, not a list
 		counts = {"0": 500, "1": 500}
 
-		exp_vals = estimator.calculate_expectation_values(counts, obs, measurement_settings)
+		exp_vals = estimator._calculate_expectation_values(counts, obs, measurement_settings)
 
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(0.0)
@@ -271,7 +271,7 @@ class TestCalculateExpectationValues:
 		measurement_settings = [{0: "Z"}]
 		counts = [{"0": 500, "1": 500}]
 
-		exp_vals = estimator.calculate_expectation_values(counts, obs, measurement_settings)
+		exp_vals = estimator._calculate_expectation_values(counts, obs, measurement_settings)
 
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == 0
@@ -288,7 +288,7 @@ class TestCalculateExpectationValues:
 		measurement_settings = [{0: "Z"}]
 		counts = [{"0": 1000}]
 
-		exp_vals = estimator.calculate_expectation_values(counts, obs, measurement_settings)
+		exp_vals = estimator._calculate_expectation_values(counts, obs, measurement_settings)
 
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(1.0)
@@ -305,7 +305,7 @@ class TestCalculateExpectationValues:
 		measurement_settings = [{0: "Z"}]
 		counts = [{"1": 1000}]
 
-		exp_vals = estimator.calculate_expectation_values(counts, obs, measurement_settings)
+		exp_vals = estimator._calculate_expectation_values(counts, obs, measurement_settings)
 
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(-1.0)

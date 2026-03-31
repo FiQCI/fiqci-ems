@@ -12,7 +12,7 @@ from mthree.mitigation import _faulty_qubit_checker
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-def balanced_cal_strings(num_qubits: int) -> list[str]:
+def _balanced_cal_strings(num_qubits: int) -> list[str]:
 	"""Generate balanced calibration strings for the given number of qubits.
 
 	Balanced calibration strings ensure equal representation of 0 and 1 states
