@@ -1,0 +1,637 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Example: Zero Noise Extrapolation &#8212; FiQCI EMS</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=7f7c277e"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/zero_noise_extrapolation_example';</script>
+    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/notebooks/zero_noise_extrapolation_example.html" />
+    <link rel="icon" href="../_static/FiQCI-logo.png"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API Reference" href="../pages/api/index.html" />
+    <link rel="prev" title="Example: Advanaced Readout Mitigation" href="advanced_readout_error_mitigation_m3.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/FiQCI-logo.png" class="logo__image only-light" alt="FiQCI EMS - Home"/>
+    <img src="../_static/FiQCI-logo.png" class="logo__image only-dark pst-js-only" alt="FiQCI EMS - Home"/>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../pages/Installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../pages/Usage.html">Usage</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../pages/Guides.html">Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../pages/FiQCISampler.html">FiQCI Sampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/FiQCIEstimator.html">FiQCI Estimator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/readout_mitigation.html">Readout Error Mitigation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/logging.html">Logging</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../pages/Examples.html">Examples</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="sampling_fiqci_sampler.html">Using The FiQCI Sampler</a></li>
+<li class="toctree-l2"><a class="reference internal" href="expectation_values_fiqci_estimator.html">Using The FiQCI Estimator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_readout_error_mitigation_m3.html">Advanced Readout Error Mitigation</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Using Zero Noise Extrapolation</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../pages/api/index.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../pages/api/mitigators/index.html">Mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../pages/api/mitigators/rem.html">Readout Error Mitigation (REM)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pages/api/mitigators/zne.html">Zero Noise Extrapolation (ZNE)</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../pages/api/primitives/index.html">Primitives</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../pages/api/primitives/fiqci_estimator.html">FiQCIEstimator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pages/api/primitives/fiqci_sampler.html">FiQCISampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../pages/api/transpiler_passes/index.html">Transpiler Passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../pages/api/transpiler_passes/basis_measurement.html">Basis Measurement</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../pages/api/transpiler_passes/zne_circuits.html">ZNE Circuits</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/api/fiqci_backend.html">FiQCI Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/api/utils.html">Utilities</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/notebooks/zero_noise_extrapolation_example.ipynb" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.ipynb</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Example: Zero Noise Extrapolation</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-everything-needed">Import everything needed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#setup-estimator">Setup Estimator</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-circuit-with-zne-rem">Example circuit with ZNE + REM</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-configuration">Manual Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#access-job-information">Access job information</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="example-zero-noise-extrapolation">
+<h1>Example: Zero Noise Extrapolation<a class="headerlink" href="#example-zero-noise-extrapolation" title="Link to this heading">#</a></h1>
+<section id="import-everything-needed">
+<h2>Import everything needed<a class="headerlink" href="#import-everything-needed" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fiqci.ems</span><span class="w"> </span><span class="kn">import</span> <span class="n">FiQCIEstimator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">IQMProvider</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qiskit</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantumCircuit</span><span class="p">,</span> <span class="n">transpile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qiskit.quantum_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparsePauliOp</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="setup-estimator">
+<h2>Setup Estimator<a class="headerlink" href="#setup-estimator" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">url</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">quantum_computer</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># Connect to an IQM quantum computer using the provider</span>
+<span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">quantum_computer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+	<span class="n">provider</span> <span class="o">=</span> <span class="n">IQMProvider</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">quantum_computer</span><span class="o">=</span><span class="n">quantum_computer</span><span class="p">)</span>
+	<span class="n">backend</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span>
+<span class="k">else</span><span class="p">:</span>
+	<span class="c1"># Or using a noisy simulator</span>
+	<span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">IQMFakeAdonis</span>
+
+	<span class="n">backend</span> <span class="o">=</span> <span class="n">IQMFakeAdonis</span><span class="p">()</span>
+
+<span class="c1"># Initialise FiQCI estimator with mitigation level 3 (readout error mitigation + zero-noise extrapolation)</span>
+<span class="n">estimator</span> <span class="o">=</span> <span class="n">FiQCIEstimator</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># We can view the default settings enabled for mitigation level 3</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">mitigator_options</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/home/runner/work/fiqci-ems/fiqci-ems/src/fiqci/ems/fiqci_backend.py:89: UserWarning: Mitigation level 2 (M3 + Dynamical Decoupling) not implemented yet. Level 2 will currently only apply M3 readout error mitigation without dynamical decoupling.
+  warnings.warn(
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;zne&#39;: {&#39;enabled&#39;: True,
+  &#39;fold_gates&#39;: None,
+  &#39;scale_factors&#39;: [1, 3, 5],
+  &#39;folding_method&#39;: &#39;local&#39;,
+  &#39;extrapolation_method&#39;: &#39;exponential&#39;,
+  &#39;extrapolation_degree&#39;: None},
+ &#39;rem&#39;: {&#39;enabled&#39;: True,
+  &#39;calibration_shots&#39;: 1000,
+  &#39;calibration_file&#39;: None,
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f52c41450d0&gt;}}
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="example-circuit-with-zne-rem">
+<h2>Example circuit with ZNE + REM<a class="headerlink" href="#example-circuit-with-zne-rem" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define a simple 5-qubit circuit</span>
+<span class="n">qc</span> <span class="o">=</span> <span class="n">QuantumCircuit</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">qc</span><span class="o">.</span><span class="n">rx</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">qc</span><span class="o">.</span><span class="n">cx</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">qc</span><span class="o">.</span><span class="n">cx</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">qc</span><span class="o">.</span><span class="n">cx</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">qc</span><span class="o">.</span><span class="n">cx</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+<span class="n">qc</span><span class="o">.</span><span class="n">cx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">qc</span><span class="o">.</span><span class="n">cx</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># Transpile for backend</span>
+<span class="n">qc_transpiled</span> <span class="o">=</span> <span class="n">transpile</span><span class="p">(</span><span class="n">qc</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">)</span>
+
+<span class="n">qc_transpiled</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="s2">&quot;mpl&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/b7a5f3ca655098a6920cc8341c9d3badb903f30909ba0de8fa038044e970190b.png" src="../_images/b7a5f3ca655098a6920cc8341c9d3badb903f30909ba0de8fa038044e970190b.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define observables to calculate expectation values for (here Z on each qubit)</span>
+<span class="n">observables</span> <span class="o">=</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_list</span><span class="p">([(</span><span class="s2">&quot;ZIIII&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IZIII&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IIZII&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IIIZI&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IIIIZ&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+
+<span class="c1"># Map observables to the layout of the transpiled circuit</span>
+<span class="n">observables_device</span> <span class="o">=</span> <span class="n">observables</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+
+<span class="c1"># Execute on FiQCI Estimator with specified observables and shots</span>
+<span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">qc_transpiled</span><span class="p">],</span> <span class="n">observables</span><span class="o">=</span><span class="n">observables_device</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c1"># Retrieve mitigated expectation values</span>
+<span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9800489610649965,
+  0.9800489610649965,
+  0.9800489610649965,
+  0.9800489610649965,
+  0.9800489610649965]]
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="manual-configuration">
+<h2>Manual Configuration<a class="headerlink" href="#manual-configuration" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Initialise FiQCI estimator</span>
+<span class="n">estimator</span> <span class="o">=</span> <span class="n">FiQCIEstimator</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># Configure ZNE</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">zne</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">scale_factors</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">extrapolation_method</span><span class="o">=</span><span class="s2">&quot;richardson&quot;</span><span class="p">,</span> <span class="n">folding_method</span><span class="o">=</span><span class="s2">&quot;global&quot;</span><span class="p">)</span>
+
+<span class="c1"># Print ZNE settings</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">mitigator_options</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;zne&#39;: {&#39;enabled&#39;: True,
+  &#39;fold_gates&#39;: None,
+  &#39;scale_factors&#39;: [1, 5],
+  &#39;folding_method&#39;: &#39;local&#39;,
+  &#39;extrapolation_method&#39;: &#39;richardson&#39;,
+  &#39;extrapolation_degree&#39;: None},
+ &#39;rem&#39;: {&#39;enabled&#39;: False,
+  &#39;calibration_shots&#39;: 1000,
+  &#39;calibration_file&#39;: None,
+  &#39;mitigator&#39;: None}}
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Execute the same circuit as above with only ZNE enabled (no readout error mitigation)</span>
+<span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">qc_transpiled</span><span class="p">],</span> <span class="n">observables</span><span class="o">=</span><span class="n">observables_device</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.728515625, 0.728515625, 0.728515625, 0.728515625, 0.728515625]]
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="access-job-information">
+<h2>Access job information<a class="headerlink" href="#access-job-information" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Estimator may execute multiple circuits depending on observables and mitigator settings. Here we fecth them all as a list</span>
+<span class="n">jobs</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">jobs</span><span class="p">()</span>
+
+<span class="c1"># Look at the first job</span>
+<span class="n">job0</span> <span class="o">=</span> <span class="n">jobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Get the counts for the first job</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">get_counts</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01011&#39;: 1, &#39;00011&#39;: 1, &#39;00111&#39;: 2, &#39;01010&#39;: 8, &#39;11101&#39;: 2, &#39;10110&#39;: 1, &#39;01111&#39;: 5, &#39;11111&#39;: 1, &#39;11000&#39;: 4, &#39;11110&#39;: 16, &#39;00000&#39;: 641, &#39;00010&#39;: 27, &#39;10011&#39;: 11, &#39;00101&#39;: 1, &#39;11010&#39;: 1, &#39;01001&#39;: 3, &#39;10001&#39;: 12, &#39;01110&#39;: 39, &#39;11001&#39;: 68, &#39;10000&#39;: 45, &#39;11011&#39;: 2, &#39;10100&#39;: 7, &#39;10111&#39;: 14, &#39;00001&#39;: 23, &#39;00110&#39;: 4, &#39;01000&#39;: 47, &#39;01100&#39;: 4, &#39;00100&#39;: 33, &#39;01101&#39;: 1}, {&#39;01011&#39;: 5, &#39;01101&#39;: 7, &#39;10000&#39;: 77, &#39;01100&#39;: 7, &#39;01000&#39;: 37, &#39;01001&#39;: 17, &#39;10001&#39;: 26, &#39;11010&#39;: 22, &#39;00101&#39;: 7, &#39;11110&#39;: 52, &#39;00110&#39;: 16, &#39;00001&#39;: 33, &#39;10010&#39;: 8, &#39;10101&#39;: 5, &#39;11100&#39;: 6, &#39;01111&#39;: 8, &#39;10111&#39;: 39, &#39;10100&#39;: 9, &#39;01110&#39;: 93, &#39;00100&#39;: 62, &#39;11011&#39;: 10, &#39;11111&#39;: 16, &#39;11000&#39;: 15, &#39;10011&#39;: 31, &#39;10110&#39;: 10, &#39;01010&#39;: 32, &#39;00010&#39;: 24, &#39;00000&#39;: 287, &#39;11001&#39;: 25, &#39;00111&#39;: 15, &#39;00011&#39;: 10, &#39;11101&#39;: 13}]
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="advanced_readout_error_mitigation_m3.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Example: Advanaced Readout Mitigation</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../pages/api/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">API Reference</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#import-everything-needed">Import everything needed</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#setup-estimator">Setup Estimator</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example-circuit-with-zne-rem">Example circuit with ZNE + REM</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-configuration">Manual Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#access-job-information">Access job information</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By FiQCI
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, FiQCI.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
