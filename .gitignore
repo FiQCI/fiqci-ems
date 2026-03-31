@@ -21,4 +21,5 @@ test-local/
 _build/
 docs/jupyter_execute/
 docs/cals.json
+docs/notebooks/cals.json
 docs/pages/api/*
