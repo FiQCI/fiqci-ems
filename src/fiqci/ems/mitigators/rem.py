@@ -36,7 +36,7 @@ def _balanced_cal_strings(num_qubits: int) -> list[str]:
 
 
 @dataclass
-class Config:
+class _Config:
 	"""Configuration for the backend"""
 
 	num_qubits: int
@@ -54,7 +54,7 @@ class M3IQM(M3Mitigation):
 	def __init__(self, backend):
 		self.backend = backend
 		if not hasattr(self.backend, "configuration"):
-			self.backend.configuration = lambda: Config(
+			self.backend.configuration = lambda: _Config(
 				num_qubits=backend.num_qubits, max_shots=10000, simulator=False, max_experiments=2, max_circuits=100
 			)
 
