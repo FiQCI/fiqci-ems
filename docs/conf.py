@@ -45,7 +45,7 @@ source_suffix = {".rst": "restructuredtext", ".ipynb": "myst-nb", ".md": "myst-n
 
 myst_enable_extensions = ["amsmath", "dollarmath"]
 
-nb_execution_mode = "auto"
+nb_execution_mode = "cache"
 
 add_module_names = False
 
