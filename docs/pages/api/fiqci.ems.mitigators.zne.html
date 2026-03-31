@@ -48,7 +48,7 @@
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'pages/api/fiqci.ems.mitigators.zne';</script>
     <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/api/fiqci.ems.mitigators.zne.html" />
-    <link rel="icon" href="../../_static/FiQCI-logo.png"/>
+    <link rel="icon" href="../../_static/FiQCI-logo-nobg.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="fiqci.ems.primitives" href="fiqci.ems.primitives.html" />
@@ -134,8 +134,8 @@
       
     
     
-    <img src="../../_static/FiQCI-logo.png" class="logo__image only-light" alt="FiQCI EMS - Home"/>
-    <img src="../../_static/FiQCI-logo.png" class="logo__image only-dark pst-js-only" alt="FiQCI EMS - Home"/>
+    <img src="../../_static/FiQCI-logo-nobg.png" class="logo__image only-light" alt="FiQCI EMS - Home"/>
+    <img src="../../_static/FiQCI-logo-nobg.png" class="logo__image only-dark pst-js-only" alt="FiQCI EMS - Home"/>
   
   
 </a></div>
@@ -350,6 +350,7 @@
                   
   <section id="module-fiqci.ems.mitigators.zne">
 <span id="fiqci-ems-mitigators-zne"></span><h1>fiqci.ems.mitigators.zne<a class="headerlink" href="#module-fiqci.ems.mitigators.zne" title="Link to this heading">#</a></h1>
+<p>Extrapolation methods for Zero-Noise Extrapolation.</p>
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -383,11 +384,8 @@
 <dt class="sig sig-object py" id="fiqci.ems.mitigators.zne.richardson_extrapolation">
 <span class="sig-name descname"><span class="pre">richardson_extrapolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expectation_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.mitigators.zne.richardson_extrapolation" title="Link to this definition">#</a></dt>
 <dd><p>Richardson extrapolation to estimate the zero-noise value.</p>
-<dl class="simple">
-<dt>Computes exact Lagrange interpolation coefficients evaluated at x=0:</dt><dd><p>cᵢ = ∏_{j≠i} λⱼ / (λⱼ - λᵢ)</p>
-</dd>
-</dl>
-<p>and returns E(0) = Σᵢ cᵢ · E(λᵢ).</p>
+<p>Computes exact Lagrange interpolation coefficients evaluated at x=0:
+cᵢ = ∏_{j≠i} λⱼ / (λⱼ - λᵢ) and returns E(0) = Σᵢ cᵢ · E(λᵢ).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
