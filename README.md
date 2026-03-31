@@ -6,11 +6,11 @@ This python package can be pre-installed on a HPC system or installed by the use
 
 ## Mitigation Levels
 
-<details>
-<summary>Sampler</summary>
+<details style="border: 2px solid #1a3a6b; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
+<summary><h3 style="display:inline;">Sampler</h3></summary>
 
 | Level | Mitigation Applied | Technique |
-|:-----:|:------------------:|:---------:|
+|:-----:|------------|-----------|
 | 0 | None | Raw results |
 | 1 | Readout Error Mitigation | M3 (matrix-free measurement mitigation) |
 | 2 | Level 1 + additional | TBD |
@@ -18,11 +18,11 @@ This python package can be pre-installed on a HPC system or installed by the use
 
 </details>
 
-<details>
-<summary>Estimator</summary>
+<details style="border: 2px solid #1a3a6b; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
+<summary><h3 style="display:inline;">Estimator</h3></summary>
 
 | Level | Mitigation Applied | Technique |
-|:-----:|:------------------:|:---------:|
+|:-----:|------------|-----------|
 | 0 | None | Raw results |
 | 1 | Readout Error Mitigation | M3 (matrix-free measurement mitigation) |
 | 2 | Level 1 + additional | TBD |
@@ -30,7 +30,10 @@ This python package can be pre-installed on a HPC system or installed by the use
 
 </details>
 
-> **Note:** `FiQCIBackend` mitigation levels correspond to the Sampler levels.
+</br>
+
+ > [!NOTE]
+> `FiQCIBackend` mitigation levels correspond to the Sampler levels.
 
 The default is level 1, which applies M3 readout error mitigation.
 
