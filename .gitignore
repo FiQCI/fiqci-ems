@@ -19,3 +19,4 @@ build/
 .ruff_cache
 test-local/
 _build/
+docs/jupyter_execute/
