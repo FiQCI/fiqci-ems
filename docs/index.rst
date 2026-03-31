@@ -15,7 +15,7 @@ Contents
    pages/Usage
    pages/Guides
    pages/Examples
-   pages/api/index
+   pages/Api
 
 Having trouble?
 =================
