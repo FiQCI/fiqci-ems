@@ -121,10 +121,10 @@ class TestFiQCIBackend:
 		with pytest.raises(ValueError, match="No circuits provided"):
 			mitigated_backend.run([], shots=1024)
 
-	def test_run_with_level_2_raises_not_implemented(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
-		"""Test that level 2 raises NotImplementedError."""
-		with pytest.raises(NotImplementedError, match="Mitigation level 2 not yet implemented"):
-			_mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=2)
+	def test_run_with_level_4_raises_value_error(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""Test that level 4 raises ValueError."""
+		with pytest.raises(ValueError, match="mitigation_level must be 0-3, got 4"):
+			_mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=4)
 
 	def test_getattr_delegates_to_backend(self, mock_backend: Mock) -> None:
 		"""Test that attribute access is delegated to underlying backend."""

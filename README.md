@@ -10,6 +10,6 @@ This python package can be pre-installed on a HPC system or installed by the use
 | 0 | No Mitigation Applied | None |
 | 1 | Readout Error Mitigation | M3 |
 | 2 | Level 1 +   |  |
-| 3 | Level 2 +  |  |
+| 3 | Level 2 + Zero Noise Extrapolation | Extrapolation |
 
 At a basic level the user does not need to do anything and mitigation level 1 is used which means readout error mitigation. At a medium level the user and specify different mitigation levels and at an advanced level the user can configure the error mitigation themselves e.g running Zero noise extrapolation but not gate twirling.
