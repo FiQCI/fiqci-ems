@@ -11,6 +11,7 @@ Contents
 .. toctree::
    :maxdepth: 1
 
+   pages/Installation
    pages/Usage
    pages/Guides
    pages/Examples
