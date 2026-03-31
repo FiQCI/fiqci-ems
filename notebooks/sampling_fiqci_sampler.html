@@ -368,12 +368,13 @@
 
 <span class="c1"># Connect to an IQM quantum computer using the provider</span>
 <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">quantum_computer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">provider</span> <span class="o">=</span> <span class="n">IQMProvider</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">quantum_computer</span><span class="o">=</span><span class="n">quantum_computer</span><span class="p">)</span>
-    <span class="n">backend</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span>
+	<span class="n">provider</span> <span class="o">=</span> <span class="n">IQMProvider</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">quantum_computer</span><span class="o">=</span><span class="n">quantum_computer</span><span class="p">)</span>
+	<span class="n">backend</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span>
 <span class="k">else</span><span class="p">:</span>
-<span class="c1"># Or using a noisy simulator</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">IQMFakeAdonis</span>
-    <span class="n">backend</span> <span class="o">=</span> <span class="n">IQMFakeAdonis</span><span class="p">()</span>
+	<span class="c1"># Or using a noisy simulator</span>
+	<span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">IQMFakeAdonis</span>
+
+	<span class="n">backend</span> <span class="o">=</span> <span class="n">IQMFakeAdonis</span><span class="p">()</span>
 
 <span class="c1"># Initialise FiQCI sampler with mitigation level 1 (readout error mitigation)</span>
 <span class="n">sampler</span> <span class="o">=</span> <span class="n">FiQCISampler</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
@@ -387,7 +388,7 @@
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1000,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe71db632c0&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe1f40dbad0&gt;}}
 </pre></div>
 </div>
 </div>
@@ -427,7 +428,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;01&#39;: 18, &#39;00&#39;: 466, &#39;11&#39;: 538}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;10&#39;: 1, &#39;01&#39;: 11, &#39;11&#39;: 485, &#39;00&#39;: 525}
 </pre></div>
 </div>
 </div>
@@ -452,7 +453,7 @@
 <div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1024,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe71dcaefc0&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe1f40db140&gt;}}
 </pre></div>
 </div>
 </div>

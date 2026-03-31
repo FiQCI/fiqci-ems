@@ -364,12 +364,13 @@
 
 <span class="c1"># Connect to an IQM quantum computer using the provider</span>
 <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">quantum_computer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">provider</span> <span class="o">=</span> <span class="n">IQMProvider</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">quantum_computer</span><span class="o">=</span><span class="n">quantum_computer</span><span class="p">)</span>
-    <span class="n">backend</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span>
+	<span class="n">provider</span> <span class="o">=</span> <span class="n">IQMProvider</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">quantum_computer</span><span class="o">=</span><span class="n">quantum_computer</span><span class="p">)</span>
+	<span class="n">backend</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span>
 <span class="k">else</span><span class="p">:</span>
-<span class="c1"># Or using a noisy simulator</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">IQMFakeAphrodite</span>
-    <span class="n">backend</span> <span class="o">=</span> <span class="n">IQMFakeAphrodite</span><span class="p">()</span>
+	<span class="c1"># Or using a noisy simulator</span>
+	<span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">IQMFakeAphrodite</span>
+
+	<span class="n">backend</span> <span class="o">=</span> <span class="n">IQMFakeAphrodite</span><span class="p">()</span>
 
 <span class="c1"># Wrap backend with mitigation level 1 (readout error mitigation)</span>
 <span class="n">mitigated_backend</span> <span class="o">=</span> <span class="n">FiQCIBackend</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
@@ -415,7 +416,7 @@ Mitigation level: 1
 </div>
 <div class="cell_output docutils container">
 <img alt="../_images/ff12c03959995bb152e24e50b8868d9aa44b7511f286584f2fdcffc52c1ddfb5.png" src="../_images/ff12c03959995bb152e24e50b8868d9aa44b7511f286584f2fdcffc52c1ddfb5.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;10&#39;: 11, &#39;00&#39;: 999, &#39;11&#39;: 1037}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;01&#39;: 9, &#39;10&#39;: 18, &#39;11&#39;: 985, &#39;00&#39;: 1034}
 </pre></div>
 </div>
 </div>
@@ -434,8 +435,8 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 54, &#39;name&#39;: &#39;circuit-19877&#39;, &#39;qreg_sizes&#39;: [[&#39;q&#39;, 2], [&#39;ancilla&#39;, 52]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 2048, &#39;raw_counts&#39;: {&#39;11&#39;: 943, &#39;01&#39;: 104, &#39;10&#39;: 100, &#39;00&#39;: 901}}}
-{&#39;11&#39;: 943, &#39;01&#39;: 104, &#39;10&#39;: 100, &#39;00&#39;: 901}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 54, &#39;name&#39;: &#39;circuit-19877&#39;, &#39;qreg_sizes&#39;: [[&#39;q&#39;, 2], [&#39;ancilla&#39;, 52]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 2048, &#39;raw_counts&#39;: {&#39;01&#39;: 114, &#39;10&#39;: 105, &#39;00&#39;: 933, &#39;11&#39;: 896}}}
+{&#39;01&#39;: 114, &#39;10&#39;: 105, &#39;00&#39;: 933, &#39;11&#39;: 896}
 </pre></div>
 </div>
 </div>
@@ -461,7 +462,7 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/659ecd052fac174f30532c2b6b3aa15bcc31dd4237bf650c295ccab590bb9aba.png" src="../_images/659ecd052fac174f30532c2b6b3aa15bcc31dd4237bf650c295ccab590bb9aba.png" />
+<img alt="../_images/f3575db25723b9d6f9eb3ca90a7331d3c77b3393386f615a5023560ce127dab5.png" src="../_images/f3575db25723b9d6f9eb3ca90a7331d3c77b3393386f615a5023560ce127dab5.png" />
 </div>
 </div>
 </section>
@@ -499,12 +500,12 @@ Mitigation level: 1
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>QB26 (index 8 ) calibration matrix:
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.94970703 0.04296875]
- [0.05029297 0.95703125]]
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.94384766 0.05517578]
+ [0.05615234 0.9448242 ]]
 
 QB27 (index 16 ) calibration matrix:
-[[0.9628906  0.05126953]
- [0.03710938 0.94873047]]
+[[0.953125   0.04931641]
+ [0.046875   0.9506836 ]]
 </pre></div>
 </div>
 </div>
@@ -531,10 +532,10 @@ QB27 (index 16 ) calibration matrix:
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Expectation value: 0.9523 ± 0.0273
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Expectation value: 0.9617 ± 0.0276
 
-Raw counts: {&#39;01&#39;: 110, &#39;11&#39;: 937, &#39;10&#39;: 108, &#39;00&#39;: 893}
-Mitigated counts: {&#39;01&#39;: 13, &#39;10&#39;: 35, &#39;00&#39;: 971, &#39;11&#39;: 1027}
+Raw counts: {&#39;01&#39;: 116, &#39;11&#39;: 913, &#39;10&#39;: 117, &#39;00&#39;: 902}
+Mitigated counts: {&#39;01&#39;: 17, &#39;10&#39;: 22, &#39;00&#39;: 997, &#39;11&#39;: 1011}
 </pre></div>
 </div>
 </div>
@@ -555,7 +556,7 @@ Mitigated counts: {&#39;01&#39;: 13, &#39;10&#39;: 35, &#39;00&#39;: 971, &#39;1
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/ed9c5b99f7f76dedf8cdd7d5ab0c5e392e1fb4a5c82c4ce82e52709db73fe06a.png" src="../_images/ed9c5b99f7f76dedf8cdd7d5ab0c5e392e1fb4a5c82c4ce82e52709db73fe06a.png" />
+<img alt="../_images/b910a75ac02e0c74bdc4566a0b510592edb2d004e8cf5ec475c605b0ac0a04f3.png" src="../_images/b910a75ac02e0c74bdc4566a0b510592edb2d004e8cf5ec475c605b0ac0a04f3.png" />
 </div>
 </div>
 </section>
