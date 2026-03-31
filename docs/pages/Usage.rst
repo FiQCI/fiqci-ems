@@ -191,7 +191,7 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 Advanced Usage
 ~~~~~~~~~~~~~~
 
-It is also possible to manually configure and directly use the M3 mitigator without the wrapper classes above. See `Examples <../Examples>` for details.
+It is also possible to manually configure and directly use the M3 mitigator without the wrapper classes above. See :doc:`Examples` for details.
 
 Configuration
 -------------
