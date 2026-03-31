@@ -1,0 +1,35 @@
+name: Publish docs
+
+on:
+  push:
+    branches:
+      - add_docs
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Uv sync environment
+        run: uv sync --group docs
+
+      - name: Build docs
+        run: |
+          uv run sphinx-build docs/ docs/_build
+          touch docs/_build/.nojekyll
+
+      - name: Deploy to gh-pages 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: docs/_build
