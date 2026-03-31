@@ -1,7 +1,7 @@
 Usage
 =========
 
-FiQCI Error Mitigation Service (EMS) is a Python library for quantum error mitigation as part of the `Finnish Quantum Computing Infrastructure (FiQCI) <https://fiqci.fi>`_. It wraps IQM quantum backends and applies error mitigation transparently, allowing users to run circuits with improved accuracy by specifying a mitigation level.
+FiQCI Error Mitigation Service (EMS) is a Python library for quantum error mitigation as part of the `Finnish Quantum Computing Infrastructure (FiQCI) <https://fiqci.fi>`_. It wraps IQM quantum backends and applies error mitigation, allowing users to run circuits with improved accuracy by specifying a mitigation level.
 
 This python package can be pre-installed on a HPC system or installed by the user. The main goal of the project is to allow users using FiQCI quantum computers to easily add flags to run error mitigated quantum jobs.
 
@@ -96,96 +96,102 @@ Start by initialising your IQM backend and a quantum circuit.
    # Transpile the circuit
    qc_transpiled = transpile(qc, backend=backend, initial_layout=qubit_indices)
 
-EMS provides three interfaces depending on your use case.
 
-FiQCISampler - sampling interface
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For executing quantum jobs EMS provides three interfaces depending on your use case.
 
-For users who need measurement counts with built-in mitigation:
+.. tab-set::
 
-.. code-block:: python
+   .. tab-item:: Sampler
 
-   from fiqci.ems import FiQCISampler
+      .. rubric:: FiQCISampler - sampling interface
 
-   # Using mitigation_level
-   sampler = FiQCISampler(backend, mitigation_level=1)
+      For users who need measurement counts with built-in mitigation:
 
-   # Execute the job
-   job = sampler.run(qc_transpiled, shots=2048)
+      .. code-block:: python
 
-   # Get results
-   result = job.result()
+        from fiqci.ems import FiQCISampler
 
-   # Or manually set mitigation options
-   sampler.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
+        # Using mitigation_level
+        sampler = FiQCISampler(backend, mitigation_level=1)
 
-   # See applied and available options
-   sampler.mitigation_options()
+        # Execute the job
+        job = sampler.run(qc_transpiled, shots=2048)
 
-FiQCIEstimator - expectation values
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Get results
+        result = job.result()
 
-Computes expectation values of Pauli observables directly from circuits:
+        # Or manually set mitigation options
+        sampler.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
-.. code-block:: python
+        # See applied and available options
+        sampler.mitigation_options
+    
+   .. tab-item:: Estimator
 
-   from fiqci.ems import FiQCIEstimator
-   from qiskit.quantum_info import SparsePauliOp
+      .. rubric:: FiQCIEstimator - expectation values
 
-   # Using mitigation_level
-   estimator = FiQCIEstimator(backend, mitigation_level=1)
+      Computes expectation values of Pauli observables directly from circuits:
 
-   # Define observables
-   observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
+      .. code-block:: python
 
-   # Map observables to transpiled layout
-   device_observables = observables.apply_layout(qc_transpiled.layout)
+        from fiqci.ems import FiQCIEstimator
+        from qiskit.quantum_info import SparsePauliOp
 
-   # Execute the job
-   job_collection = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+        # Using mitigation_level
+        estimator = FiQCIEstimator(backend, mitigation_level=1)
 
-   # Get expectation values
-   evs = job_collection.expectation_values()
+        # Define observables
+        observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
 
-   # Access all jobs executed by estimator
-   jobs = job_collection.jobs()
+        # Map observables to transpiled layout
+        device_observables = observables.apply_layout(qc_transpiled.layout)
 
-   # Or manually set mitigation options
-   estimator.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
+        # Execute the job
+        job_collection = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
 
-   # See applied and available options
-   estimator.mitigation_options()
+        # Get expectation values
+        evs = job_collection.expectation_values()
 
-FiQCIBackend - drop-in backend replacement
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Access all jobs executed by estimator
+        jobs = job_collection.jobs()
 
-FiQCIBackend is used under the hood by both sampler and estimator. Wraps any IQM backend and applies error mitigation to ``run()`` calls:
+        # Or manually set mitigation options
+        estimator.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
-.. code-block:: python
+        # See applied and available options
+        estimator.mitigation_options
 
-   from fiqci.ems import FiQCIBackend
+   .. tab-item:: Backend
 
-   # Using mitigation_level
-   backend = FiQCIBackend(backend, mitigation_level=1)
+      .. rubric:: FiQCIBackend - drop-in backend replacement
 
-   # Execute the job
-   job = backend.run(circuit, shots=1024)
+      FiQCIBackend is used under the hood by both sampler and estimator. Wraps any IQM backend and applies error mitigation to ``run()`` calls:
 
-   # Get the results
-   result = job.result()
+      .. code-block:: python
 
-   # Or manually set mitigation options
-   backend.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
+        from fiqci.ems import FiQCIBackend
 
-   # See applied and available options
-   backend.mitigation_options()
+        # Using mitigation_level
+        backend = FiQCIBackend(backend, mitigation_level=1)
 
-Access raw (pre-mitigation) counts via ``backend.raw_counts``.
+        # Execute the job
+        job = backend.run(circuit, shots=1024)
+
+        # Get the results
+        result = job.result()
+
+        # Or manually set mitigation options
+        backend.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
+
+        # See applied and available options
+        backend.mitigation_options
+
+      Access raw (pre-mitigation) counts via ``backend.raw_counts``.
 
 Advanced Usage
 ~~~~~~~~~~~~~~
 
-It is also possible to manually configure and directly use the M3 mitigator without the wrapper classes above. Consult the docs for how this is done.
+It is also possible to manually configure and directly use the M3 mitigator without the wrapper classes above. See `Examples <../Examples>` for details.
 
 Configuration
 -------------
