@@ -8,25 +8,55 @@ This python package can be pre-installed on a HPC system or installed by the use
 Mitigation Levels
 -----------------
 
-.. list-table::
-   :header-rows: 1
-   :align: center
+.. tab-set::
 
-   * - Level
-     - Mitigation Applied
-     - Technique
-   * - 0
-     - None
-     - Raw results
-   * - 1
-     - Readout Error Mitigation
-     - M3 (matrix-free measurement mitigation)
-   * - 2
-     - Level 1 + additional
-     - TBD
-   * - 3
-     - Level 2 + additional
-     - TBD
+   .. tab-item:: Sampler
+
+      .. list-table::
+         :header-rows: 1
+         :align: center
+
+         * - Level
+           - Mitigation Applied
+           - Technique
+         * - 0
+           - None
+           - Raw results
+         * - 1
+           - Readout Error Mitigation
+           - M3 (matrix-free measurement mitigation)
+         * - 2
+           - Level 1 + additional
+           - TBD
+         * - 3
+           - Level 2 + additional
+           - TBD
+
+   .. tab-item:: Estimator
+
+      .. list-table::
+         :header-rows: 1
+         :align: center
+
+         * - Level
+           - Mitigation Applied
+           - Technique
+         * - 0
+           - None
+           - Raw results
+         * - 1
+           - Readout Error Mitigation
+           - M3 (matrix-free measurement mitigation)
+         * - 2
+           - Level 1 + additional
+           - TBD
+         * - 3
+           - Level 2 + Zero Noise Extrapolation
+           - Extrapolation
+
+.. note::
+
+   ``FiQCIBackend`` mitigation levels correspond to the Sampler levels.
 
 The default is level 1, which applies M3 readout error mitigation.
 

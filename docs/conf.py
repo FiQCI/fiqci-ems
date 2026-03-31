@@ -23,6 +23,7 @@ extensions = [
     'sphinx.ext.napoleon',
     "sphinx.ext.autosummary",
     'myst_nb',
+    'sphinx_design',
 ]
 
 autodoc_default_options = {
@@ -60,7 +61,7 @@ myst_enable_extensions = [
     "dollarmath",
 ]
 
-nb_execution_mode = "off"
+nb_execution_mode = "auto"
 
 add_module_names = False
 
