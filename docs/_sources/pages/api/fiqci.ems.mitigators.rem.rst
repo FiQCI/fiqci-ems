@@ -8,6 +8,5 @@ fiqci.ems.mitigators.rem
 
    .. autosummary::
    
-      Config
       M3IQM
    
