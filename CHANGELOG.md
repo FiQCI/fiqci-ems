@@ -1,3 +1,14 @@
+## [0.4.0] - 3.4.2026
+
+### Added
+- Dynamical decoupling (DD) for `FiQCISampler`, `FiQCIEstimator`, and `FiQCIBackend` as `mitigation_level=2` (REM + DD)
+- Manual configuration using the `.dd()` method of the primitive
+    - `gate_sequences`: list of DD sequences to apply
+- `mitigators/dd.py`: `build_dd_options()` for getting options for DD 
+
+[https://github.com/FiQCI/fiqci-ems/pull/10](https://github.com/FiQCI/fiqci-ems/pull/10)
+
+
 ## [0.3.0] - 30.3.2026
 
 ### Added
