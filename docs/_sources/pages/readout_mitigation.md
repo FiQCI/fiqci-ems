@@ -41,6 +41,6 @@ See the [Advanced Readout Error Mitigation example](../notebooks/advanced_readou
 
 - [Advanced Readout Error Mitigation](../notebooks/advanced_readout_error_mitigation_m3) — includes direct {class}`~fiqci.ems.mitigators.rem.M3IQM` usage for fine-grained control over calibration and correction.
 
-**References:**
-- Nation, P., Kang, H., Sundaresen N., Gambetta J., "Scalable Mitigation of Measurement Errors on Quantum Computers" PRX Quantum 2, 040326 (2021). https://doi.org/10.1103/PRXQuantum.2.040326
-- https://github.com/Qiskit/qiskit-addon-mthree
+## References:
+- Nation, P., Kang, H., Sundaresen N., Gambetta J., "Scalable Mitigation of Measurement Errors on Quantum Computers" PRX Quantum 2, 040326 (2021). [https://doi.org/10.1103/PRXQuantum.2.040326](https://doi.org/10.1103/PRXQuantum.2.040326)
+- [https://github.com/Qiskit/qiskit-addon-mthree](https://github.com/Qiskit/qiskit-addon-mthree)

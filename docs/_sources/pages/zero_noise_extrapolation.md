@@ -80,6 +80,6 @@ estimator.zne(
 
 ## References
 
-- Temme, K., Bravyi, S., Gambetta, J. M., "Error Mitigation for Short-Depth Quantum Circuits", https://arxiv.org/abs/1612.02058
-- Li, Y., Benjamin, S. C., "Efficient Variational Quantum Simulator Incorporating Active Error Minimization", https://arxiv.org/abs/1611.09301
-- Pegah Mohammadipour, Xiantao Li., "Direct Analysis of Zero-Noise Extrapolation: Polynomial Methods, Error Bounds, and Simultaneous Physical-Algorithmic Error Mitigation" https://arxiv.org/abs/2502.20673
+- Temme, K., Bravyi, S., Gambetta, J. M., "Error Mitigation for Short-Depth Quantum Circuits", [https://arxiv.org/abs/1612.02058](https://arxiv.org/abs/1612.02058)
+- Li, Y., Benjamin, S. C., "Efficient Variational Quantum Simulator Incorporating Active Error Minimization", [https://arxiv.org/abs/1611.09301](https://arxiv.org/abs/1611.09301)
+- Pegah Mohammadipour, Xiantao Li., "Direct Analysis of Zero-Noise Extrapolation: Polynomial Methods, Error Bounds, and Simultaneous Physical-Algorithmic Error Mitigation" [https://arxiv.org/abs/2502.20673](https://arxiv.org/abs/2502.20673)
