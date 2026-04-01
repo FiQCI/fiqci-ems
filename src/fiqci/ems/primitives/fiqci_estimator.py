@@ -247,7 +247,7 @@ class FiQCIEstimator:
 			calibration_file: Optional calibration file to use for readout error mitigation.
 		"""
 		self.backend.rem(enabled, calibration_shots, calibration_file)
-	
+
 	def dd(self, enabled: bool, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
 		"""
 		Set dynamical decoupling settings for the estimator. This will configure the underlying backend's

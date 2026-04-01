@@ -85,10 +85,7 @@ class FiQCIBackend:
 			enabled: bool
 			gate_sequences: list[DDGateSequenceEntry]
 
-		self._dd: DDSettings = {
-			"enabled": False,
-			"gate_sequences": [],
-		}
+		self._dd: DDSettings = {"enabled": False, "gate_sequences": []}
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
 		if self._mitigation_level == 0:
@@ -151,15 +148,21 @@ class FiQCIBackend:
 			valid_gate_sequences = []
 			for entry in gate_sequences:
 				if not isinstance(entry, (list, tuple)) or len(entry) != 3:
-					raise ValueError(f"Each gate sequence entry must be a tuple of (treshold_length, sequence, strategy), got {entry}")
+					raise ValueError(
+						f"Each gate sequence entry must be a tuple of (treshold_length, sequence, strategy), got {entry}"
+					)
 				treshold_length, sequence, strategy = entry
 				if strategy is not None and strategy not in ["asap", "alap", "center"]:
 					raise ValueError(f"Invalid strategy: {strategy} in entry {entry}")
 				if treshold_length is not None and not isinstance(treshold_length, int):
-					raise ValueError(f"treshold_length must be an integer or None, got {treshold_length} in entry {entry}")
+					raise ValueError(
+						f"treshold_length must be an integer or None, got {treshold_length} in entry {entry}"
+					)
 				if sequence is not None and not isinstance(sequence, (str, list)):
-					raise ValueError(f"sequence must be a string, list of tuples, or None, got {sequence} in entry {entry}")
-				
+					raise ValueError(
+						f"sequence must be a string, list of tuples, or None, got {sequence} in entry {entry}"
+					)
+
 				if treshold_length is None and sequence is not None:
 					treshold_length = len(sequence)
 				elif treshold_length is None:
@@ -170,7 +173,7 @@ class FiQCIBackend:
 
 				if sequence is None:
 					sequence = "XY"
-				
+
 				valid_gate_sequences.append((treshold_length, sequence, strategy))
 			gate_sequences = valid_gate_sequences
 
@@ -289,12 +292,7 @@ class FiQCIBackend:
 		if not self._rem["enabled"]:
 			if self._dd["enabled"]:
 				dd_options = build_dd_options(self._dd["gate_sequences"])
-				job = self._backend.run(
-					circuits,
-					shots=shots,
-					circuit_compilation_options=dd_options,
-					**kwargs,
-				)
+				job = self._backend.run(circuits, shots=shots, circuit_compilation_options=dd_options, **kwargs)
 			else:
 				job = self._backend.run(circuits, shots=shots, **kwargs)
 			assert job is not None, "Backend returned None job"
@@ -352,12 +350,7 @@ class FiQCIBackend:
 		# Run circuits on backend
 		if self._dd["enabled"]:
 			dd_options = build_dd_options(self._dd["gate_sequences"])
-			job = self._backend.run(
-				circuits,
-				shots=shots,
-				circuit_compilation_options=dd_options,
-				**kwargs,
-			)
+			job = self._backend.run(circuits, shots=shots, circuit_compilation_options=dd_options, **kwargs)
 		else:
 			job = self._backend.run(circuits, shots=shots, **kwargs)
 		assert job is not None, "Backend returned None job"
