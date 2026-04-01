@@ -28,6 +28,8 @@ class FiQCIEstimator:
 	Mitigation levels:
 		- 0: No error mitigation (raw results)
 		- 1: Readout error mitigation using M3 (default)
+		- 2: Level 1 + TBD
+		- 3: Level 2 + zero-noise extrapolation (ZNE) with local folding and exponential extrapolation
 
 	Args:
 		backend: An IQMBackendBase instance to wrap.
