@@ -41,9 +41,9 @@ class TestFiQCISampler:
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, None)
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
-	def test_init_with_calibration_files(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
-		"""Test that calibration_files parameter is forwarded."""
-		_sampler = FiQCISampler(mock_backend, calibration_files="cal.json")
+	def test_init_with_calibration_file(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
+		"""Test that calibration_file parameter is forwarded."""
+		_sampler = FiQCISampler(mock_backend, calibration_file="cal.json")
 		mock_fiqci_backend_class.assert_called_once_with(mock_backend, 1, 1000, "cal.json")
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
