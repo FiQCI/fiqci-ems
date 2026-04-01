@@ -18,3 +18,9 @@ build/
 .coverage
 .ruff_cache
 test-local/
+_build/
+docs/jupyter_execute/
+docs/.jupyter_cache/
+docs/cals.json
+docs/notebooks/cals.json
+docs/pages/api/*

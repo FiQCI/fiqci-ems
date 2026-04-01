@@ -50,7 +50,7 @@ estimator = FiQCIEstimator(backend=backend, mitigation_level=3)
 
 ### Manual Configuration
 
-For fine-grained control, enable ZNE explicitly via the `zne()` method:
+For fine-grained control, enable ZNE explicitly via the {meth}`~fiqci.ems.FiQCIEstimator.zne` method:
 
 ```python
 estimator = FiQCIEstimator(backend=backend, mitigation_level=1)
@@ -74,8 +74,12 @@ estimator.zne(
 | `extrapolation_method` | `str` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, or `"linear"`. |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
 
+## Examples
+
+- [Zero Noise Extrapolation Example](../notebooks/zero_noise_extrapolation_example) — runnable notebook demonstrating ZNE with default and custom settings.
+
 ## References
 
-- Temme, K., Bravyi, S., Gambetta, J. M., "Error Mitigation for Short-Depth Quantum Circuits", https://arxiv.org/abs/1612.02058
-- Li, Y., Benjamin, S. C., "Efficient Variational Quantum Simulator Incorporating Active Error Minimization", https://arxiv.org/abs/1611.09301
-- Pegah Mohammadipour, Xiantao Li., "Direct Analysis of Zero-Noise Extrapolation: Polynomial Methods, Error Bounds, and Simultaneous Physical-Algorithmic Error Mitigation" https://arxiv.org/abs/2502.20673
+- Temme, K., Bravyi, S., Gambetta, J. M., "Error Mitigation for Short-Depth Quantum Circuits", [https://arxiv.org/abs/1612.02058](https://arxiv.org/abs/1612.02058)
+- Li, Y., Benjamin, S. C., "Efficient Variational Quantum Simulator Incorporating Active Error Minimization", [https://arxiv.org/abs/1611.09301](https://arxiv.org/abs/1611.09301)
+- Pegah Mohammadipour, Xiantao Li., "Direct Analysis of Zero-Noise Extrapolation: Polynomial Methods, Error Bounds, and Simultaneous Physical-Algorithmic Error Mitigation" [https://arxiv.org/abs/2502.20673](https://arxiv.org/abs/2502.20673)

@@ -5,7 +5,7 @@ from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
 from fiqci.ems.transpiler_passes.basis_measurement import (
-	_get_obs_subcircuits,
+	get_obs_subcircuits,
 	_combine_pauli_ops,
 	_get_observable_circuit_index,
 )
@@ -158,7 +158,7 @@ class TestGetObservableCircuitIndex:
 
 
 class TestGetObsSubcircuits:
-	"""Tests for _get_obs_subcircuits."""
+	"""Tests for get_obs_subcircuits."""
 
 	def test_z_basis_measurement(self) -> None:
 		"""Test that Z-basis measurement adds only a measurement gate."""
@@ -167,7 +167,7 @@ class TestGetObsSubcircuits:
 		qc.cx(0, 1)
 
 		settings = [{0: "Z", 1: "Z"}]
-		result = _get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], settings)
 
 		assert len(result) == 1
 		circuit = result[0][0]
@@ -180,7 +180,7 @@ class TestGetObsSubcircuits:
 		qc.x(0)
 
 		settings = [{0: "X"}]
-		result = _get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], settings)
 
 		circuit = result[0][0]
 		# Should have H gate before measurement
@@ -194,7 +194,7 @@ class TestGetObsSubcircuits:
 		qc.x(0)
 
 		settings = [{0: "Y"}]
-		result = _get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], settings)
 
 		circuit = result[0][0]
 		op_names = [inst.operation.name for inst in circuit]
@@ -210,7 +210,7 @@ class TestGetObsSubcircuits:
 		qc.measure([0, 1], [0, 1])
 
 		settings = [{0: "Z"}]
-		result = _get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], settings)
 
 		circuit = result[0][0]
 		# Should only have 1 measurement (from the Z setting), not the original 2
@@ -224,7 +224,7 @@ class TestGetObsSubcircuits:
 		qc.cx(0, 1)
 
 		settings = [{0: "Z"}, {0: "X"}]
-		result = _get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], settings)
 
 		assert len(result) == 2
 
@@ -236,7 +236,7 @@ class TestGetObsSubcircuits:
 		qc2.x(0)
 
 		settings = [{0: "Z", 1: "Z"}]
-		result = _get_obs_subcircuits([qc1, qc2], settings)
+		result = get_obs_subcircuits([qc1, qc2], settings)
 
 		assert len(result) == 1
 		# Both subcircuits should be present
@@ -253,7 +253,7 @@ class TestGetObsSubcircuits:
 		x_meas_inst = x_meas.to_instruction(label="X-meas")
 
 		settings = [{0: "X"}]
-		result = _get_obs_subcircuits([qc], settings, ops={"X-meas": x_meas_inst})
+		result = get_obs_subcircuits([qc], settings, ops={"X-meas": x_meas_inst})
 
 		circuit = result[0][0]
 		assert circuit.num_clbits >= 1
@@ -269,7 +269,7 @@ class TestGetObsSubcircuits:
 		y_meas_inst = y_meas.to_instruction(label="Y-meas")
 
 		settings = [{0: "Y"}]
-		result = _get_obs_subcircuits([qc], settings, ops={"Y-meas": y_meas_inst})
+		result = get_obs_subcircuits([qc], settings, ops={"Y-meas": y_meas_inst})
 
 		circuit = result[0][0]
 		assert circuit.num_clbits >= 1
@@ -282,4 +282,4 @@ class TestGetObsSubcircuits:
 		settings = [{0: "W"}]
 
 		with pytest.raises(ValueError, match="Unsupported measurement basis: W"):
-			_get_obs_subcircuits([qc], settings)
+			get_obs_subcircuits([qc], settings)

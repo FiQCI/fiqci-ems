@@ -1,3 +1,7 @@
+"""
+Extrapolation methods for Zero-Noise Extrapolation.
+"""
+
 import numpy as np
 
 from typing import Iterable
@@ -43,8 +47,7 @@ def richardson_extrapolation(expectation_values: list[list[float]], scales: list
 	Richardson extrapolation to estimate the zero-noise value.
 
 	Computes exact Lagrange interpolation coefficients evaluated at x=0:
-	    cᵢ = ∏_{j≠i} λⱼ / (λⱼ - λᵢ)
-	and returns E(0) = Σᵢ cᵢ · E(λᵢ).
+	cᵢ = ∏_{j≠i} λⱼ / (λⱼ - λᵢ) and returns E(0) = Σᵢ cᵢ · E(λᵢ).
 
 	Args:
 	    expectation_values: Array-like of shape (n_scales, n_obs) or (n_scales,)

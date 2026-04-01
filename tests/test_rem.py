@@ -11,46 +11,46 @@ from mthree.exceptions import M3Error
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-from fiqci.ems.mitigators.rem import M3IQM, balanced_cal_strings
+from fiqci.ems.mitigators.rem import M3IQM, _balanced_cal_strings
 
 
 class TestBalancedCalStrings:
-	"""Tests for balanced_cal_strings function."""
+	"""Tests for _balanced_cal_strings function."""
 
-	def test_balanced_cal_strings_single_qubit_generates_correct_strings(self) -> None:
+	def test__balanced_cal_strings_single_qubit_generates_correct_strings(self) -> None:
 		"""Test that single qubit generates ['0', '1']."""
-		result = balanced_cal_strings(1)
+		result = _balanced_cal_strings(1)
 		assert result == ["0", "1"]
 
-	def test_balanced_cal_strings_two_qubits_generates_correct_strings(self) -> None:
+	def test__balanced_cal_strings_two_qubits_generates_correct_strings(self) -> None:
 		"""Test that two qubits generate all 4 combinations."""
-		result = balanced_cal_strings(2)
+		result = _balanced_cal_strings(2)
 		assert result == ["00", "01", "10", "11"]
 
-	def test_balanced_cal_strings_three_qubits_generates_correct_strings(self) -> None:
+	def test__balanced_cal_strings_three_qubits_generates_correct_strings(self) -> None:
 		"""Test that three qubits generate all 8 combinations."""
-		result = balanced_cal_strings(3)
+		result = _balanced_cal_strings(3)
 		assert result == ["000", "001", "010", "011", "100", "101", "110", "111"]
 
-	def test_balanced_cal_strings_zero_qubits_raises_error(self) -> None:
+	def test__balanced_cal_strings_zero_qubits_raises_error(self) -> None:
 		"""Test that zero qubits raises ValueError."""
 		with pytest.raises(ValueError, match="Number of qubits must be at least 1"):
-			balanced_cal_strings(0)
+			_balanced_cal_strings(0)
 
-	def test_balanced_cal_strings_negative_qubits_raises_error(self) -> None:
+	def test__balanced_cal_strings_negative_qubits_raises_error(self) -> None:
 		"""Test that negative qubits raises ValueError."""
 		with pytest.raises(ValueError, match="Number of qubits must be at least 1"):
-			balanced_cal_strings(-1)
+			_balanced_cal_strings(-1)
 
-	def test_balanced_cal_strings_length_is_power_of_two(self) -> None:
+	def test__balanced_cal_strings_length_is_power_of_two(self) -> None:
 		"""Test that result length is 2^num_qubits."""
 		for num_qubits in [1, 2, 3, 4, 5]:
-			result = balanced_cal_strings(num_qubits)
+			result = _balanced_cal_strings(num_qubits)
 			assert len(result) == 2**num_qubits
 
-	def test_balanced_cal_strings_all_unique(self) -> None:
+	def test__balanced_cal_strings_all_unique(self) -> None:
 		"""Test that all strings are unique."""
-		result = balanced_cal_strings(4)
+		result = _balanced_cal_strings(4)
 		assert len(result) == len(set(result))
 
 
@@ -227,7 +227,7 @@ class TestM3IQM:
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
 			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.mitigators.rem.balanced_cal_strings", return_value=["00", "01", "10", "11"]),
+			patch("fiqci.ems.mitigators.rem._balanced_cal_strings", return_value=["00", "01", "10", "11"]),
 			patch("mthree.circuits.balanced_cal_circuits", return_value=[mock_circuit]),
 			patch("mthree.circuits._tensor_meas_states", return_value=[mock_circuit]),
 			patch("mthree.mitigation._job_thread"),
@@ -239,10 +239,10 @@ class TestM3IQM:
 class TestIntegration:
 	"""Integration tests for REM module."""
 
-	def test_balanced_cal_strings_used_in_m3iqm_workflow(self) -> None:
-		"""Test that balanced_cal_strings integrates correctly with M3IQM."""
+	def test__balanced_cal_strings_used_in_m3iqm_workflow(self) -> None:
+		"""Test that _balanced_cal_strings integrates correctly with M3IQM."""
 		# This tests that the function signature and return type are compatible
-		strings = balanced_cal_strings(2)
+		strings = _balanced_cal_strings(2)
 		assert all(isinstance(s, str) for s in strings)
 		assert all(len(s) == 2 for s in strings)
 		assert all(c in "01" for s in strings for c in s)

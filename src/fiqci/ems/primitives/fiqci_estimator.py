@@ -1,19 +1,16 @@
 """
 A class that runs quantum circuits and calculates expectation values of observables with error mitigation techniques.
-
-FiQCIEstimator wraps a backend with built-in error mitigation (readout error mitigation via M3,
-zero-noise extrapolation) and computes expectation values of observables directly from circuits,
-eliminating the need for manual post-processing of measurement counts.
 """
 
+from __future__ import annotations
 import warnings
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import SparsePauliOp, Pauli
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
-	_get_obs_subcircuits,
+	get_obs_subcircuits,
 	_get_observable_circuit_index,
 	_combine_pauli_ops,
 )
@@ -23,7 +20,26 @@ from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extra
 
 
 class FiQCIEstimator:
-	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
+	"""
+	FiQCIEstimator wraps a backend with built-in error mitigation (readout error mitigation via M3,
+	zero-noise extrapolation) and computes expectation values of observables directly from circuits,
+	eliminating the need for manual post-processing of measurement counts.
+
+	Mitigation levels:
+		- 0: No error mitigation (raw results)
+		- 1: Readout error mitigation using M3 (default)
+		- 2: Level 1 + TBD
+		- 3: Level 2 + zero-noise extrapolation (ZNE) with local folding and exponential extrapolation
+
+	Args:
+		backend: An IQMBackendBase instance to wrap.
+		mitigation_level: Level of error mitigation to apply (default: 1).
+		calibration_shots: Number of shots to use for calibration circuits (default: 1000).
+		calibration_file: Optional calibration file to use for readout error mitigation.
+
+	"""
+
+	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_file=None):
 		super().__init__()
 		self._mitigation_level = mitigation_level
 
@@ -45,12 +61,17 @@ class FiQCIEstimator:
 		}
 
 		if self._mitigation_level in [0, 1, 2]:
-			self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
+			self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_file)
 		elif self._mitigation_level == 3:
-			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_files)
+			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_file)
 			self.zne(enabled=True)
 		else:
 			raise NotImplementedError(f"Unknown mitigation level {mitigation_level}")
+
+	@property
+	def mitigator_options(self) -> dict[str, Any]:
+		"""Get current mitigator settings."""
+		return {"zne": self._zne, **self.backend.mitigator_options}
 
 	def _make_meas_instruction(self, circuit: QuantumCircuit, label: str):
 		"""Transpile a measurement circuit to basis gates and wrap as an instruction."""
@@ -64,7 +85,7 @@ class FiQCIEstimator:
 		observables: SparsePauliOp | list[SparsePauliOp],
 		shots: int = 2048,
 		**options,
-	):
+	) -> FiQCIEstimatorJobCollection:
 		x_meas = QuantumCircuit(1)
 		x_meas.h(0)
 
@@ -86,7 +107,7 @@ class FiQCIEstimator:
 			# if lengths match, we pair them elementwise
 			else:
 				obs_circuits = [
-					_get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops)
+					get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops)
 					for circ, obs in zip(circuits, observables)
 				]
 		# TODO: Better batching for estimator. No need to run multiple separate jobs if total number of circuits
@@ -94,11 +115,11 @@ class FiQCIEstimator:
 
 		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
-			obs_circuits = [_get_obs_subcircuits([circ], _combine_pauli_ops(observables), ops) for circ in circuits]
+			obs_circuits = [get_obs_subcircuits([circ], _combine_pauli_ops(observables), ops) for circ in circuits]
 
 		# if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, QuantumCircuit):
-			obs_circuits = [_get_obs_subcircuits([circuits], _combine_pauli_ops(observables), ops)]
+			obs_circuits = [get_obs_subcircuits([circuits], _combine_pauli_ops(observables), ops)]
 		else:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
@@ -134,7 +155,7 @@ class FiQCIEstimator:
 					split_counts.append(counts[j : j + num_circs_per_zne])
 
 				for c in split_counts:
-					expvs = self.calculate_expectation_values(
+					expvs = self._calculate_expectation_values(
 						c,
 						observables if isinstance(observables, SparsePauliOp) else observables[i],
 						measurement_settings,
@@ -152,7 +173,7 @@ class FiQCIEstimator:
 				elif self._zne["extrapolation_method"] == "linear":
 					expvs = polynomial_extrapolation(zne_expvs, self._zne["scale_factors"], degree=1)
 			else:
-				expvs = self.calculate_expectation_values(
+				expvs = self._calculate_expectation_values(
 					counts,
 					observables if isinstance(observables, SparsePauliOp) else observables[i],
 					measurement_settings,
@@ -165,10 +186,28 @@ class FiQCIEstimator:
 		else:
 			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
 
-	def run(self, circuits, observables, shots=2048, **options):
+	def run(
+		self,
+		circuits: QuantumCircuit | list[QuantumCircuit],
+		observables: SparsePauliOp | list[SparsePauliOp],
+		shots: int = 2048,
+		**options,
+	) -> FiQCIEstimatorJobCollection:
+		"""
+		Execute the given circuits on the backend and calculate expectation values for the provided observables.
+
+		Args:
+			circuits: A QuantumCircuit or list of QuantumCircuits to execute.
+			observables: A SparsePauliOp or list of SparsePauliOps representing the observables for which to calculate expectation values.
+			shots: Number of shots to execute each circuit (default: 2048).
+			**options: Additional options to pass to the backend's run method.
+
+		Returns:
+			A FiQCIEstimatorJobCollection containing the jobs and calculated expectation values.
+		"""
 		return self._run(circuits, observables, shots=shots, **options)
 
-	def calculate_expectation_values(
+	def _calculate_expectation_values(
 		self,
 		counts: dict[str, int] | list[dict[str, int]],
 		obs: SparsePauliOp,
@@ -196,13 +235,17 @@ class FiQCIEstimator:
 				expectation_values.append(0)  # No measurement setting covers this observable
 		return expectation_values
 
-	def rem(self, enabled, calibration_shots=1000, calibration_file=None):
-		"""Enable or disable readout error mitigation."""
-		self.backend.rem(enabled, calibration_shots, calibration_file)
+	def rem(self, enabled: bool, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
+		"""
+		Set readout error mitigation settings for the estimator. This will configure the underlying backend's
+		readout error mitigation accordingly.
 
-	def mitigator_options(self):
-		"""Get current mitigator settings."""
-		return {"zne": self._zne, **self.backend.mitigator_options()}
+		Args:
+			enabled: Whether to enable readout error mitigation.
+			calibration_shots: Number of shots to use for calibration circuits (default: 1000).
+			calibration_file: Optional calibration file to use for readout error mitigation.
+		"""
+		self.backend.rem(enabled, calibration_shots, calibration_file)
 
 	def zne(
 		self,

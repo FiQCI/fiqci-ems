@@ -36,13 +36,6 @@ Repository = "https://github.com/fiqci/fiqci-ems"
 Issues = "https://github.com/fiqci/fiqci-ems/issues"
 Changelog = "https://github.com/fiqci/fiqci-ems/blob/main/CHANGELOG.md"
 
-[project.optional-dependencies]
-docs = [
-    "ipykernel>=7.1.0",
-    "ipywidgets>=8.1.8",
-    "pylatexenc>=2.10",
-]
-
 
 [build-system]
 requires = ["setuptools>=68.0.0", "setuptools_scm[toml]>=7"]
@@ -84,6 +77,16 @@ dev = [
     "pytest>=9.0.1",
     "pytest-cov>=6.0.0",
     "ruff>=0.14.7",
+]
+
+docs = [
+    "myst-nb>=1.4.0",
+    "sphinx>=9.0.4",
+    "sphinx-book-theme>=1.2.0",
+    "sphinx-design>=0.6.0",
+    "ipykernel>=7.1.0",
+    "ipywidgets>=8.1.8",
+    "pylatexenc>=2.10",
 ]
 
 [tool.pytest.ini_options]

@@ -460,11 +460,13 @@ class TestEstimatorZNESettings:
 		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
 
 		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.mitigator_options.return_value = {"rem": {"enabled": False}}
+		mock_fiqci_backend.mitigator_options = {"rem": {"enabled": False}}
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(Mock())
-		options = estimator.mitigator_options()
+		options = estimator.mitigator_options
+
+		print(options)  # For debugging
 
 		assert "zne" in options
 		assert options["zne"]["enabled"] is False
