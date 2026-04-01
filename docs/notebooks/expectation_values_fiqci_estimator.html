@@ -401,7 +401,7 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1000,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe3998ebf20&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f246b0c30b0&gt;}}
 </pre></div>
 </div>
 </div>
@@ -444,7 +444,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9393346379647749, 0.028347996089931573]]
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9784735812133072, -0.04398826979472141]]
 </pre></div>
 </div>
 </div>
@@ -468,7 +468,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;10&#39;: 54, &#39;00&#39;: 459, &#39;01&#39;: 46, &#39;11&#39;: 465}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;01&#39;: 46, &#39;11&#39;: 468, &#39;10&#39;: 48, &#39;00&#39;: 462}
 </pre></div>
 </div>
 </div>
@@ -499,7 +499,7 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1024,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe3999226c0&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f246af67440&gt;}}
 </pre></div>
 </div>
 </div>
@@ -518,7 +518,7 @@
 <span class="c1"># Get the counts for the first job</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">get_counts</span><span class="p">())</span>
 
-<span class="c1">#Get raw counts for the circuit in the first job</span>
+<span class="c1"># Get raw counts for the circuit in the first job</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
 
 <span class="n">raw_counts</span> <span class="o">=</span> <span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;fiqci_ems&quot;</span><span class="p">][</span><span class="s2">&quot;raw_counts&quot;</span><span class="p">]</span>
@@ -528,9 +528,9 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01&#39;: 11, &#39;10&#39;: 20, &#39;00&#39;: 491, &#39;11&#39;: 500}, {&#39;1&#39;: 497, &#39;0&#39;: 526}]
-{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 5, &#39;name&#39;: &#39;circuit-13855&#39;, &#39;qreg_sizes&#39;: [[&#39;ancilla&#39;, 3], [&#39;q&#39;, 2]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 1000, &#39;raw_counts&#39;: {&#39;10&#39;: 54, &#39;00&#39;: 459, &#39;01&#39;: 46, &#39;11&#39;: 465}}}
-{&#39;10&#39;: 54, &#39;00&#39;: 459, &#39;01&#39;: 46, &#39;11&#39;: 465}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01&#39;: 0, &#39;10&#39;: 11, &#39;00&#39;: 500, &#39;11&#39;: 511}, {&#39;0&#39;: 489, &#39;1&#39;: 534}]
+{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 5, &#39;name&#39;: &#39;circuit-13855&#39;, &#39;qreg_sizes&#39;: [[&#39;ancilla&#39;, 3], [&#39;q&#39;, 2]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 1000, &#39;raw_counts&#39;: {&#39;01&#39;: 46, &#39;11&#39;: 468, &#39;10&#39;: 48, &#39;00&#39;: 462}}}
+{&#39;01&#39;: 46, &#39;11&#39;: 468, &#39;10&#39;: 48, &#39;00&#39;: 462}
 </pre></div>
 </div>
 </div>
