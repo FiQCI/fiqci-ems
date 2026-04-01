@@ -1,7 +1,7 @@
 FiQCIEstimator
 ==============
 
-``FiQCIEstimator`` computes expectation values of Pauli observables from quantum circuits with built-in error mitigation. It supports both readout error mitigation (M3) and zero-noise extrapolation (ZNE).
+:class:`~fiqci.ems.FiQCIEstimator` computes expectation values of Pauli observables from quantum circuits with built-in error mitigation. It supports both readout error mitigation (M3) and zero-noise extrapolation (ZNE).
 
 Basic Configuration
 -------------------
@@ -57,7 +57,7 @@ REM (Readout Error Mitigation)
 
 Readout error mitigation uses M3 (matrix-free measurement mitigation) to correct measurement errors. It is enabled by default at mitigation level 1.
 
-Configure REM using the ``rem()`` method:
+Configure REM using the :meth:`~fiqci.ems.FiQCIEstimator.rem` method:
 
 .. code-block:: python
 
@@ -81,12 +81,13 @@ Configure REM using the ``rem()`` method:
 
 
 .. _fiqci-estimator-zne:
+
 ZNE (Zero-Noise Extrapolation)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ZNE artificially scales circuit noise by folding gates, then extrapolates to the zero-noise limit. It is enabled at mitigation level 3.
 
-Configure ZNE using the ``zne()`` method:
+Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
 
 .. code-block:: python
 
@@ -126,7 +127,7 @@ Configure ZNE using the ``zne()`` method:
 Inspecting Options
 ------------------
 
-Use the ``mitigator_options`` property to view currently applied mitigation settings:
+Use the :attr:`~fiqci.ems.FiQCIEstimator.mitigator_options` property to view currently applied mitigation settings:
 
 .. code-block:: python
 
@@ -135,7 +136,7 @@ Use the ``mitigator_options`` property to view currently applied mitigation sett
 Results
 -------
 
-``FiQCIEstimator.run()`` returns a ``FiQCIEstimatorJobCollection`` with the following methods:
+:meth:`~fiqci.ems.FiQCIEstimator.run` returns a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection` with the following methods:
 
 .. list-table::
    :header-rows: 1

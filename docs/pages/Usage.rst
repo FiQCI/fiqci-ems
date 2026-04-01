@@ -39,7 +39,7 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 
    .. tab-item:: Sampler
 
-      .. rubric:: FiQCISampler - sampling interface
+      .. rubric:: :class:`~fiqci.ems.FiQCISampler` - sampling interface
 
       For users who need measurement counts with built-in mitigation:
 
@@ -61,12 +61,12 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 
         # See applied and available options
         sampler.mitigation_options
-    
+
       For more information on the sampler interface, see :doc:`FiQCISamplerUsage`.
 
    .. tab-item:: Estimator
 
-      .. rubric:: FiQCIEstimator - expectation values
+      .. rubric:: :class:`~fiqci.ems.FiQCIEstimator` - expectation values
 
       Computes expectation values of Pauli observables directly from circuits:
 
@@ -103,9 +103,9 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 
    .. tab-item:: Backend
 
-      .. rubric:: FiQCIBackend - drop-in backend replacement
+      .. rubric:: :class:`~fiqci.ems.FiQCIBackend` - drop-in backend replacement
 
-      FiQCIBackend is used under the hood by both sampler and estimator. Wraps any IQM backend and applies error mitigation to ``run()`` calls:
+      :class:`~fiqci.ems.FiQCIBackend` is used under the hood by both sampler and estimator. Wraps any IQM backend and applies error mitigation to :meth:`~fiqci.ems.FiQCIBackend.run` calls:
 
       .. code-block:: python
 
@@ -126,9 +126,9 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         # See applied and available options
         backend.mitigation_options
 
-      Access raw (pre-mitigation) counts via ``backend.raw_counts``.
+      Access raw (pre-mitigation) counts via :attr:`~fiqci.ems.FiQCIBackend.raw_counts`.
 
-      The mitigation options for FiQCIBackend are the same as for FiQCISampler. For more information, see :doc:`FiQCISamplerUsage`.
+      The mitigation options for :class:`~fiqci.ems.FiQCIBackend` are the same as for :class:`~fiqci.ems.FiQCISampler`. For more information, see :doc:`FiQCISamplerUsage`.
 
 Advanced Usage
 ~~~~~~~~~~~~~~

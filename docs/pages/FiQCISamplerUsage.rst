@@ -1,7 +1,7 @@
 FiQCISampler
 ============
 
-``FiQCISampler`` is a sampling interface that wraps an IQM backend and applies error mitigation to measurement results. It executes quantum circuits and returns mitigated counts.
+:class:`~fiqci.ems.FiQCISampler` is a sampling interface that wraps an IQM backend and applies error mitigation to measurement results. It executes quantum circuits and returns mitigated counts.
 
 
 Basic Configuration
@@ -16,7 +16,7 @@ Initialize the sampler with an IQM backend, mitigation level, and optional param
    # Initialize sampler with mitigation level 1
    sampler = FiQCISampler(backend, mitigation_level=1, calibration_shots=2000, calibration_file="cals.json")
 
-For more details see the API reference documentation for :class:`FiQCISampler`.
+For more details see the API reference documentation for :class:`~fiqci.ems.FiQCISampler`.
 
 Mitigation Levels
 -----------------
@@ -57,7 +57,7 @@ REM (Readout Error Mitigation)
 
 Readout error mitigation uses M3 (matrix-free measurement mitigation) to correct measurement errors. It is enabled by default at mitigation level 1.
 
-Configure REM using the ``rem()`` method:
+Configure REM using the :meth:`~fiqci.ems.FiQCISampler.rem` method:
 
 .. code-block:: python
 
@@ -83,7 +83,7 @@ Configure REM using the ``rem()`` method:
 Inspecting Options
 ------------------
 
-Use the ``mitigator_options`` property to view currently applied mitigation settings:
+Use the :attr:`~fiqci.ems.FiQCISampler.mitigator_options` property to view currently applied mitigation settings:
 
 .. code-block:: python
 
