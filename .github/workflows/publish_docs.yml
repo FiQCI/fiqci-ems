@@ -3,7 +3,7 @@ name: Publish docs
 on:
   push:
     branches:
-      - add_docs
+      - main
 permissions:
   contents: write
 
