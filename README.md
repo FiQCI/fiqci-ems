@@ -39,7 +39,7 @@ The default is level 1, which applies M3 readout error mitigation.
 
 ## Installation
 
-[Uv](https://docs.astral.sh/uv/getting-started/installation/) is recommended for installation
+[UV](https://docs.astral.sh/uv/getting-started/installation/) is recommended for installation
 
 ```bash
 uv pip install fiqci-ems
