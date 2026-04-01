@@ -13,12 +13,13 @@ import logging
 from pathlib import Path
 from typing import Any, TypedDict
 
+from iqm.iqm_client import STANDARD_DD_STRATEGY
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
 import warnings
 
 from fiqci.ems.mitigators.rem import M3IQM
-from fiqci.ems.mitigators.dd import build_dd_options
+from fiqci.ems.mitigators.dd import DDGateSequenceEntry, build_dd_options
 from fiqci.ems.utils import probabilities_to_counts
 
 from qiskit import QuantumCircuit
@@ -82,15 +83,11 @@ class FiQCIBackend:
 
 		class DDSettings(TypedDict):
 			enabled: bool
-			treshold_length: int | None
-			sequence: str | list[tuple] | None
-			strategy: str | None
-		
+			gate_sequences: list[DDGateSequenceEntry]
+
 		self._dd: DDSettings = {
 			"enabled": False,
-			"treshold_length": None,
-			"sequence": None,
-			"strategy": None,
+			"gate_sequences": [],
 		}
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
@@ -100,10 +97,10 @@ class FiQCIBackend:
 			self._init_rem(calibration_shots, calibration_file)
 		elif self._mitigation_level == 2:
 			self._init_rem(calibration_shots, calibration_file)
-			self._init_dd(treshold_length=None, sequence=None, strategy=None)  # Use default DD settings
+			self._init_dd()  # Use default DD settings
 		elif self._mitigation_level == 3:
 			self._init_rem(calibration_shots, calibration_file)
-			self._init_dd(treshold_length=None, sequence=None, strategy=None)  # Use default DD settings
+			self._init_dd()  # Use default DD settings
 			# TODO: Add Pauli twirling
 			warnings.warn(
 				"Mitigation level 3 (M3 + Dynamical Decoupling + Pauli Twirling) not implemented yet. Level 3 will currently only apply M3 readout error mitigation and dynamical decoupling."
@@ -138,23 +135,17 @@ class FiQCIBackend:
 		Returns:
 			A dictionary of current mitigator settings and their values.
 		"""
-		return {"rem": self._rem}
+		return {"rem": self._rem, "dd": self._dd}
 
-	def _init_dd(self, treshold_length: int | None, sequence: str | list[tuple] | None, strategy: str | None) -> None:
+	def _init_dd(self, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
 		"""Initialize dynamical decoupling settings.
 
 		Args:
-			treshold_length: Length of idle time before applying DD. Sequences will be applied to idle qubits for idle times longer than this threshold.
-			sequence: DD sequence to apply, either as a string (e.g., "XYXY") or a list of rotation angle tuples (e.g., [(np.pi/2, 0), (np.pi, np.pi/2)]).
-			strategy: Strategy for applying the sequence.
-					- "asap": As soon as possible after the idle time threshold is reached.
-					- "alap": As late as possible before the next gate on the qubit.
-					- "center": Centered within the idle time.
+			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+				See build_dd_options for details on each field.
 		"""
 		self._dd["enabled"] = True
-		self._dd["treshold_length"] = treshold_length
-		self._dd["sequence"] = sequence
-		self._dd["strategy"] = strategy
+		self._dd["gate_sequences"] = gate_sequences or []
 
 	def _init_rem(self, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Initialize readout error mitigation (M3).
@@ -196,23 +187,19 @@ class FiQCIBackend:
 			self._rem["calibration_shots"] = calibration_shots
 			logger.info("Calibration shots set to %d. Will calibrate on first run.", calibration_shots)
 
-	def dd(self, enabled: bool = True, treshold_length: int | None = None, sequence: str | list[tuple] | None = None, strategy: str | None = None) -> None:
+	def dd(self, enabled: bool = True, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
 		"""
 		Set dynamical decoupling settings for the backend.
 
 		Args:
 			enabled: Whether to enable dynamical decoupling.
-			treshold_length: Length of idle time before applying DD. Sequences will be applied to idle qubits for idle times longer than this threshold.
-			sequence: DD sequence to apply, either as a string (e.g., "XYXY") or a list of rotation angle tuples (e.g., [(np.pi/2, 0), (np.pi, np.pi/2)]).
-			strategy: Strategy for applying the sequence.
-					- "asap": As soon as possible after the idle time threshold is reached.
-					- "alap": As late as possible before the next gate on the qubit.
-					- "center": Centered within the idle time.
+			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+				See build_dd_options for details on each field.
 		"""
+		if gate_sequences is None or len(gate_sequences) == 0:
+			gate_sequences = STANDARD_DD_STRATEGY.gate_sequences
 		self._dd["enabled"] = enabled
-		self._dd["treshold_length"] = treshold_length
-		self._dd["sequence"] = sequence
-		self._dd["strategy"] = strategy
+		self._dd["gate_sequences"] = gate_sequences
 
 	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
@@ -271,11 +258,7 @@ class FiQCIBackend:
 		# Level 0: No mitigation, pass through to backend
 		if not self._rem["enabled"]:
 			if self._dd["enabled"]:
-				dd_options = build_dd_options(
-					treshold_length=self._dd["treshold_length"],
-					sequence=self._dd["sequence"],
-					strategy=self._dd["strategy"],
-				)
+				dd_options = build_dd_options(self._dd["gate_sequences"] or None)
 				job = self._backend.run(
 					circuits,
 					shots=shots,
@@ -338,11 +321,7 @@ class FiQCIBackend:
 
 		# Run circuits on backend
 		if self._dd["enabled"]:
-			dd_options = build_dd_options(
-				treshold_length=self._dd["treshold_length"],
-				sequence=self._dd["sequence"],
-				strategy=self._dd["strategy"],
-			)
+			dd_options = build_dd_options(self._dd["gate_sequences"] or None)
 			job = self._backend.run(
 				circuits,
 				shots=shots,

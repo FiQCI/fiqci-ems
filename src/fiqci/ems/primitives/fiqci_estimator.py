@@ -17,6 +17,7 @@ from fiqci.ems.transpiler_passes.basis_measurement import (
 from fiqci.ems.utils import _remove_idle_wires
 from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
 from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
+from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
 
 class FiQCIEstimator:
@@ -247,21 +248,17 @@ class FiQCIEstimator:
 		"""
 		self.backend.rem(enabled, calibration_shots, calibration_file)
 	
-	def dd(self, enabled: bool, treshold_length: int | None = None, sequence: str | list[tuple] | None = None, strategy: str | None = None) -> None:
+	def dd(self, enabled: bool, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
 		"""
 		Set dynamical decoupling settings for the estimator. This will configure the underlying backend's
 		dynamical decoupling accordingly.
 
 		Args:
 			enabled: Whether to enable dynamical decoupling.
-			treshold_length: Length of idle time before applying DD. Sequences will be applied to idle qubits for idle times longer than this threshold.
-			sequence: DD sequence to apply, either as a string (e.g., "XYXY") or a list of rotation angle tuples (e.g., [(np.pi/2, 0), (np.pi, np.pi/2)]).
-			strategy: Strategy for applying the sequence.
-					- "asap": As soon as possible after the idle time threshold is reached.
-					- "alap": As late as possible before the next gate on the qubit.
-					- "center": Centered within the idle time.
+			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+				See build_dd_options for details on each field.
 		"""
-		self.backend.dd(enabled, treshold_length, sequence, strategy)
+		self.backend.dd(enabled, gate_sequences)
 
 	def zne(
 		self,

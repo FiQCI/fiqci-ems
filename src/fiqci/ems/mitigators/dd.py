@@ -3,40 +3,42 @@ Functions for dynamical decoupling.
 """
 
 from iqm.iqm_client import CircuitCompilationOptions, DDMode, DDStrategy
+from typing import TypeAlias
 
-def build_dd_options(treshold_length: int | None, sequence: str | list[tuple] | None, strategy:str | None) -> CircuitCompilationOptions:
+PRXSequence: TypeAlias = list[tuple[float, float]]
+DDGateSequenceEntry = list[tuple[int, str | PRXSequence, str]]
+
+
+def build_dd_options(gate_sequences: list[DDGateSequenceEntry] | None = None) -> CircuitCompilationOptions:
     """
     Build compilation options for dynamical decoupling.
 
     Args:
-        treshold_length: Length of idle time before applying DD. Sequences will be applied to idle qubits for idle times longer than this threshold.
-        sequence: DD sequence to apply, either as a string (e.g., "XYXY") or a list of rotation angle tuples (e.g., [(np.pi/2, 0), (np.pi, np.pi/2)]).
-        strategy: Strategy for applying the sequence.
-                - "asap": As soon as possible after the idle time threshold is reached.
-                - "alap": As late as possible before the next gate on the qubit.
-                - "center": Centered within the idle time.
+        gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+            - treshold_length: Length of idle time before applying DD. Defaults to sequence length or 2.
+            - sequence: DD sequence as a string (e.g., "XYXY") or list of rotation angle tuples. Defaults to "XY".
+            - strategy: "asap", "alap", or "center". Defaults to "asap".
 
     Returns:
         CircuitCompilationOptions with the specified DD settings.
     """
 
-    if treshold_length is None and sequence is None and strategy is None:
-        # If no parameters are provided, enable DD with default settings.
-        return CircuitCompilationOptions(dd_mode=DDMode.ENABLED)
+    resolved = []
+    for treshold_length, sequence, strategy in gate_sequences:
+        if treshold_length is None and sequence is not None:
+            treshold_length = len(sequence)
+        elif treshold_length is None:
+            treshold_length = 2
 
-    if treshold_length is None and sequence is not None:
-        treshold_length = len(sequence)  # Default threshold length to the sequence length if not provided.
-    
-    elif treshold_length is None:
-        treshold_length = 2  # Default threshold length if sequence is also not provided.
+        if strategy is None:
+            strategy = "asap"
 
-    if strategy is None:
-        strategy = "asap"  # Default strategy.
+        if sequence is None:
+            sequence = "XY"
 
-    if sequence is None:
-        sequence = "XY"  # Default sequence.
+        resolved.append((treshold_length, sequence, strategy))
 
     return CircuitCompilationOptions(
         dd_mode=DDMode.ENABLED,
-        dd_strategy=DDStrategy(gate_sequences=[(treshold_length, sequence, strategy)]),
+        dd_strategy=DDStrategy(gate_sequences=resolved),
     )
