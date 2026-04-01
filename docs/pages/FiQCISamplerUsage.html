@@ -354,7 +354,7 @@
                   
   <section id="fiqcisampler">
 <h1>FiQCISampler<a class="headerlink" href="#fiqcisampler" title="Link to this heading">#</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">FiQCISampler</span></code> is a sampling interface that wraps an IQM backend and applies error mitigation to measurement results. It executes quantum circuits and returns mitigated counts.</p>
+<p><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler" title="fiqci.ems.FiQCISampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCISampler</span></code></a> is a sampling interface that wraps an IQM backend and applies error mitigation to measurement results. It executes quantum circuits and returns mitigated counts.</p>
 <section id="basic-configuration">
 <h2>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Link to this heading">#</a></h2>
 <p>Initialize the sampler with an IQM backend, mitigation level, and optional parameters:</p>
@@ -364,7 +364,7 @@
 <span class="n">sampler</span> <span class="o">=</span> <span class="n">FiQCISampler</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For more details see the API reference documentation for <code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCISampler</span></code>.</p>
+<p>For more details see the API reference documentation for <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler" title="fiqci.ems.FiQCISampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCISampler</span></code></a>.</p>
 </section>
 <section id="mitigation-levels">
 <h2>Mitigation Levels<a class="headerlink" href="#mitigation-levels" title="Link to this heading">#</a></h2>
@@ -406,7 +406,7 @@
 <section id="rem-readout-error-mitigation">
 <span id="fiqci-sampler-rem"></span><h3>REM (Readout Error Mitigation)<a class="headerlink" href="#rem-readout-error-mitigation" title="Link to this heading">#</a></h3>
 <p>Readout error mitigation uses M3 (matrix-free measurement mitigation) to correct measurement errors. It is enabled by default at mitigation level 1.</p>
-<p>Configure REM using the <code class="docutils literal notranslate"><span class="pre">rem()</span></code> method:</p>
+<p>Configure REM using the <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.rem" title="fiqci.ems.FiQCISampler.rem"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rem()</span></code></a> method:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler</span><span class="o">.</span><span class="n">rem</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -437,7 +437,7 @@
 </section>
 <section id="inspecting-options">
 <h2>Inspecting Options<a class="headerlink" href="#inspecting-options" title="Link to this heading">#</a></h2>
-<p>Use the <code class="docutils literal notranslate"><span class="pre">mitigator_options</span></code> property to view currently applied mitigation settings:</p>
+<p>Use the <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.mitigator_options" title="fiqci.ems.FiQCISampler.mitigator_options"><code class="xref py py-attr docutils literal notranslate"><span class="pre">mitigator_options</span></code></a> property to view currently applied mitigation settings:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler</span><span class="o">.</span><span class="n">mitigator_options</span>
 </pre></div>
 </div>

@@ -28,7 +28,7 @@ Unlike traditional methods that explicitly compute and invert large matrices, M3
 
 ## Advanced: Direct M3IQM Control
 
-For fine-grained control over the mitigation process, you can use the `M3IQM` class directly. This allows you to:
+For fine-grained control over the mitigation process, you can use the {class}`~fiqci.ems.mitigators.rem.M3IQM` class directly. This allows you to:
 
 - Choose calibration strategies (`"balanced"`, `"independent"`, `"marginal"`)
 - Inspect per-qubit calibration matrices
@@ -39,7 +39,7 @@ See the [Advanced Readout Error Mitigation example](../notebooks/advanced_readou
 
 ## Examples
 
-- [Advanced Readout Error Mitigation](../notebooks/advanced_readout_error_mitigation_m3) — includes direct `M3IQM` usage for fine-grained control over calibration and correction.
+- [Advanced Readout Error Mitigation](../notebooks/advanced_readout_error_mitigation_m3) — includes direct {class}`~fiqci.ems.mitigators.rem.M3IQM` usage for fine-grained control over calibration and correction.
 
 **References:**
 - Nation, P., Kang, H., Sundaresen N., Gambetta J., "Scalable Mitigation of Measurement Errors on Quantum Computers" PRX Quantum 2, 040326 (2021). https://doi.org/10.1103/PRXQuantum.2.040326
