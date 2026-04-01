@@ -18,6 +18,7 @@ from mthree.utils import final_measurement_mapping
 import warnings
 
 from fiqci.ems.mitigators.rem import M3IQM
+from fiqci.ems.mitigators.dd import build_dd_options
 from fiqci.ems.utils import probabilities_to_counts
 
 from qiskit import QuantumCircuit
@@ -79,6 +80,19 @@ class FiQCIBackend:
 			"mitigator": None,
 		}
 
+		class DDSettings(TypedDict):
+			enabled: bool
+			treshold_length: int | None
+			sequence: str | list[tuple] | None
+			strategy: str | None
+		
+		self._dd: DDSettings = {
+			"enabled": False,
+			"treshold_length": None,
+			"sequence": None,
+			"strategy": None,
+		}
+
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
 		if self._mitigation_level == 0:
 			pass  # No mitigation, just pass through to backend
@@ -86,15 +100,13 @@ class FiQCIBackend:
 			self._init_rem(calibration_shots, calibration_file)
 		elif self._mitigation_level == 2:
 			self._init_rem(calibration_shots, calibration_file)
-			warnings.warn(
-				"Mitigation level 2 (M3 + Dynamical Decoupling) not implemented yet. Level 2 will currently only apply M3 readout error mitigation without dynamical decoupling."
-			)
-			# TODO: Add dynamical decoupling
+			self._init_dd(treshold_length=None, sequence=None, strategy=None)  # Use default DD settings
 		elif self._mitigation_level == 3:
-			self.init_rem(calibration_shots, calibration_file)
-			# TODO: Add dynamical decoupling + Pauli twirling
+			self._init_rem(calibration_shots, calibration_file)
+			self._init_dd(treshold_length=None, sequence=None, strategy=None)  # Use default DD settings
+			# TODO: Add Pauli twirling
 			warnings.warn(
-				"Mitigation level 3 (M3 + Dynamical Decoupling + Pauli Twirling) not implemented yet. Level 3 will currently only apply M3 readout error mitigation without dynamical decoupling or Pauli twirling."
+				"Mitigation level 3 (M3 + Dynamical Decoupling + Pauli Twirling) not implemented yet. Level 3 will currently only apply M3 readout error mitigation and dynamical decoupling."
 			)
 		else:
 			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
@@ -127,6 +139,22 @@ class FiQCIBackend:
 			A dictionary of current mitigator settings and their values.
 		"""
 		return {"rem": self._rem}
+
+	def _init_dd(self, treshold_length: int | None, sequence: str | list[tuple] | None, strategy: str | None) -> None:
+		"""Initialize dynamical decoupling settings.
+
+		Args:
+			treshold_length: Length of idle time before applying DD. Sequences will be applied to idle qubits for idle times longer than this threshold.
+			sequence: DD sequence to apply, either as a string (e.g., "XYXY") or a list of rotation angle tuples (e.g., [(np.pi/2, 0), (np.pi, np.pi/2)]).
+			strategy: Strategy for applying the sequence.
+					- "asap": As soon as possible after the idle time threshold is reached.
+					- "alap": As late as possible before the next gate on the qubit.
+					- "center": Centered within the idle time.
+		"""
+		self._dd["enabled"] = True
+		self._dd["treshold_length"] = treshold_length
+		self._dd["sequence"] = sequence
+		self._dd["strategy"] = strategy
 
 	def _init_rem(self, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Initialize readout error mitigation (M3).
@@ -224,7 +252,20 @@ class FiQCIBackend:
 
 		# Level 0: No mitigation, pass through to backend
 		if not self._rem["enabled"]:
-			job = self._backend.run(circuits, shots=shots, **kwargs)
+			if self._dd["enabled"]:
+				dd_options = build_dd_options(
+					treshold_length=self._dd["treshold_length"],
+					sequence=self._dd["sequence"],
+					strategy=self._dd["strategy"],
+				)
+				job = self._backend.run(
+					circuits,
+					shots=shots,
+					circuit_compilation_options=dd_options,
+					**kwargs,
+				)
+			else:
+				job = self._backend.run(circuits, shots=shots, **kwargs)
 			assert job is not None, "Backend returned None job"
 			return job
 
@@ -278,7 +319,20 @@ class FiQCIBackend:
 			)
 
 		# Run circuits on backend
-		job = self._backend.run(circuits, shots=shots, **kwargs)
+		if self._dd["enabled"]:
+			dd_options = build_dd_options(
+				treshold_length=self._dd["treshold_length"],
+				sequence=self._dd["sequence"],
+				strategy=self._dd["strategy"],
+			)
+			job = self._backend.run(
+				circuits,
+				shots=shots,
+				circuit_compilation_options=dd_options,
+				**kwargs,
+			)
+		else:
+			job = self._backend.run(circuits, shots=shots, **kwargs)
 		assert job is not None, "Backend returned None job"
 		result = job.result()
 
