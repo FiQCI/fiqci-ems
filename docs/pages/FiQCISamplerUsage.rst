@@ -37,8 +37,8 @@ Mitigation levels apply predefined sets of error mitigation techniques.
      - Readout Error Mitigation
      - M3 (matrix-free measurement mitigation)
    * - 2
-     - Level 1 + additional
-     - TBD
+     - Level 1 + Dynamical Decoupling
+     - Dynamical Decoupling standard sequence (see :ref:`below <fiqci-sampler-dd>`)
    * - 3
      - Level 2 + additional
      - TBD

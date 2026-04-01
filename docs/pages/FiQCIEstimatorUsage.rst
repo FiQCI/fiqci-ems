@@ -37,7 +37,7 @@ Mitigation levels apply predefined sets of error mitigation techniques.
      - M3 (matrix-free measurement mitigation)
    * - 2
      - Level 1 + Dynamical Decoupling
-     - Dynamical Decoupling
+     - Dynamical Decoupling standard sequence (see :ref:`below <fiqci-estimator-dd>`)
    * - 3
      - Level 2 + Zero Noise Extrapolation
      - Exponential Extrapolation, Local Folding
