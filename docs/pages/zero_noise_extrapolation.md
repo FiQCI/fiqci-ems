@@ -50,7 +50,7 @@ estimator = FiQCIEstimator(backend=backend, mitigation_level=3)
 
 ### Manual Configuration
 
-For fine-grained control, enable ZNE explicitly via the `zne()` method:
+For fine-grained control, enable ZNE explicitly via the {meth}`~fiqci.ems.FiQCIEstimator.zne` method:
 
 ```python
 estimator = FiQCIEstimator(backend=backend, mitigation_level=1)
