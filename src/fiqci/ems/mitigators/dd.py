@@ -25,6 +25,10 @@ def build_dd_options(gate_sequences: list[DDGateSequenceEntry] | None = None) ->
 
     resolved = []
     for treshold_length, sequence, strategy in gate_sequences:
+
+        if strategy is not None and strategy not in ["asap", "alap", "center"]:
+            raise ValueError(f"Invalid strategy: {strategy}")
+
         if treshold_length is None and sequence is not None:
             treshold_length = len(sequence)
         elif treshold_length is None:
