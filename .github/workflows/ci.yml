@@ -67,6 +67,14 @@ jobs:
       - name: Uv sync environment
         run: uv sync --group docs
 
+      - name: Cache notebook execution results
+        uses: actions/cache@v4
+        with:
+          path: docs/.jupyter_cache
+          key: notebook-exec-${{ hashFiles('docs/notebooks/*.ipynb') }}
+          restore-keys: |
+            notebook-exec-
+
       - name: Test if docs can be built
         run: uv run sphinx-build docs/ docs/_build
 
