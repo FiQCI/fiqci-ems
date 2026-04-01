@@ -49,6 +49,7 @@ Mitigation Options
 Mitigators can also be configured manually using the provided methods.
 
 - :ref:`Readout Error Mitigation (REM) <fiqci-sampler-rem>`
+- :ref:`Dynamical Decoupling (DD) <fiqci-sampler-dd>`
 
 .. _fiqci-sampler-rem:
 
@@ -78,6 +79,48 @@ Configure REM using the :meth:`~fiqci.ems.FiQCISampler.rem` method:
    * - ``calibration_file``
      - ``None``
      - Path to save/load calibration data (JSON). Reuses cached calibrations when available.
+
+.. _fiqci-sampler-dd:
+
+Dynamical Decoupling (DD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dynamical decoupling inserts sequences of gates to mitigate decoherence. It is enabled at mitigation level 2.
+
+Configure DD using the :meth:`~fiqci.ems.FiQCISampler.dd` method:
+
+.. code-block:: python
+
+   sampler.dd(enabled=True, gate_sequences=None) # None uses a standard set of sequences
+
+The standard sequence is:
+
+.. code-block:: python
+
+   [
+       (9, 'XYXYYXYX', 'asap'),
+       (5, 'YXYX', 'asap'),
+       (2, 'XX', 'center'),
+   ]
+
+.. list-table::
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``enabled``
+     - ``True``
+     - Enable or disable DD
+   * - ``gate_sequences``
+     - ``None``
+     - List of (treshold_length, sequence, strategy) tuples defining DD behavior. If ``None``, uses a standard set of sequences.
+         - ``treshold_length``: Minimum circuit length to apply the sequence. If ``None``, uses ``len(sequence)`` or 2 if sequence is ``None``.
+         - ``sequence``: List of gate names or :class:`~fiqci.ems.primitives.prx_sequence.PRXSequence` defining the DD sequence.
+         - ``strategy``: Strategy for applying the sequence. One of:
+             - ``"asap"``: Apply the sequence as soon as possible whenever the idle period exceeds the threshold.
+             - ``"alap"``: Apply the sequence as late as possible whenever the idle period exceeds the threshold.
+             - ``"center"``: Apply the sequence centered within idle periods exceeding the threshold.
 
 
 Inspecting Options
