@@ -39,7 +39,17 @@ autosummary_generate = True
 autosummary_ignore_patterns = []
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "jupyter_execute", ".jupyter_cache", "build", "test", ".venv", "docs-venv"]
+exclude_patterns = [
+	"_build",
+	"Thumbs.db",
+	".DS_Store",
+	"jupyter_execute",
+	".jupyter_cache",
+	"build",
+	"test",
+	".venv",
+	"docs-venv",
+]
 
 source_suffix = {".rst": "restructuredtext", ".ipynb": "myst-nb", ".md": "myst-nb"}
 
