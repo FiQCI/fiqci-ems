@@ -1,7 +1,7 @@
 Installation
 ============
 
-`Uv <https://docs.astral.sh/uv/getting-started/installation/>`_ is recommended for installation
+`UV <https://docs.astral.sh/uv/getting-started/installation/>`_ is recommended for installation
 
 .. code-block:: bash
     
