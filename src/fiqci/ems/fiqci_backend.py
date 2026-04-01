@@ -288,7 +288,7 @@ class FiQCIBackend:
 		# Level 0: No mitigation, pass through to backend
 		if not self._rem["enabled"]:
 			if self._dd["enabled"]:
-				dd_options = build_dd_options(self._dd["gate_sequences"] or None)
+				dd_options = build_dd_options(self._dd["gate_sequences"])
 				job = self._backend.run(
 					circuits,
 					shots=shots,
@@ -351,7 +351,7 @@ class FiQCIBackend:
 
 		# Run circuits on backend
 		if self._dd["enabled"]:
-			dd_options = build_dd_options(self._dd["gate_sequences"] or None)
+			dd_options = build_dd_options(self._dd["gate_sequences"])
 			job = self._backend.run(
 				circuits,
 				shots=shots,
