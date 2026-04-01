@@ -144,8 +144,11 @@ class FiQCIBackend:
 			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
 				See build_dd_options for details on each field.
 		"""
+		if gate_sequences is None or len(gate_sequences) == 0:
+			gate_sequences = STANDARD_DD_STRATEGY.gate_sequences
+
 		self._dd["enabled"] = True
-		self._dd["gate_sequences"] = gate_sequences or []
+		self._dd["gate_sequences"] = gate_sequences
 
 	def _init_rem(self, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""Initialize readout error mitigation (M3).
@@ -196,10 +199,10 @@ class FiQCIBackend:
 			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
 				See build_dd_options for details on each field.
 		"""
-		if gate_sequences is None or len(gate_sequences) == 0:
-			gate_sequences = STANDARD_DD_STRATEGY.gate_sequences
-		self._dd["enabled"] = enabled
-		self._dd["gate_sequences"] = gate_sequences
+		if enabled:
+			self._init_dd(gate_sequences)
+		else:
+			self._dd["enabled"] = False
 
 	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
