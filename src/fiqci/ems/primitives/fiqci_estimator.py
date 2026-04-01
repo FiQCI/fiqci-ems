@@ -33,11 +33,11 @@ class FiQCIEstimator:
 		backend: An IQMBackendBase instance to wrap.
 		mitigation_level: Level of error mitigation to apply (default: 1).
 		calibration_shots: Number of shots to use for calibration circuits (default: 1000).
-		calibration_files: Optional list of calibration files to use for readout error mitigation.
+		calibration_file: Optional calibration file to use for readout error mitigation.
 
 	"""
 
-	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_files=None):
+	def __init__(self, backend, mitigation_level=1, calibration_shots=1000, calibration_file=None):
 		super().__init__()
 		self._mitigation_level = mitigation_level
 
@@ -59,9 +59,9 @@ class FiQCIEstimator:
 		}
 
 		if self._mitigation_level in [0, 1, 2]:
-			self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_files)
+			self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_file)
 		elif self._mitigation_level == 3:
-			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_files)
+			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_file)
 			self.zne(enabled=True)
 		else:
 			raise NotImplementedError(f"Unknown mitigation level {mitigation_level}")
