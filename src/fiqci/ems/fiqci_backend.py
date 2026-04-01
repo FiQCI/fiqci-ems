@@ -148,6 +148,7 @@ class FiQCIBackend:
 			gate_sequences = STANDARD_DD_STRATEGY.gate_sequences
 		else:
 			# Validate gate_sequences format
+			valid_gate_sequences = []
 			for entry in gate_sequences:
 				if not isinstance(entry, (list, tuple)) or len(entry) != 3:
 					raise ValueError(f"Each gate sequence entry must be a tuple of (treshold_length, sequence, strategy), got {entry}")
@@ -158,6 +159,20 @@ class FiQCIBackend:
 					raise ValueError(f"treshold_length must be an integer or None, got {treshold_length} in entry {entry}")
 				if sequence is not None and not isinstance(sequence, (str, list)):
 					raise ValueError(f"sequence must be a string, list of tuples, or None, got {sequence} in entry {entry}")
+				
+				if treshold_length is None and sequence is not None:
+					treshold_length = len(sequence)
+				elif treshold_length is None:
+					treshold_length = 2
+
+				if strategy is None:
+					strategy = "asap"
+
+				if sequence is None:
+					sequence = "XY"
+				
+				valid_gate_sequences.append((treshold_length, sequence, strategy))
+			gate_sequences = valid_gate_sequences
 
 		self._dd["enabled"] = True
 		self._dd["gate_sequences"] = gate_sequences
