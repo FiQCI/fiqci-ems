@@ -9,7 +9,7 @@ PRXSequence: TypeAlias = list[tuple[float, float]]
 DDGateSequenceEntry = list[tuple[int, str | PRXSequence, str]]
 
 
-def build_dd_options(gate_sequences: list[DDGateSequenceEntry] | None = None) -> CircuitCompilationOptions:
+def build_dd_options(gate_sequences: list[DDGateSequenceEntry]) -> CircuitCompilationOptions:
     """
     Build compilation options for dynamical decoupling.
 
@@ -23,26 +23,7 @@ def build_dd_options(gate_sequences: list[DDGateSequenceEntry] | None = None) ->
         CircuitCompilationOptions with the specified DD settings.
     """
 
-    resolved = []
-    for treshold_length, sequence, strategy in gate_sequences:
-
-        if strategy is not None and strategy not in ["asap", "alap", "center"]:
-            raise ValueError(f"Invalid strategy: {strategy}")
-
-        if treshold_length is None and sequence is not None:
-            treshold_length = len(sequence)
-        elif treshold_length is None:
-            treshold_length = 2
-
-        if strategy is None:
-            strategy = "asap"
-
-        if sequence is None:
-            sequence = "XY"
-
-        resolved.append((treshold_length, sequence, strategy))
-
     return CircuitCompilationOptions(
         dd_mode=DDMode.ENABLED,
-        dd_strategy=DDStrategy(gate_sequences=resolved),
+        dd_strategy=DDStrategy(gate_sequences=gate_sequences),
     )
