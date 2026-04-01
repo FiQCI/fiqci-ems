@@ -40,7 +40,7 @@ Mitigation levels apply predefined sets of error mitigation techniques.
      - TBD
    * - 3
      - Level 2 + Zero Noise Extrapolation
-     - Extrapolation
+     - Exponential Extrapolation, Local Folding
 
 Mitigation Options
 ------------------
