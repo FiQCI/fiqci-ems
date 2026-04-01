@@ -1,4 +1,6 @@
-""""""
+"""
+FiQCI Error Mitigation Service (EMS).
+"""
 
 from fiqci.ems.fiqci_backend import FiQCIBackend
 from fiqci.ems.primitives import FiQCIEstimator
