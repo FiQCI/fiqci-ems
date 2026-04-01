@@ -196,6 +196,24 @@ class FiQCIBackend:
 			self._rem["calibration_shots"] = calibration_shots
 			logger.info("Calibration shots set to %d. Will calibrate on first run.", calibration_shots)
 
+	def dd(self, enabled: bool = True, treshold_length: int | None = None, sequence: str | list[tuple] | None = None, strategy: str | None = None) -> None:
+		"""
+		Set dynamical decoupling settings for the backend.
+
+		Args:
+			enabled: Whether to enable dynamical decoupling.
+			treshold_length: Length of idle time before applying DD. Sequences will be applied to idle qubits for idle times longer than this threshold.
+			sequence: DD sequence to apply, either as a string (e.g., "XYXY") or a list of rotation angle tuples (e.g., [(np.pi/2, 0), (np.pi, np.pi/2)]).
+			strategy: Strategy for applying the sequence.
+					- "asap": As soon as possible after the idle time threshold is reached.
+					- "alap": As late as possible before the next gate on the qubit.
+					- "center": Centered within the idle time.
+		"""
+		self._dd["enabled"] = enabled
+		self._dd["treshold_length"] = treshold_length
+		self._dd["sequence"] = sequence
+		self._dd["strategy"] = strategy
+
 	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
 		Set readout error mitigation settings for the backend.
