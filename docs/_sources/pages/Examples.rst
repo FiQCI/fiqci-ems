@@ -1,9 +1,11 @@
-Examples
-========
+Example Notebooks
+=================
+
+Runnable notebooks demonstrating FiQCI EMS features. For configuration details and background, see the :doc:`Guides <Guides>`.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Examples
+   :caption: Example Notebooks
 
    Using The FiQCI Sampler <../notebooks/sampling_fiqci_sampler>
    Using The FiQCI Estimator <../notebooks/expectation_values_fiqci_estimator>

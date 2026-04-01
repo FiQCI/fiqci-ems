@@ -158,7 +158,7 @@
 <li class="toctree-l2"><a class="reference internal" href="zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="Examples.html">Examples</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/sampling_fiqci_sampler.html">Using The FiQCI Sampler</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/expectation_values_fiqci_estimator.html">Using The FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/advanced_readout_error_mitigation_m3.html">Advanced Readout Error Mitigation</a></li>
@@ -335,6 +335,8 @@
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-readout-error-mitigation">What is Readout Error Mitigation?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-m3-matrix-free-measurement-mitigation-method">The M3 (Matrix-free Measurement Mitigation) Method</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-direct-m3iqm-control">Advanced: Direct M3IQM Control</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>
             </nav>
         </div>
@@ -373,6 +375,23 @@
 <li><p>Handles correlated and uncorrelated readout errors</p></li>
 <li><p>Provides quasi-probability distributions (can have negative values)</p></li>
 <li><p>Can convert to nearest valid probability distribution</p></li>
+</ul>
+</section>
+<section id="advanced-direct-m3iqm-control">
+<h2>Advanced: Direct M3IQM Control<a class="headerlink" href="#advanced-direct-m3iqm-control" title="Link to this heading">#</a></h2>
+<p>For fine-grained control over the mitigation process, you can use the <code class="docutils literal notranslate"><span class="pre">M3IQM</span></code> class directly. This allows you to:</p>
+<ul class="simple">
+<li><p>Choose calibration strategies (<code class="docutils literal notranslate"><span class="pre">&quot;balanced&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;independent&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;marginal&quot;</span></code>)</p></li>
+<li><p>Inspect per-qubit calibration matrices</p></li>
+<li><p>Apply correction manually and access quasi-probability distributions</p></li>
+<li><p>Calculate expectation values and standard deviations from quasi-distributions</p></li>
+</ul>
+<p>See the <a class="reference internal" href="../notebooks/advanced_readout_error_mitigation_m3.html"><span class="doc std std-doc">Advanced Readout Error Mitigation example</span></a> for a full walkthrough.</p>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../notebooks/advanced_readout_error_mitigation_m3.html"><span class="doc std std-doc">Advanced Readout Error Mitigation</span></a> — includes direct <code class="docutils literal notranslate"><span class="pre">M3IQM</span></code> usage for fine-grained control over calibration and correction.</p></li>
 </ul>
 <p><strong>References:</strong></p>
 <ul class="simple">
@@ -431,6 +450,8 @@
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-readout-error-mitigation">What is Readout Error Mitigation?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-m3-matrix-free-measurement-mitigation-method">The M3 (Matrix-free Measurement Mitigation) Method</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-direct-m3iqm-control">Advanced: Direct M3IQM Control</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>
   </nav></div>
 

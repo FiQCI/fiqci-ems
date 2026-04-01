@@ -74,6 +74,10 @@ estimator.zne(
 | `extrapolation_method` | `str` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, or `"linear"`. |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
 
+## Examples
+
+- [Zero Noise Extrapolation Example](../notebooks/zero_noise_extrapolation_example) — runnable notebook demonstrating ZNE with default and custom settings.
+
 ## References
 
 - Temme, K., Bravyi, S., Gambetta, J. M., "Error Mitigation for Short-Depth Quantum Circuits", https://arxiv.org/abs/1612.02058

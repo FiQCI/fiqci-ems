@@ -3,10 +3,54 @@ FiQCIEstimator
 
 ``FiQCIEstimator`` computes expectation values of Pauli observables from quantum circuits with built-in error mitigation. It supports both readout error mitigation (M3) and zero-noise extrapolation (ZNE).
 
-For general usage instructions, see :ref:`Usage <usage-estimator>`.
+Basic Configuration
+-------------------
+
+Initialize the estimator with an IQM backend, mitigation level, and optional parameters:
+
+.. code-block:: python
+
+   from fiqci.ems import FiQCIEstimator
+
+   # Initialize estimator with mitigation level 1
+   estimator = FiQCIEstimator(backend, mitigation_level=1, calibration_shots=2000, calibration_file="cals.json")
+
+For more details see the API reference documentation for :class:`FiQCIEstimator`.
+
+Mitigation Levels
+-----------------
+
+Mitigation levels apply predefined sets of error mitigation techniques.
+
+.. list-table::
+   :header-rows: 1
+   :align: center
+
+   * - Level
+     - Mitigation Applied
+     - Technique
+   * - 0
+     - None
+     - Raw results
+   * - 1
+     - Readout Error Mitigation
+     - M3 (matrix-free measurement mitigation)
+   * - 2
+     - Level 1 + additional
+     - TBD
+   * - 3
+     - Level 2 + Zero Noise Extrapolation
+     - Extrapolation
 
 Mitigation Options
 ------------------
+
+Mitigators can also be configured manually using the provided methods.
+
+- :ref:`Readout Error Mitigation (REM) <fiqci-estimator-rem>`
+- :ref:`Zero Noise Extrapolation (ZNE) <fiqci-estimator-zne>`
+
+.. _fiqci-estimator-rem:
 
 REM (Readout Error Mitigation)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,6 +79,8 @@ Configure REM using the ``rem()`` method:
      - ``None``
      - Path to save/load calibration data (JSON). Reuses cached calibrations when available.
 
+
+.. _fiqci-estimator-zne:
 ZNE (Zero-Noise Extrapolation)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -76,29 +122,6 @@ Configure ZNE using the ``zne()`` method:
    * - ``extrapolation_degree``
      - ``None``
      - Polynomial degree (only for ``"polynomial"`` method). Defaults to ``min(n_scales - 1, 2)``.
-
-Mitigation Levels
------------------
-
-.. list-table::
-   :header-rows: 1
-   :align: center
-
-   * - Level
-     - Mitigation Applied
-     - Technique
-   * - 0
-     - None
-     - Raw results
-   * - 1
-     - Readout Error Mitigation
-     - M3 (matrix-free measurement mitigation)
-   * - 2
-     - Level 1 + additional
-     - TBD
-   * - 3
-     - Level 2 + Zero Noise Extrapolation
-     - Extrapolation
 
 Inspecting Options
 ------------------

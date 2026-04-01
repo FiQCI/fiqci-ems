@@ -158,7 +158,7 @@
 <li class="toctree-l2"><a class="reference internal" href="zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="Examples.html">Examples</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/sampling_fiqci_sampler.html">Using The FiQCI Sampler</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/expectation_values_fiqci_estimator.html">Using The FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/advanced_readout_error_mitigation_m3.html">Advanced Readout Error Mitigation</a></li>
@@ -333,11 +333,12 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-configuration">Basic Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>
@@ -354,11 +355,56 @@
   <section id="fiqcisampler">
 <h1>FiQCISampler<a class="headerlink" href="#fiqcisampler" title="Link to this heading">#</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">FiQCISampler</span></code> is a sampling interface that wraps an IQM backend and applies error mitigation to measurement results. It executes quantum circuits and returns mitigated counts.</p>
-<p>For general usage instructions, see <a class="reference internal" href="Usage.html#usage-sampler"><span class="std std-ref">Usage</span></a>.</p>
+<section id="basic-configuration">
+<h2>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Link to this heading">#</a></h2>
+<p>Initialize the sampler with an IQM backend, mitigation level, and optional parameters:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fiqci.ems</span><span class="w"> </span><span class="kn">import</span> <span class="n">FiQCISampler</span>
+
+<span class="c1"># Initialize sampler with mitigation level 1</span>
+<span class="n">sampler</span> <span class="o">=</span> <span class="n">FiQCISampler</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For more details see the API reference documentation for <code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCISampler</span></code>.</p>
+</section>
+<section id="mitigation-levels">
+<h2>Mitigation Levels<a class="headerlink" href="#mitigation-levels" title="Link to this heading">#</a></h2>
+<p>Mitigation levels apply predefined sets of error mitigation techniques.</p>
+<div class="pst-scrollable-table-container"><table class="table table-center">
+<thead>
+<tr class="row-odd"><th class="head"><p>Level</p></th>
+<th class="head"><p>Mitigation Applied</p></th>
+<th class="head"><p>Technique</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>None</p></td>
+<td><p>Raw results</p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p>Readout Error Mitigation</p></td>
+<td><p>M3 (matrix-free measurement mitigation)</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p>Level 1 + additional</p></td>
+<td><p>TBD</p></td>
+</tr>
+<tr class="row-odd"><td><p>3</p></td>
+<td><p>Level 2 + additional</p></td>
+<td><p>TBD</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 <section id="mitigation-options">
 <h2>Mitigation Options<a class="headerlink" href="#mitigation-options" title="Link to this heading">#</a></h2>
+<p>Mitigators can also be configured manually using the provided methods.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#fiqci-sampler-rem"><span class="std std-ref">Readout Error Mitigation (REM)</span></a></p></li>
+</ul>
 <section id="rem-readout-error-mitigation">
-<h3>REM (Readout Error Mitigation)<a class="headerlink" href="#rem-readout-error-mitigation" title="Link to this heading">#</a></h3>
+<span id="fiqci-sampler-rem"></span><h3>REM (Readout Error Mitigation)<a class="headerlink" href="#rem-readout-error-mitigation" title="Link to this heading">#</a></h3>
 <p>Readout error mitigation uses M3 (matrix-free measurement mitigation) to correct measurement errors. It is enabled by default at mitigation level 1.</p>
 <p>Configure REM using the <code class="docutils literal notranslate"><span class="pre">rem()</span></code> method:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler</span><span class="o">.</span><span class="n">rem</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
@@ -388,36 +434,6 @@
 </table>
 </div>
 </section>
-</section>
-<section id="mitigation-levels">
-<h2>Mitigation Levels<a class="headerlink" href="#mitigation-levels" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table table-center">
-<thead>
-<tr class="row-odd"><th class="head"><p>Level</p></th>
-<th class="head"><p>Mitigation Applied</p></th>
-<th class="head"><p>Technique</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>None</p></td>
-<td><p>Raw results</p></td>
-</tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>Readout Error Mitigation</p></td>
-<td><p>M3 (matrix-free measurement mitigation)</p></td>
-</tr>
-<tr class="row-even"><td><p>2</p></td>
-<td><p>Level 1 + additional</p></td>
-<td><p>TBD</p></td>
-</tr>
-<tr class="row-odd"><td><p>3</p></td>
-<td><p>Level 2 + additional</p></td>
-<td><p>TBD</p></td>
-</tr>
-</tbody>
-</table>
-</div>
 </section>
 <section id="inspecting-options">
 <h2>Inspecting Options<a class="headerlink" href="#inspecting-options" title="Link to this heading">#</a></h2>
@@ -482,11 +498,12 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-configuration">Basic Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>

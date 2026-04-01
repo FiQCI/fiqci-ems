@@ -51,7 +51,7 @@
     <link rel="icon" href="../_static/FiQCI-logo-nobg.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Example: Advanaced Readout Mitigation" href="advanced_readout_error_mitigation_m3.html" />
+    <link rel="next" title="Example: Advanced Readout Mitigation" href="advanced_readout_error_mitigation_m3.html" />
     <link rel="prev" title="Example: Sampling with FiQCISampler" href="sampling_fiqci_sampler.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -158,7 +158,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="reference internal" href="../pages/Examples.html">Examples</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../pages/Examples.html">Example Notebooks</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="sampling_fiqci_sampler.html">Using The FiQCI Sampler</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Using The FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced_readout_error_mitigation_m3.html">Advanced Readout Error Mitigation</a></li>
@@ -338,6 +338,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bell-state-expectation-values-with-rem">Bell State expectation values with REM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#access-job-metadata">Access job metadata</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#manually-configure-mitigation-options">Manually configure mitigation options</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#access-job-information-and-metadata">Access Job Information and Metadata</a></li>
 </ul>
             </nav>
         </div>
@@ -351,6 +352,7 @@
                   
   <section class="tex2jax_ignore mathjax_ignore" id="example-expectation-values-with-fiqciestimator">
 <h1>Example: Expectation values with FiQCIEstimator<a class="headerlink" href="#example-expectation-values-with-fiqciestimator" title="Link to this heading">#</a></h1>
+<p>For configuration options, mitigation levels, and result methods, see the <a class="reference internal" href="../pages/FiQCIEstimatorUsage.html"><span class="std std-doc">FiQCIEstimator guide</span></a>.</p>
 <section id="import-everything-needed">
 <h2>Import everything needed<a class="headerlink" href="#import-everything-needed" title="Link to this heading">#</a></h2>
 <div class="cell docutils container">
@@ -399,7 +401,7 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1000,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f33ac15cbc0&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe3998ebf20&gt;}}
 </pre></div>
 </div>
 </div>
@@ -442,7 +444,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9608610567514677, -0.016617790811339198]]
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9393346379647749, 0.028347996089931573]]
 </pre></div>
 </div>
 </div>
@@ -452,10 +454,7 @@
 <h2>Access job metadata<a class="headerlink" href="#access-job-metadata" title="Link to this heading">#</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Depending on the defined observables FiQCIEstimator may execute additional circuits for calculating the expectation values.</span>
-<span class="c1"># We can access the raw counts for all executed circuits (including mitigation circuits) via the job results metadata:</span>
-
-<span class="c1"># Get all jobs</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get all jobs</span>
 <span class="n">jobs</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">jobs</span><span class="p">()</span>
 
 <span class="c1"># Get the first job</span>
@@ -469,7 +468,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;01&#39;: 60, &#39;10&#39;: 45, &#39;00&#39;: 472, &#39;11&#39;: 447}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;10&#39;: 54, &#39;00&#39;: 459, &#39;01&#39;: 46, &#39;11&#39;: 465}
 </pre></div>
 </div>
 </div>
@@ -500,7 +499,38 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1024,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f33ac39e4e0&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fe3999226c0&gt;}}
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="access-job-information-and-metadata">
+<h2>Access Job Information and Metadata<a class="headerlink" href="#access-job-information-and-metadata" title="Link to this heading">#</a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Estimator may execute multiple circuits depending on observables and mitigator settings. Here we fecth them all as a list</span>
+<span class="n">jobs</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">jobs</span><span class="p">()</span>
+
+<span class="c1"># Look at the first job</span>
+<span class="n">job0</span> <span class="o">=</span> <span class="n">jobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Get the counts for the first job</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">get_counts</span><span class="p">())</span>
+
+<span class="c1">#Get raw counts for the circuit in the first job</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
+
+<span class="n">raw_counts</span> <span class="o">=</span> <span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;fiqci_ems&quot;</span><span class="p">][</span><span class="s2">&quot;raw_counts&quot;</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">raw_counts</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01&#39;: 11, &#39;10&#39;: 20, &#39;00&#39;: 491, &#39;11&#39;: 500}, {&#39;1&#39;: 497, &#39;0&#39;: 526}]
+{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 5, &#39;name&#39;: &#39;circuit-13855&#39;, &#39;qreg_sizes&#39;: [[&#39;ancilla&#39;, 3], [&#39;q&#39;, 2]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 1000, &#39;raw_counts&#39;: {&#39;10&#39;: 54, &#39;00&#39;: 459, &#39;01&#39;: 46, &#39;11&#39;: 465}}}
+{&#39;10&#39;: 54, &#39;00&#39;: 459, &#39;01&#39;: 46, &#39;11&#39;: 465}
 </pre></div>
 </div>
 </div>
@@ -533,7 +563,7 @@
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Example: Advanaced Readout Mitigation</p>
+        <p class="prev-next-title">Example: Advanced Readout Mitigation</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -560,6 +590,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bell-state-expectation-values-with-rem">Bell State expectation values with REM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#access-job-metadata">Access job metadata</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#manually-configure-mitigation-options">Manually configure mitigation options</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#access-job-information-and-metadata">Access Job Information and Metadata</a></li>
 </ul>
   </nav></div>
 

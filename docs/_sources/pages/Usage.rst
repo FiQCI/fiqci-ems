@@ -5,61 +5,6 @@ FiQCI Error Mitigation Service (EMS) is a Python library for quantum error mitig
 
 This python package can be pre-installed on a HPC system or installed by the user. The main goal of the project is to allow users using FiQCI quantum computers to easily add flags to run error mitigated quantum jobs.
 
-Mitigation Levels
------------------
-
-.. tab-set::
-
-   .. tab-item:: Sampler
-
-      .. list-table::
-         :header-rows: 1
-         :align: center
-
-         * - Level
-           - Mitigation Applied
-           - Technique
-         * - 0
-           - None
-           - Raw results
-         * - 1
-           - Readout Error Mitigation
-           - M3 (matrix-free measurement mitigation)
-         * - 2
-           - Level 1 + additional
-           - TBD
-         * - 3
-           - Level 2 + additional
-           - TBD
-
-   .. tab-item:: Estimator
-
-      .. list-table::
-         :header-rows: 1
-         :align: center
-
-         * - Level
-           - Mitigation Applied
-           - Technique
-         * - 0
-           - None
-           - Raw results
-         * - 1
-           - Readout Error Mitigation
-           - M3 (matrix-free measurement mitigation)
-         * - 2
-           - Level 1 + additional
-           - TBD
-         * - 3
-           - Level 2 + Zero Noise Extrapolation
-           - Extrapolation
-
-.. note::
-
-   ``FiQCIBackend`` mitigation levels correspond to the Sampler levels.
-
-The default is level 1, which applies M3 readout error mitigation.
-
 Usage
 -----
 
@@ -88,6 +33,7 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 
 .. _usage-sampler:
 .. _usage-estimator:
+.. _usage-backend:
 
 .. tab-set::
 
@@ -116,6 +62,8 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         # See applied and available options
         sampler.mitigation_options
     
+      For more information on the sampler interface, see :doc:`FiQCISamplerUsage`.
+
    .. tab-item:: Estimator
 
       .. rubric:: FiQCIEstimator - expectation values
@@ -151,6 +99,8 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         # See applied and available options
         estimator.mitigation_options
 
+      For more information on the estimator interface, see :doc:`FiQCIEstimatorUsage`.
+
    .. tab-item:: Backend
 
       .. rubric:: FiQCIBackend - drop-in backend replacement
@@ -178,30 +128,9 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 
       Access raw (pre-mitigation) counts via ``backend.raw_counts``.
 
+      The mitigation options for FiQCIBackend are the same as for FiQCISampler. For more information, see :doc:`FiQCISamplerUsage`.
+
 Advanced Usage
 ~~~~~~~~~~~~~~
 
 It is also possible to manually configure and directly use the M3 mitigator without the wrapper classes above. See :doc:`Examples` for details.
-
-Configuration
--------------
-
-All three interfaces accept the same core options:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Parameter
-     - Default
-     - Description
-   * - ``mitigation_level``
-     - ``1``
-     - Mitigation level (0-3)
-   * - ``calibration_shots``
-     - ``1000``
-     - Shots used for M3 calibration circuits
-   * - ``calibration_file``
-     - ``None``
-     - Path to save/load calibration data (JSON)
-
-Mitigation can also be configured directly. See the docs for ``FiQCISampler``, ``FiQCIEstimator``, and ``FiQCIBackend`` to see all available options.
