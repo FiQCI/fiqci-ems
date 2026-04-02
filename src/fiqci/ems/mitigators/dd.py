@@ -14,7 +14,7 @@ def build_dd_options(gate_sequences: list[DDGateSequenceEntry]) -> CircuitCompil
 	Build compilation options for dynamical decoupling.
 
 	Args:
-	    gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+	    gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
 	        - treshold_length: Length of idle time before applying DD. Defaults to sequence length or 2.
 	        - sequence: DD sequence as a string (e.g., "XYXY") or list of rotation angle tuples. Defaults to "XY".
 	        - strategy: "asap", "alap", or "center". Defaults to "asap".
