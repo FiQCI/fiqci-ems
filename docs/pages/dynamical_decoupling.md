@@ -21,3 +21,4 @@ For more detailed usage see [FiQCISampler](FiQCISamplerUsage.rst) or [FiQCIEstim
 ## References
 
 - [IQM Academy: Dynamical Decoupling](https://www.iqmacademy.com/learn/errorreduction/02-dd/)
+- Ezzell, N., Pokharel, B., Tewala, L., Quiroz, G., & Lidar, D. A. (2023). Dynamical decoupling for superconducting qubits: A performance survey [https://arxiv.org/abs/2207.03670](https://arxiv.org/abs/2207.03670)
