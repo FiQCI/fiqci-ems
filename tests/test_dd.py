@@ -151,7 +151,7 @@ class TestDDValidation:
 
 	def test_invalid_threshold_type(self, backend: FiQCIBackend) -> None:
 		"""Test that non-integer threshold raises ValueError."""
-		with pytest.raises(ValueError, match="treshold_length must be an integer"):
+		with pytest.raises(ValueError, match="threshold_length must be an integer"):
 			backend.dd(enabled=True, gate_sequences=[(2.5, "XY", "asap")])
 
 	def test_invalid_sequence_type(self, backend: FiQCIBackend) -> None:

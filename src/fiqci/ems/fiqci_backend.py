@@ -138,7 +138,7 @@ class FiQCIBackend:
 		"""Initialize dynamical decoupling settings.
 
 		Args:
-			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+			gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
 				See build_dd_options for details on each field.
 		"""
 		if gate_sequences is None or len(gate_sequences) == 0:
@@ -149,24 +149,24 @@ class FiQCIBackend:
 			for entry in gate_sequences:
 				if not isinstance(entry, (list, tuple)) or len(entry) != 3:
 					raise ValueError(
-						f"Each gate sequence entry must be a tuple of (treshold_length, sequence, strategy), got {entry}"
+						f"Each gate sequence entry must be a tuple of (threshold_length, sequence, strategy), got {entry}"
 					)
-				treshold_length, sequence, strategy = entry
+				threshold_length, sequence, strategy = entry
 				if strategy is not None and strategy not in ["asap", "alap", "center"]:
 					raise ValueError(f"Invalid strategy: {strategy} in entry {entry}")
-				if treshold_length is not None and not isinstance(treshold_length, int):
+				if threshold_length is not None and not isinstance(threshold_length, int):
 					raise ValueError(
-						f"treshold_length must be an integer or None, got {treshold_length} in entry {entry}"
+						f"threshold_length must be an integer or None, got {threshold_length} in entry {entry}"
 					)
 				if sequence is not None and not isinstance(sequence, (str, list)):
 					raise ValueError(
 						f"sequence must be a string, list of tuples, or None, got {sequence} in entry {entry}"
 					)
 
-				if treshold_length is None and sequence is not None:
-					treshold_length = len(sequence)
-				elif treshold_length is None:
-					treshold_length = 2
+				if threshold_length is None and sequence is not None:
+					threshold_length = len(sequence)
+				elif threshold_length is None:
+					threshold_length = 2
 
 				if strategy is None:
 					strategy = "asap"
@@ -174,7 +174,7 @@ class FiQCIBackend:
 				if sequence is None:
 					sequence = "XY"
 
-				valid_gate_sequences.append((treshold_length, sequence, strategy))
+				valid_gate_sequences.append((threshold_length, sequence, strategy))
 			gate_sequences = valid_gate_sequences
 
 		self._dd["enabled"] = True
@@ -226,7 +226,7 @@ class FiQCIBackend:
 
 		Args:
 			enabled: Whether to enable dynamical decoupling.
-			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+			gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
 				See build_dd_options for details on each field.
 		"""
 		if enabled:

@@ -78,7 +78,7 @@ class FiQCISampler:
 
 		Args:
 			enabled: Whether to enable dynamical decoupling.
-			gate_sequences: List of (treshold_length, sequence, strategy) tuples defining DD behavior.
+			gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
 				See build_dd_options for details on each field.
 		"""
 		self.backend.dd(enabled, gate_sequences)
