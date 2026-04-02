@@ -159,7 +159,7 @@ The standard sequence is:
      - Enable or disable DD
    * - ``gate_sequences``
      - ``None``
-     - List of (treshold_length, sequence, strategy) tuples defining DD behavior. If ``None``, uses a standard set of sequences.
+     - List of (threshold_length, sequence, strategy) tuples defining DD behavior. If ``None``, uses a standard set of sequences.
          - ``treshold_length``: Minimum idle period (``treshold_length`` times duration of a single-qubit gate) to apply the sequence. If ``None``, uses ``len(sequence)`` or 2 if sequence is ``None``.
          - ``sequence``: List of gate names or :class:`~fiqci.ems.primitives.prx_sequence.PRXSequence` defining the DD sequence.
          - ``strategy``: Strategy for applying the sequence. One of:
