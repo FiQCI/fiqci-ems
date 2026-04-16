@@ -17,6 +17,7 @@ from fiqci.ems.transpiler_passes.basis_measurement import (
 from fiqci.ems.utils import _remove_idle_wires
 from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
 from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
+from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
 
 class FiQCIEstimator:
@@ -246,6 +247,18 @@ class FiQCIEstimator:
 			calibration_file: Optional calibration file to use for readout error mitigation.
 		"""
 		self.backend.rem(enabled, calibration_shots, calibration_file)
+
+	def dd(self, enabled: bool, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
+		"""
+		Set dynamical decoupling settings for the estimator. This will configure the underlying backend's
+		dynamical decoupling accordingly.
+
+		Args:
+			enabled: Whether to enable dynamical decoupling.
+			gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
+				See build_dd_options for details on each field.
+		"""
+		self.backend.dd(enabled, gate_sequences)
 
 	def zne(
 		self,

@@ -36,8 +36,8 @@ Mitigation levels apply predefined sets of error mitigation techniques.
      - Readout Error Mitigation
      - M3 (matrix-free measurement mitigation)
    * - 2
-     - Level 1 + additional
-     - TBD
+     - Level 1 + Dynamical Decoupling
+     - Dynamical Decoupling standard sequence (see :ref:`below <fiqci-estimator-dd>`)
    * - 3
      - Level 2 + Zero Noise Extrapolation
      - Exponential Extrapolation, Local Folding
@@ -49,6 +49,7 @@ Mitigators can also be configured manually using the provided methods.
 
 - :ref:`Readout Error Mitigation (REM) <fiqci-estimator-rem>`
 - :ref:`Zero Noise Extrapolation (ZNE) <fiqci-estimator-zne>`
+- :ref:`Dynamical Decoupling (DD) <fiqci-estimator-dd>`
 
 .. _fiqci-estimator-rem:
 
@@ -123,6 +124,48 @@ Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
    * - ``extrapolation_degree``
      - ``None``
      - Polynomial degree (only for ``"polynomial"`` method). Defaults to ``min(n_scales - 1, 2)``.
+
+.. _fiqci-estimator-dd:
+
+Dynamical Decoupling (DD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dynamical decoupling inserts sequences of gates to mitigate decoherence. It is enabled at mitigation level 2.
+
+Configure DD using the :meth:`~fiqci.ems.FiQCIEstimator.dd` method:
+
+.. code-block:: python
+
+   estimator.dd(enabled=True, gate_sequences=None) # None uses a standard set of sequences
+
+The standard sequence is:
+
+.. code-block:: python
+
+   [
+       (9, 'XYXYYXYX', 'asap'),
+       (5, 'YXYX', 'asap'),
+       (2, 'XX', 'center'),
+   ]
+
+.. list-table::
+   :header-rows: 1
+
+   * - Parameter
+     - Default
+     - Description
+   * - ``enabled``
+     - ``True``
+     - Enable or disable DD
+   * - ``gate_sequences``
+     - ``None``
+     - List of (threshold_length, sequence, strategy) tuples defining DD behavior. If ``None``, uses a standard set of sequences.
+         - ``threshold_length``: Minimum idle period (``threshold_length`` times duration of a single-qubit gate) to apply the sequence. If ``None``, uses ``len(sequence)`` or 2 if sequence is ``None``.
+         - ``sequence``: List of gate names or :class:`~fiqci.ems.primitives.prx_sequence.PRXSequence` defining the DD sequence.
+         - ``strategy``: Strategy for applying the sequence. One of:
+             - ``"asap"``: Apply the sequence as soon as possible whenever the idle period exceeds the threshold.
+             - ``"alap"``: Apply the sequence as late as possible whenever the idle period exceeds the threshold.
+             - ``"center"``: Apply the sequence centered within idle periods exceeding the threshold.
 
 Inspecting Options
 ------------------

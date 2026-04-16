@@ -8,6 +8,7 @@ from fiqci.ems import FiQCIBackend
 from qiskit import QuantumCircuit
 from qiskit.providers import JobV1
 from fiqci.ems.fiqci_backend import MitigatedJob
+from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
 
 class FiQCISampler:
@@ -69,3 +70,15 @@ class FiQCISampler:
 			calibration_file: Optional calibration file to use for readout error mitigation.
 		"""
 		self.backend.rem(enabled, calibration_shots, calibration_file)
+
+	def dd(self, enabled: bool, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
+		"""
+		Set dynamical decoupling settings for the sampler. This will configure the underlying backend's
+		dynamical decoupling accordingly.
+
+		Args:
+			enabled: Whether to enable dynamical decoupling.
+			gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
+				See build_dd_options for details on each field.
+		"""
+		self.backend.dd(enabled, gate_sequences)
