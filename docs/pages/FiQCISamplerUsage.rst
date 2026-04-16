@@ -119,7 +119,7 @@ The standard sequence is:
          - ``sequence``: List of gate names or :class:`~fiqci.ems.primitives.prx_sequence.PRXSequence` defining the DD sequence.
          - ``strategy``: Strategy for applying the sequence. One of:
              - ``"asap"``: Apply the sequence as soon as possible whenever the idle period exceeds the threshold.
-             - ``"alap"``: Apply the sequence as late as possible whenever the idle period exceeds the threshold.
+             - ``"alap"``: Apply the sequence _as late as possible_ whenever the idle period exceeds the threshold.
              - ``"center"``: Apply the sequence centered within idle periods exceeding the threshold.
 
 
