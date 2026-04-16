@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; FiQCI EMS</title>
+    <title>Dynamical Decoupling with FiQCI EMS &#8212; FiQCI EMS</title>
   
   
   
@@ -46,13 +46,13 @@
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/Api';</script>
-    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/Api.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/dynamical_decoupling';</script>
+    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/dynamical_decoupling.html" />
     <link rel="icon" href="../_static/FiQCI-logo-nobg.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="fiqci.ems" href="api/fiqci.ems.html" />
-    <link rel="prev" title="Example: Zero Noise Extrapolation" href="../notebooks/zero_noise_extrapolation_example.html" />
+    <link rel="next" title="Example Notebooks" href="Examples.html" />
+    <link rel="prev" title="Zero Noise Extrapolation with FiQCI EMS" href="zero_noise_extrapolation.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
@@ -151,12 +151,12 @@
         <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="Installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="Guides.html">Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="Guides.html">Guides</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="FiQCISamplerUsage.html">FiQCI Sampler</a></li>
 <li class="toctree-l2"><a class="reference internal" href="FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dynamical_decoupling.html">Dynamical Decoupling</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Dynamical Decoupling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -166,7 +166,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../notebooks/zero_noise_extrapolation_example.html">Using Zero Noise Extrapolation</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="Api.html">API Reference</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2 has-children"><a class="reference internal" href="api/fiqci.ems.html">fiqci.ems</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="api/fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="api/fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -249,7 +249,7 @@
       
       
       
-      <li><a href="../_sources/pages/Api.rst" target="_blank"
+      <li><a href="../_sources/pages/dynamical_decoupling.md" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -259,7 +259,7 @@
 <span class="btn__icon-container">
   <i class="fas fa-file"></i>
   </span>
-<span class="btn__text-container">.rst</span>
+<span class="btn__text-container">.md</span>
 </a>
 </li>
       
@@ -312,7 +312,9 @@
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
 </button>
-
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
 </div></div>
       
     </div>
@@ -323,11 +325,21 @@
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>API Reference</h1>
+    <h1>Dynamical Decoupling with FiQCI EMS</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
             
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-dynamical-decoupling">What is Dynamical Decoupling:</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -337,16 +349,31 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="api-reference">
-<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h1>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="api/fiqci.ems.html#module-fiqci.ems" title="fiqci.ems"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fiqci.ems</span></code></a></p></td>
-<td><p>FiQCI Error Mitigation Service (EMS).</p></td>
-</tr>
-</tbody>
-</table>
-</div>
+  <section class="tex2jax_ignore mathjax_ignore" id="dynamical-decoupling-with-fiqci-ems">
+<h1>Dynamical Decoupling with FiQCI EMS<a class="headerlink" href="#dynamical-decoupling-with-fiqci-ems" title="Link to this heading">#</a></h1>
+<section id="what-is-dynamical-decoupling">
+<h2>What is Dynamical Decoupling:<a class="headerlink" href="#what-is-dynamical-decoupling" title="Link to this heading">#</a></h2>
+<p>Dynamical decoupling (DD) is a quantum error suppression technique that reduces the effects of decoherence on idle qubits. When a qubit is idle during a quantum circuit, e.g. while other qubits are being operated on, it is exposed to unwanted interactions with its environment. These interactions cause the qubit’s state to decay over time, introducing errors into the computation.</p>
+<p>DD works by inserting sequences of fast control pulses (such as X and Y gates) on idle qubits. These pulses effectively refocus the qubit’s evolution, averaging out the environmental noise over time. The key idea is that if noise acts slowly compared to the rate of the applied pulses, the net effect of the noise is suppressed.</p>
+<p>Common DD sequences include:</p>
+<ul class="simple">
+<li><p><strong>XY</strong>: Alternating X and Y gates. A simple and widely used sequence that protects against both bit-flip and phase-flip noise.</p></li>
+<li><p><strong>XYXY</strong>: A repeated XY sequence offering stronger suppression for longer idle periods.</p></li>
+<li><p><strong>Custom PRX sequences</strong>: User-defined rotation sequences for advanced noise profiles.</p></li>
+</ul>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">#</a></h2>
+<p>Dynamical decoupling is enabled by default at <code class="docutils literal notranslate"><span class="pre">mitigation_level=2</span></code> or it can be enabled with the primitives <code class="docutils literal notranslate"><span class="pre">dd()</span></code> method.</p>
+<p>For more detailed usage see <a class="reference internal" href="FiQCISamplerUsage.html"><span class="std std-doc">FiQCISampler</span></a> or <a class="reference internal" href="FiQCIEstimatorUsage.html"><span class="std std-doc">FiQCIEstimator</span></a></p>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://www.iqmacademy.com/learn/errorreduction/02-dd/">IQM Academy: Dynamical Decoupling</a></p></li>
+<li><p>Ezzell, N., Pokharel, B., Tewala, L., Quiroz, G., &amp; Lidar, D. A. (2023). Dynamical decoupling for superconducting qubits: A performance survey <a class="reference external" href="https://arxiv.org/abs/2207.03670">https://arxiv.org/abs/2207.03670</a></p></li>
+</ul>
+</section>
 </section>
 
 
@@ -361,20 +388,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../notebooks/zero_noise_extrapolation_example.html"
+       href="zero_noise_extrapolation.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Example: Zero Noise Extrapolation</p>
+        <p class="prev-next-title">Zero Noise Extrapolation with FiQCI EMS</p>
       </div>
     </a>
     <a class="right-next"
-       href="api/fiqci.ems.html"
+       href="Examples.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">fiqci.ems</p>
+        <p class="prev-next-title">Example Notebooks</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -384,6 +411,25 @@
             </div>
             
             
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-dynamical-decoupling">What is Dynamical Decoupling:</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
               
             
           </div>

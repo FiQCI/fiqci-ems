@@ -156,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../pages/FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pages/readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/dynamical_decoupling.html">Dynamical Decoupling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../pages/Examples.html">Example Notebooks</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
@@ -169,6 +170,7 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="../pages/api/fiqci.ems.html">fiqci.ems</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="../pages/api/fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
@@ -401,7 +403,8 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1000,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fa6f0650dd0&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f72f2dacdd0&gt;},
+ &#39;dd&#39;: {&#39;enabled&#39;: False, &#39;gate_sequences&#39;: []}}
 </pre></div>
 </div>
 </div>
@@ -444,7 +447,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9823874755381604, 0.004887585532746823]]
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9393346379647749, -0.002932551319648094]]
 </pre></div>
 </div>
 </div>
@@ -468,7 +471,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;01&#39;: 51, &#39;11&#39;: 480, &#39;10&#39;: 37, &#39;00&#39;: 456}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;01&#39;: 50, &#39;10&#39;: 53, &#39;00&#39;: 471, &#39;11&#39;: 450}
 </pre></div>
 </div>
 </div>
@@ -499,7 +502,8 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1024,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7fa6f08a7230&gt;}}
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f72f2d06d50&gt;},
+ &#39;dd&#39;: {&#39;enabled&#39;: False, &#39;gate_sequences&#39;: []}}
 </pre></div>
 </div>
 </div>
@@ -528,9 +532,9 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01&#39;: 9, &#39;00&#39;: 491, &#39;11&#39;: 522}, {&#39;1&#39;: 509, &#39;0&#39;: 514}]
-{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 5, &#39;name&#39;: &#39;circuit-13855&#39;, &#39;qreg_sizes&#39;: [[&#39;ancilla&#39;, 3], [&#39;q&#39;, 2]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 1000, &#39;raw_counts&#39;: {&#39;01&#39;: 51, &#39;11&#39;: 480, &#39;10&#39;: 37, &#39;00&#39;: 456}}}
-{&#39;01&#39;: 51, &#39;11&#39;: 480, &#39;10&#39;: 37, &#39;00&#39;: 456}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01&#39;: 14, &#39;10&#39;: 17, &#39;11&#39;: 487, &#39;00&#39;: 504}, {&#39;0&#39;: 510, &#39;1&#39;: 513}]
+{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 5, &#39;name&#39;: &#39;circuit-13855&#39;, &#39;qreg_sizes&#39;: [[&#39;ancilla&#39;, 3], [&#39;q&#39;, 2]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 1000, &#39;raw_counts&#39;: {&#39;01&#39;: 50, &#39;10&#39;: 53, &#39;00&#39;: 471, &#39;11&#39;: 450}}}
+{&#39;01&#39;: 50, &#39;10&#39;: 53, &#39;00&#39;: 471, &#39;11&#39;: 450}
 </pre></div>
 </div>
 </div>

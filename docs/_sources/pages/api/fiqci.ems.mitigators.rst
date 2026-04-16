@@ -10,5 +10,6 @@ fiqci.ems.mitigators
    :toctree:
    :recursive:
 
+   dd
    rem
    zne

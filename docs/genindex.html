@@ -155,6 +155,7 @@
 <li class="toctree-l2"><a class="reference internal" href="pages/FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pages/readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pages/dynamical_decoupling.html">Dynamical Decoupling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="pages/Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -168,6 +169,7 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="pages/api/fiqci.ems.html">fiqci.ems</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="pages/api/fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="pages/api/fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
@@ -293,6 +295,7 @@
  <a href="#_"><strong>_</strong></a>
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
+ | <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
@@ -335,6 +338,10 @@
       <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.backend">backend (FiQCIBackend property)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.backend">[1]</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pages/api/fiqci.ems.mitigators.dd.html#fiqci.ems.mitigators.dd.build_dd_options">build_dd_options() (in module fiqci.ems.mitigators.dd)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="C">C</h2>
@@ -352,6 +359,20 @@
 </li>
       <li><a href="pages/api/fiqci.ems.mitigators.rem.html#fiqci.ems.mitigators.rem.M3IQM.cals_to_file">cals_to_file() (M3IQM method)</a>
 </li>
+  </ul></td>
+</tr></table>
+
+<h2 id="D">D</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.dd">dd() (FiQCIBackend method)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.dd">[1]</a>
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.dd">(FiQCIEstimator method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.dd">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator.dd">[2]</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler.dd">(FiQCISampler method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.dd">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler.dd">[2]</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -389,6 +410,13 @@
 
       <ul>
         <li><a href="pages/api/fiqci.ems.mitigators.html#module-fiqci.ems.mitigators">module</a>
+</li>
+      </ul></li>
+      <li>
+    fiqci.ems.mitigators.dd
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.mitigators.dd.html#module-fiqci.ems.mitigators.dd">module</a>
 </li>
       </ul></li>
       <li>
@@ -527,6 +555,8 @@
         <li><a href="pages/api/fiqci.ems.fiqci_backend.html#module-fiqci.ems.fiqci_backend">fiqci.ems.fiqci_backend</a>
 </li>
         <li><a href="pages/api/fiqci.ems.mitigators.html#module-fiqci.ems.mitigators">fiqci.ems.mitigators</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.mitigators.dd.html#module-fiqci.ems.mitigators.dd">fiqci.ems.mitigators.dd</a>
 </li>
         <li><a href="pages/api/fiqci.ems.mitigators.rem.html#module-fiqci.ems.mitigators.rem">fiqci.ems.mitigators.rem</a>
 </li>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>fiqci.ems.transpiler_passes &#8212; FiQCI EMS</title>
+    <title>fiqci.ems.mitigators.dd &#8212; FiQCI EMS</title>
   
   
   
@@ -46,13 +46,13 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/api/fiqci.ems.transpiler_passes';</script>
-    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/api/fiqci.ems.transpiler_passes.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/api/fiqci.ems.mitigators.dd';</script>
+    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/api/fiqci.ems.mitigators.dd.html" />
     <link rel="icon" href="../../_static/FiQCI-logo-nobg.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="fiqci.ems.transpiler_passes.basis_measurement" href="fiqci.ems.transpiler_passes.basis_measurement.html" />
-    <link rel="prev" title="fiqci.ems.primitives.fiqci_sampler" href="fiqci.ems.primitives.fiqci_sampler.html" />
+    <link rel="next" title="fiqci.ems.mitigators.rem" href="fiqci.ems.mitigators.rem.html" />
+    <link rel="prev" title="fiqci.ems.mitigators" href="fiqci.ems.mitigators.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
@@ -169,8 +169,8 @@
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../Api.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="fiqci.ems.html">fiqci.ems</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
+<li class="toctree-l3 current active has-children"><a class="reference internal" href="fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l4 current active"><a class="current reference internal" href="#">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
@@ -180,7 +180,7 @@
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.primitives.fiqci_sampler.html">fiqci.ems.primitives.fiqci_sampler</a></li>
 </ul>
 </details></li>
-<li class="toctree-l3 current active has-children"><a class="current reference internal" href="#">fiqci.ems.transpiler_passes</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
@@ -249,7 +249,7 @@
       
       
       
-      <li><a href="../../_sources/pages/api/fiqci.ems.transpiler_passes.rst" target="_blank"
+      <li><a href="../../_sources/pages/api/fiqci.ems.mitigators.dd.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -312,7 +312,9 @@
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
 </button>
-
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
 </div></div>
       
     </div>
@@ -323,11 +325,19 @@
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>fiqci.ems.transpiler_passes</h1>
+    <h1>fiqci.ems.mitigators.dd</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
             
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.dd.build_dd_options"><code class="docutils literal notranslate"><span class="pre">build_dd_options()</span></code></a></li>
+</ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -337,21 +347,35 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fiqci.ems.transpiler_passes">
-<span id="fiqci-ems-transpiler-passes"></span><h1>fiqci.ems.transpiler_passes<a class="headerlink" href="#module-fiqci.ems.transpiler_passes" title="Link to this heading">#</a></h1>
-<p>Transpiler passes for FiQCI EMS</p>
-<p class="rubric">Modules</p>
+  <section id="module-fiqci.ems.mitigators.dd">
+<span id="fiqci-ems-mitigators-dd"></span><h1>fiqci.ems.mitigators.dd<a class="headerlink" href="#module-fiqci.ems.mitigators.dd" title="Link to this heading">#</a></h1>
+<p>Functions for dynamical decoupling.</p>
+<p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="fiqci.ems.transpiler_passes.basis_measurement.html#module-fiqci.ems.transpiler_passes.basis_measurement" title="fiqci.ems.transpiler_passes.basis_measurement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">basis_measurement</span></code></a></p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="fiqci.ems.transpiler_passes.zne_circuits.html#module-fiqci.ems.transpiler_passes.zne_circuits" title="fiqci.ems.transpiler_passes.zne_circuits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zne_circuits</span></code></a></p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.mitigators.dd.build_dd_options" title="fiqci.ems.mitigators.dd.build_dd_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_dd_options</span></code></a>(gate_sequences)</p></td>
+<td><p>Build compilation options for dynamical decoupling.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<dl class="py function">
+<dt class="sig sig-object py" id="fiqci.ems.mitigators.dd.build_dd_options">
+<span class="sig-name descname"><span class="pre">build_dd_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gate_sequences</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CircuitCompilationOptions</span></span></span><a class="headerlink" href="#fiqci.ems.mitigators.dd.build_dd_options" title="Link to this definition">#</a></dt>
+<dd><p>Build compilation options for dynamical decoupling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>gate_sequences</strong> – List of (threshold_length, sequence, strategy) tuples defining DD behavior.
+- threshold_length: Length of idle time before applying DD. Defaults to sequence length or 2.
+- sequence: DD sequence as a string (e.g., “XYXY”) or list of rotation angle tuples. Defaults to “XY”.
+- strategy: “asap”, “alap”, or “center”. Defaults to “asap”.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>CircuitCompilationOptions with the specified DD settings.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
@@ -366,20 +390,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="fiqci.ems.primitives.fiqci_sampler.html"
+       href="fiqci.ems.mitigators.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">fiqci.ems.primitives.fiqci_sampler</p>
+        <p class="prev-next-title">fiqci.ems.mitigators</p>
       </div>
     </a>
     <a class="right-next"
-       href="fiqci.ems.transpiler_passes.basis_measurement.html"
+       href="fiqci.ems.mitigators.rem.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">fiqci.ems.transpiler_passes.basis_measurement</p>
+        <p class="prev-next-title">fiqci.ems.mitigators.rem</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -389,6 +413,23 @@
             </div>
             
             
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.dd.build_dd_options"><code class="docutils literal notranslate"><span class="pre">build_dd_options()</span></code></a></li>
+</ul>
+  </nav></div>
+
+</div></div>
               
             
           </div>

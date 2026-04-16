@@ -156,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dynamical_decoupling.html">Dynamical Decoupling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -169,6 +170,7 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="api/fiqci.ems.html">fiqci.ems</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="api/fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="api/fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
@@ -337,6 +339,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dynamical-decoupling-dd">Dynamical Decoupling (DD)</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
@@ -386,8 +389,8 @@
 <td><p>M3 (matrix-free measurement mitigation)</p></td>
 </tr>
 <tr class="row-even"><td><p>2</p></td>
-<td><p>Level 1 + additional</p></td>
-<td><p>TBD</p></td>
+<td><p>Level 1 + Dynamical Decoupling</p></td>
+<td><p>Dynamical Decoupling standard sequence (see <a class="reference internal" href="#fiqci-sampler-dd"><span class="std std-ref">below</span></a>)</p></td>
 </tr>
 <tr class="row-odd"><td><p>3</p></td>
 <td><p>Level 2 + additional</p></td>
@@ -402,6 +405,7 @@
 <p>Mitigators can also be configured manually using the provided methods.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#fiqci-sampler-rem"><span class="std std-ref">Readout Error Mitigation (REM)</span></a></p></li>
+<li><p><a class="reference internal" href="#fiqci-sampler-dd"><span class="std std-ref">Dynamical Decoupling (DD)</span></a></p></li>
 </ul>
 <section id="rem-readout-error-mitigation">
 <span id="fiqci-sampler-rem"></span><h3>REM (Readout Error Mitigation)<a class="headerlink" href="#rem-readout-error-mitigation" title="Link to this heading">#</a></h3>
@@ -429,6 +433,57 @@
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">calibration_file</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Path to save/load calibration data (JSON). Reuses cached calibrations when available.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="dynamical-decoupling-dd">
+<span id="fiqci-sampler-dd"></span><h3>Dynamical Decoupling (DD)<a class="headerlink" href="#dynamical-decoupling-dd" title="Link to this heading">#</a></h3>
+<p>Dynamical decoupling inserts sequences of gates to mitigate decoherence. It is enabled at mitigation level 2.</p>
+<p>Configure DD using the <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.dd" title="fiqci.ems.FiQCISampler.dd"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dd()</span></code></a> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler</span><span class="o">.</span><span class="n">dd</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">gate_sequences</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># None uses a standard set of sequences</span>
+</pre></div>
+</div>
+<p>The standard sequence is:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
+    <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s1">&#39;XYXYYXYX&#39;</span><span class="p">,</span> <span class="s1">&#39;asap&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;YXYX&#39;</span><span class="p">,</span> <span class="s1">&#39;asap&#39;</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;XX&#39;</span><span class="p">,</span> <span class="s1">&#39;center&#39;</span><span class="p">),</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td><p>Enable or disable DD</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gate_sequences</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><dl class="simple">
+<dt>List of (threshold_length, sequence, strategy) tuples defining DD behavior. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses a standard set of sequences.</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">threshold_length</span></code>: Minimum idle period (<code class="docutils literal notranslate"><span class="pre">threshold_length</span></code> times duration of a single-qubit gate) to apply the sequence. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses <code class="docutils literal notranslate"><span class="pre">len(sequence)</span></code> or 2 if sequence is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sequence</span></code>: List of gate names or <code class="xref py py-class docutils literal notranslate"><span class="pre">PRXSequence</span></code> defining the DD sequence.</p></li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">strategy</span></code>: Strategy for applying the sequence. One of:</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;asap&quot;</span></code>: Apply the sequence as soon as possible whenever the idle period exceeds the threshold.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;alap&quot;</span></code>: Apply the sequence _as late as <a href="#id1"><span class="problematic" id="id2">possible_</span></a> whenever the idle period exceeds the threshold.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;center&quot;</span></code>: Apply the sequence centered within idle periods exceeding the threshold.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</td>
 </tr>
 </tbody>
 </table>
@@ -502,6 +557,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dynamical-decoupling-dd">Dynamical Decoupling (DD)</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>

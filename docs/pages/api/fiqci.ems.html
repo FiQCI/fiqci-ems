@@ -156,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dynamical_decoupling.html">Dynamical Decoupling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -169,6 +170,7 @@
 <li class="toctree-l2 current active has-children"><a class="current reference internal" href="#">fiqci.ems</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
@@ -338,6 +340,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.mitigator_options</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.run"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.rem"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.rem()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.dd"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.dd()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code></a><ul class="nav section-nav flex-column">
@@ -345,6 +348,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.mitigator_options</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.run"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.rem()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.zne"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.zne()</span></code></a></li>
 </ul>
 </li>
@@ -354,6 +358,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigation_level"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigation_level</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.raw_counts"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.raw_counts</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigator_options</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.run"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.run()</span></code></a></li>
 </ul>
@@ -442,6 +447,22 @@ readout error mitigation accordingly.</p>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.FiQCISampler.dd">
+<span class="sig-name descname"><span class="pre">dd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_sequences</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCISampler.dd" title="Link to this definition">#</a></dt>
+<dd><p>Set dynamical decoupling settings for the sampler. This will configure the underlying backend’s
+dynamical decoupling accordingly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>enabled</strong> – Whether to enable dynamical decoupling.</p></li>
+<li><p><strong>gate_sequences</strong> – List of (threshold_length, sequence, strategy) tuples defining DD behavior.
+See build_dd_options for details on each field.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -511,6 +532,22 @@ readout error mitigation accordingly.</p>
 <li><p><strong>enabled</strong> – Whether to enable readout error mitigation.</p></li>
 <li><p><strong>calibration_shots</strong> – Number of shots to use for calibration circuits (default: 1000).</p></li>
 <li><p><strong>calibration_file</strong> – Optional calibration file to use for readout error mitigation.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.FiQCIEstimator.dd">
+<span class="sig-name descname"><span class="pre">dd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_sequences</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCIEstimator.dd" title="Link to this definition">#</a></dt>
+<dd><p>Set dynamical decoupling settings for the estimator. This will configure the underlying backend’s
+dynamical decoupling accordingly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>enabled</strong> – Whether to enable dynamical decoupling.</p></li>
+<li><p><strong>gate_sequences</strong> – List of (threshold_length, sequence, strategy) tuples defining DD behavior.
+See build_dd_options for details on each field.</p></li>
 </ul>
 </dd>
 </dl>
@@ -595,6 +632,21 @@ readout error mitigation accordingly.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>A dictionary of current mitigator settings and their values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.FiQCIBackend.dd">
+<span class="sig-name descname"><span class="pre">dd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_sequences</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCIBackend.dd" title="Link to this definition">#</a></dt>
+<dd><p>Set dynamical decoupling settings for the backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>enabled</strong> – Whether to enable dynamical decoupling.</p></li>
+<li><p><strong>gate_sequences</strong> – List of (threshold_length, sequence, strategy) tuples defining DD behavior.
+See build_dd_options for details on each field.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -714,6 +766,7 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.mitigator_options</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.run"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.rem"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.rem()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.dd"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.dd()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code></a><ul class="nav section-nav flex-column">
@@ -721,6 +774,7 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.mitigator_options</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.run"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.rem()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.zne"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.zne()</span></code></a></li>
 </ul>
 </li>
@@ -730,6 +784,7 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigation_level"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigation_level</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.raw_counts"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.raw_counts</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigator_options</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.run"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.run()</span></code></a></li>
 </ul>

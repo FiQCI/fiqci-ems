@@ -51,7 +51,7 @@
     <link rel="icon" href="../../_static/FiQCI-logo-nobg.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="fiqci.ems.mitigators.rem" href="fiqci.ems.mitigators.rem.html" />
+    <link rel="next" title="fiqci.ems.mitigators.dd" href="fiqci.ems.mitigators.dd.html" />
     <link rel="prev" title="fiqci.ems.fiqci_backend" href="fiqci.ems.fiqci_backend.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -156,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../dynamical_decoupling.html">Dynamical Decoupling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -169,6 +170,7 @@
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="fiqci.ems.html">fiqci.ems</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
 <li class="toctree-l3 current active has-children"><a class="current reference internal" href="#">fiqci.ems.mitigators</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
@@ -341,10 +343,13 @@
 <p class="rubric">Modules</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="fiqci.ems.mitigators.rem.html#module-fiqci.ems.mitigators.rem" title="fiqci.ems.mitigators.rem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rem</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="fiqci.ems.mitigators.dd.html#module-fiqci.ems.mitigators.dd" title="fiqci.ems.mitigators.dd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dd</span></code></a></p></td>
+<td><p>Functions for dynamical decoupling.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="fiqci.ems.mitigators.rem.html#module-fiqci.ems.mitigators.rem" title="fiqci.ems.mitigators.rem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rem</span></code></a></p></td>
 <td><p>Functions related to Readout Error Mitigation (REM).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="fiqci.ems.mitigators.zne.html#module-fiqci.ems.mitigators.zne" title="fiqci.ems.mitigators.zne"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zne</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="fiqci.ems.mitigators.zne.html#module-fiqci.ems.mitigators.zne" title="fiqci.ems.mitigators.zne"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zne</span></code></a></p></td>
 <td><p>Extrapolation methods for Zero-Noise Extrapolation.</p></td>
 </tr>
 </tbody>
@@ -373,11 +378,11 @@
       </div>
     </a>
     <a class="right-next"
-       href="fiqci.ems.mitigators.rem.html"
+       href="fiqci.ems.mitigators.dd.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">fiqci.ems.mitigators.rem</p>
+        <p class="prev-next-title">fiqci.ems.mitigators.dd</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

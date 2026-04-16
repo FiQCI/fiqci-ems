@@ -156,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../pages/FiQCIEstimatorUsage.html">FiQCI Estimator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pages/readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/dynamical_decoupling.html">Dynamical Decoupling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../pages/Examples.html">Example Notebooks</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
@@ -169,6 +170,7 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="../pages/api/fiqci.ems.html">fiqci.ems</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="../pages/api/fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
@@ -418,8 +420,11 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Matplotlib is building the font cache; this may take a moment.
+</pre></div>
+</div>
 <img alt="../_images/ff12c03959995bb152e24e50b8868d9aa44b7511f286584f2fdcffc52c1ddfb5.png" src="../_images/ff12c03959995bb152e24e50b8868d9aa44b7511f286584f2fdcffc52c1ddfb5.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;01&#39;: 4, &#39;10&#39;: 23, &#39;11&#39;: 987, &#39;00&#39;: 1033}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;10&#39;: 8, &#39;01&#39;: 27, &#39;11&#39;: 980, &#39;00&#39;: 1031}
 </pre></div>
 </div>
 </div>
@@ -438,8 +443,8 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 54, &#39;name&#39;: &#39;circuit-19877&#39;, &#39;qreg_sizes&#39;: [[&#39;q&#39;, 2], [&#39;ancilla&#39;, 52]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 2048, &#39;raw_counts&#39;: {&#39;01&#39;: 116, &#39;10&#39;: 105, &#39;00&#39;: 928, &#39;11&#39;: 899}}}
-{&#39;01&#39;: 116, &#39;10&#39;: 105, &#39;00&#39;: 928, &#39;11&#39;: 899}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 54, &#39;name&#39;: &#39;circuit-19877&#39;, &#39;qreg_sizes&#39;: [[&#39;q&#39;, 2], [&#39;ancilla&#39;, 52]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 2048, &#39;raw_counts&#39;: {&#39;01&#39;: 112, &#39;11&#39;: 901, &#39;10&#39;: 102, &#39;00&#39;: 933}}}
+{&#39;01&#39;: 112, &#39;11&#39;: 901, &#39;10&#39;: 102, &#39;00&#39;: 933}
 </pre></div>
 </div>
 </div>
@@ -464,7 +469,7 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/da3f5622b01b9e9e6f79c33764b22c61eeb7f7d50289a66dcaf496c7759491d0.png" src="../_images/da3f5622b01b9e9e6f79c33764b22c61eeb7f7d50289a66dcaf496c7759491d0.png" />
+<img alt="../_images/f49241f3f5a996b9329a3dee149f743c2fae12614d5278c776c349dc44fac77f.png" src="../_images/f49241f3f5a996b9329a3dee149f743c2fae12614d5278c776c349dc44fac77f.png" />
 </div>
 </div>
 </section>
@@ -495,12 +500,12 @@ Mitigation level: 1
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>QB26 (index 8 ) calibration matrix:
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.94091797 0.05566406]
- [0.05908203 0.94433594]]
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.94970703 0.04492188]
+ [0.05029297 0.9550781 ]]
 
 QB27 (index 16 ) calibration matrix:
-[[0.95947266 0.04736328]
- [0.04052734 0.9526367 ]]
+[[0.9511719  0.04150391]
+ [0.04882812 0.9584961 ]]
 </pre></div>
 </div>
 </div>
@@ -527,10 +532,10 @@ QB27 (index 16 ) calibration matrix:
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Expectation value: 0.9966 ± 0.0276
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Expectation value: 0.9542 ± 0.0272
 
-Raw counts: {&#39;01&#39;: 105, &#39;10&#39;: 95, &#39;00&#39;: 929, &#39;11&#39;: 919}
-Mitigated counts: {&#39;01&#39;: 1, &#39;10&#39;: 2, &#39;11&#39;: 1018, &#39;00&#39;: 1025}
+Raw counts: {&#39;01&#39;: 98, &#39;10&#39;: 122, &#39;00&#39;: 928, &#39;11&#39;: 900}
+Mitigated counts: {&#39;01&#39;: 11, &#39;10&#39;: 35, &#39;11&#39;: 977, &#39;00&#39;: 1023}
 </pre></div>
 </div>
 </div>
@@ -551,7 +556,7 @@ Mitigated counts: {&#39;01&#39;: 1, &#39;10&#39;: 2, &#39;11&#39;: 1018, &#39;00
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/b29418311f72933f050302423f7d1904d712acde867812b426edb5fa2351942c.png" src="../_images/b29418311f72933f050302423f7d1904d712acde867812b426edb5fa2351942c.png" />
+<img alt="../_images/9d495e90f0d6b5c17a272f71c078bccaffe114b5d62a2cccc6f31cbffed4875c.png" src="../_images/9d495e90f0d6b5c17a272f71c078bccaffe114b5d62a2cccc6f31cbffed4875c.png" />
 </div>
 </div>
 </section>
