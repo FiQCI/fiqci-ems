@@ -11,15 +11,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, Iterable, Optional, TypedDict
 
 from iqm.iqm_client import STANDARD_DD_STRATEGY
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
-import warnings
 
 from fiqci.ems.mitigators.rem import M3IQM
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry, build_dd_options
+from fiqci.ems.transpiler_passes.pauli_twirl import get_twirled_circuits
 from fiqci.ems.utils import probabilities_to_counts
 
 from qiskit import QuantumCircuit
@@ -87,6 +87,16 @@ class FiQCIBackend:
 
 		self._dd: DDSettings = {"enabled": False, "gate_sequences": []}
 
+		class PauliTwirlSettings(TypedDict):
+			num_twirls: int
+			gates_to_twirl: Optional[Iterable[str]]
+		
+		self._pauli_twirl: PauliTwirlSettings = {
+			"enabled": False,
+			"num_twirls": 0,
+			"gates_to_twirl": None,
+		}
+
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
 		if self._mitigation_level == 0:
 			pass  # No mitigation, just pass through to backend
@@ -98,10 +108,7 @@ class FiQCIBackend:
 		elif self._mitigation_level == 3:
 			self._init_rem(calibration_shots, calibration_file)
 			self._init_dd()  # Use default DD settings
-			# TODO: Add Pauli twirling
-			warnings.warn(
-				"Mitigation level 3 (M3 + Dynamical Decoupling + Pauli Twirling) not implemented yet. Level 3 will currently only apply M3 readout error mitigation and dynamical decoupling."
-			)
+			self.init_pauli_twirl()
 		else:
 			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
@@ -133,6 +140,19 @@ class FiQCIBackend:
 			A dictionary of current mitigator settings and their values.
 		"""
 		return {"rem": self._rem, "dd": self._dd}
+
+	def init_pauli_twirl(self, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[str]] = None) -> None:
+		"""
+		Initialize Pauli twirling settings.
+
+		Args:
+			num_twirls: Number of twirled circuits to generate per input circuit.
+			gates_to_twirl: Optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled.
+		"""
+
+		self._pauli_twirl["enabled"] = True
+		self._pauli_twirl["num_twirls"] = num_twirls
+		self._pauli_twirl["gates_to_twirl"] = gates_to_twirl
 
 	def _init_dd(self, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
 		"""Initialize dynamical decoupling settings.
@@ -288,13 +308,22 @@ class FiQCIBackend:
 		if not circuits_list:
 			raise ValueError("No circuits provided")
 
+		# If Pauli Twirling is enabled, generate twirled circuits and run them instead of original circuits
+		if self._pauli_twirl["enabled"]:
+			twirled_circuits, circuit_groups = get_twirled_circuits(
+				circuits_list, num_twirls=self._pauli_twirl["num_twirls"], gates_to_twirl=self._pauli_twirl["gates_to_twirl"]
+			)
+		else:
+			circuit_groups = [[i] for i in range(len(circuits_list))]  # Each original circuit is its own group
+			
+
 		# Level 0: No mitigation, pass through to backend
 		if not self._rem["enabled"]:
 			if self._dd["enabled"]:
 				dd_options = build_dd_options(self._dd["gate_sequences"])
-				job = self._backend.run(circuits, shots=shots, circuit_compilation_options=dd_options, **kwargs)
+				job = self._backend.run(circuits_list, shots=shots, circuit_compilation_options=dd_options, **kwargs)
 			else:
-				job = self._backend.run(circuits, shots=shots, **kwargs)
+				job = self._backend.run(circuits_list, shots=shots, **kwargs)
 			assert job is not None, "Backend returned None job"
 			return job
 
