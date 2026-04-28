@@ -110,7 +110,7 @@ class FiQCIBackend:
 		elif self._mitigation_level == 3:
 			self._init_rem(calibration_shots, calibration_file)
 			self._init_dd()  # Use default DD settings
-			self.init_pauli_twirl()
+			self.init_pauli_twirl(enabled=True)
 		else:
 			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
