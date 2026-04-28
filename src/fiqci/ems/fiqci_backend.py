@@ -22,7 +22,7 @@ from fiqci.ems.mitigators.dd import DDGateSequenceEntry, build_dd_options
 from fiqci.ems.transpiler_passes.pauli_twirl import get_twirled_circuits
 from fiqci.ems.utils import probabilities_to_counts
 
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 from qiskit.providers import JobV1
 from qiskit.result import Result
 
@@ -35,6 +35,8 @@ class FiQCIBackend:
 	Mitigation levels:
 		- 0: No error mitigation (raw results)
 		- 1: Readout error mitigation using M3 (default)
+		- 2: Level 1 + dynamical decoupling (DD)
+		- 3: Level 2 + Pauli twirling
 
 	Args:
 		backend: An IQMBackendBase instance to wrap.
@@ -139,18 +141,19 @@ class FiQCIBackend:
 		Returns:
 			A dictionary of current mitigator settings and their values.
 		"""
-		return {"rem": self._rem, "dd": self._dd}
+		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
 
-	def init_pauli_twirl(self, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[str]] = None) -> None:
+	def init_pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[str]] = None) -> None:
 		"""
 		Initialize Pauli twirling settings.
 
 		Args:
+			enabled: Whether Pauli twirling is enabled.
 			num_twirls: Number of twirled circuits to generate per input circuit.
 			gates_to_twirl: Optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled.
 		"""
 
-		self._pauli_twirl["enabled"] = True
+		self._pauli_twirl["enabled"] = enabled
 		self._pauli_twirl["num_twirls"] = num_twirls
 		self._pauli_twirl["gates_to_twirl"] = gates_to_twirl
 
@@ -273,6 +276,17 @@ class FiQCIBackend:
 		)
 		if not self._rem["enabled"] or settings_changed:
 			self._init_rem(calibration_shots, calibration_file)
+	
+	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
+		"""
+		Set Pauli twirling settings for the backend.
+
+		Args:
+			enabled: Whether to enable Pauli twirling.
+			num_twirls: Number of twirled circuits to generate per input circuit (default: 10).
+			gates_to_twirl: Optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled.
+		"""
+		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
@@ -294,63 +308,121 @@ class FiQCIBackend:
 			ValueError: If circuits is empty or invalid.
 		"""
 
-		# TODO: Batching for large number of circuits.
-		# Will be relevant especially in the future if one wants to use both
-		# Pauli Twirling and Zero Noise Extrapolation.
-
-		# PLAN: Add an attribute max_batch_size to FiQCIBackend that can be set by the user (default to something large like 100),
-		# and if len(circuits) > max_batch_size, split into batches and run them sequentially.
-		# Once all bathes are done aggregate into a single result.
-
 		# Normalize to list
 		circuits_list = circuits if isinstance(circuits, list) else [circuits]
 
 		if not circuits_list:
 			raise ValueError("No circuits provided")
 
-		# If Pauli Twirling is enabled, generate twirled circuits and run them instead of original circuits
+		# If Pauli Twirling is enabled, replace circuits with twirled versions
+		twirl_group_size = 0
 		if self._pauli_twirl["enabled"]:
-			twirled_circuits, circuit_groups = get_twirled_circuits(
+			circuits_list = get_twirled_circuits(
 				circuits_list, num_twirls=self._pauli_twirl["num_twirls"], gates_to_twirl=self._pauli_twirl["gates_to_twirl"]
 			)
-		else:
-			circuit_groups = [[i] for i in range(len(circuits_list))]  # Each original circuit is its own group
-			
+			circuits_list = transpile(circuits_list, backend=self._backend, optimization_level=0)
+			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
 
-		# Level 0: No mitigation, pass through to backend
+		# Run circuits on backend (with DD options if enabled)
+		if self._dd["enabled"]:
+			dd_options = build_dd_options(self._dd["gate_sequences"])
+			job = self._backend.run(circuits_list, shots=shots, circuit_compilation_options=dd_options, **kwargs)
+		else:
+			job = self._backend.run(circuits_list, shots=shots, **kwargs)
+		assert job is not None, "Backend returned None job"
+
+		# No REM: return raw job (or averaged twirl results)
 		if not self._rem["enabled"]:
-			if self._dd["enabled"]:
-				dd_options = build_dd_options(self._dd["gate_sequences"])
-				job = self._backend.run(circuits_list, shots=shots, circuit_compilation_options=dd_options, **kwargs)
-			else:
-				job = self._backend.run(circuits_list, shots=shots, **kwargs)
-			assert job is not None, "Backend returned None job"
-			return job
+			if twirl_group_size == 0:
+				return job
 
-		# Level 1: Readout error mitigation with M3
-		elif self._rem["enabled"]:
-			return self._run_with_m3_mitigation(circuits_list, shots, **kwargs)
+			result = job.result()
+			raw_counts_list = self._average_group_counts(result, twirl_group_size)
+			self._raw_counts_cache = raw_counts_list
+			num_groups = len(circuits_list) // twirl_group_size
+			result_to_use = self._trim_result_to_groups(result, num_groups)
+			mitigated_result = self._create_mitigated_result(result_to_use, raw_counts_list, raw_counts_list)
+			return MitigatedJob(job, mitigated_result)
 
-		else:
-			raise NotImplementedError(f"Mitigation level {self._mitigation_level} not implemented")
+		# REM enabled: run with M3 mitigation
+		return self._run_with_m3_mitigation(job, circuits_list, shots, twirl_group_size=twirl_group_size)
 
-	def _run_with_m3_mitigation(self, circuits: list[QuantumCircuit], shots: int, **kwargs: Any) -> MitigatedJob:
+	def _average_group_counts(self, result: Result, group_size: int) -> list[dict[str, int]]:
+		"""Average raw counts across twirled circuit groups.
+
+		Args:
+			result: Result object from backend.
+			group_size: Number of circuits per group (num_twirls + 1).
+
+		Returns:
+			List of averaged count dictionaries, one per group.
+		"""
+		all_counts = result.get_counts()
+		if not isinstance(all_counts, list):
+			all_counts = [all_counts]
+		averaged = []
+		for i in range(0, len(all_counts), group_size):
+			averaged.append(self._average_counts(all_counts[i:i + group_size]))
+		return averaged
+
+	@staticmethod
+	def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
+		"""Average multiple count dictionaries.
+
+		Args:
+			counts_list: List of count dictionaries to average.
+
+		Returns:
+			Averaged count dictionary with integer values.
+		"""
+		if len(counts_list) == 1:
+			return counts_list[0]
+
+		totals: dict[str, float] = {}
+		for counts in counts_list:
+			for key, value in counts.items():
+				totals[key] = totals.get(key, 0.0) + value
+		n = len(counts_list)
+		return {key: round(value / n) for key, value in totals.items()}
+
+	@staticmethod
+	def _trim_result_to_groups(result: Result, num_groups: int) -> Result:
+		"""Trim a Result to only include the first num_groups experiment results.
+
+		Args:
+			result: Original Result object.
+			num_groups: Number of experiment results to keep.
+
+		Returns:
+			New Result object with only the first num_groups results.
+		"""
+		from qiskit.result import Result as QiskitResult
+
+		result_data = result.to_dict()
+		results_list = result_data.get("results")
+		if results_list is not None:
+			result_data["results"] = results_list[:num_groups]
+		return QiskitResult.from_dict(result_data)
+
+	def _run_with_m3_mitigation(
+		self, job: JobV1, circuits: list[QuantumCircuit], shots: int, twirl_group_size: int = 0
+	) -> MitigatedJob:
 		"""Run circuits with M3 readout error mitigation.
 
 		Args:
-			circuits: List of quantum circuits to execute.
+			job: Already-submitted job from backend.
+			circuits: List of quantum circuits that were executed.
 			shots: Number of measurement shots.
-			**kwargs: Additional keyword arguments passed to backend.run().
+			twirl_group_size: Size of each twirl group (num_twirls + 1), or 0 if no twirling.
 
 		Returns:
-			A JobV1 instance with mitigated results.
+			A MitigatedJob instance with mitigated results.
 		"""
 		# Get qubit mappings for each circuit
 		qubits_list = [final_measurement_mapping(circuit) for circuit in circuits]
 
 		# Calibrate M3 mitigator if not already done
 		if self._rem["mitigator"] is not None and self._rem["mitigator"].single_qubit_cals is None:
-			# Extract unique qubits from all circuits for calibration
 			all_qubits: set[int] = set()
 			for qubit_mapping in qubits_list:
 				all_qubits.update(qubit_mapping.values())  # type: ignore[arg-type]
@@ -370,47 +442,43 @@ class FiQCIBackend:
 					self._rem["calibration_shots"],
 				)
 
-			# M3's cals_from_system will automatically save to cals_file after calibration completes
 			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
 			self._rem["mitigator"].cals_from_system(
 				calibration_qubits, shots=self._rem["calibration_shots"], cals_file=self._rem["calibration_file"]
 			)
 
-		# Run circuits on backend
-		if self._dd["enabled"]:
-			dd_options = build_dd_options(self._dd["gate_sequences"])
-			job = self._backend.run(circuits, shots=shots, circuit_compilation_options=dd_options, **kwargs)
-		else:
-			job = self._backend.run(circuits, shots=shots, **kwargs)
-		assert job is not None, "Backend returned None job"
 		result = job.result()
 
-		# Store raw counts and apply mitigation to each circuit's results
+		# Apply M3 correction to each circuit's results
 		raw_counts_list: list[dict[str, int]] = []
 		mitigated_counts_list: list[dict[str, int]] = []
 
-		for idx, circuit in enumerate(circuits):
+		for idx in range(len(circuits)):
 			raw_counts = result.get_counts(idx)
 			raw_counts_list.append(raw_counts)
 			qubits = qubits_list[idx]
 
-			# Apply M3 correction
 			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
 			quasi_dist = self._rem["mitigator"].apply_correction(raw_counts, qubits)
 			mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
 			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
-
 			mitigated_counts_list.append(mitigated_counts[0])
 
-		# Cache raw counts for access via property
+		# If Pauli twirling, average across groups
+		if twirl_group_size:
+			raw_counts_list = self._average_group_counts(result, twirl_group_size)
+			# Average mitigated counts by group
+			averaged_mitigated: list[dict[str, int]] = []
+			for i in range(0, len(mitigated_counts_list), twirl_group_size):
+				averaged_mitigated.append(self._average_counts(mitigated_counts_list[i:i + twirl_group_size]))
+			mitigated_counts_list = averaged_mitigated
+			num_groups = len(circuits) // twirl_group_size
+			result = self._trim_result_to_groups(result, num_groups)
+
 		self._raw_counts_cache = raw_counts_list
-
-		# Create new result with mitigated counts and metadata
 		mitigated_result = self._create_mitigated_result(result, mitigated_counts_list, raw_counts_list)
-
-		# Wrap in job-like object
 		return MitigatedJob(job, mitigated_result)
-
+	
 	def _create_mitigated_result(
 		self, original_result: Result, mitigated_counts: list[dict[str, int]], raw_counts: list[dict[str, int]]
 	) -> Result:
