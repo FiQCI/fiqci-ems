@@ -94,12 +94,8 @@ class FiQCIBackend:
 			enabled: bool
 			num_twirls: int
 			gates_to_twirl: Optional[Iterable[Gate]]
-		
-		self._pauli_twirl: PauliTwirlSettings = {
-			"enabled": False,
-			"num_twirls": 0,
-			"gates_to_twirl": None,
-		}
+
+		self._pauli_twirl: PauliTwirlSettings = {"enabled": False, "num_twirls": 0, "gates_to_twirl": None}
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
 		if self._mitigation_level == 0:
@@ -145,7 +141,9 @@ class FiQCIBackend:
 		"""
 		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
 
-	def init_pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[Gate]] = None) -> None:
+	def init_pauli_twirl(
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[Gate]] = None
+	) -> None:
 		"""
 		Initialize Pauli twirling settings.
 
@@ -278,7 +276,7 @@ class FiQCIBackend:
 		)
 		if not self._rem["enabled"] or settings_changed:
 			self._init_rem(calibration_shots, calibration_file)
-	
+
 	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
 		"""
 		Set Pauli twirling settings for the backend.
@@ -320,7 +318,9 @@ class FiQCIBackend:
 		twirl_group_size = 0
 		if self._pauli_twirl["enabled"]:
 			circuits_list = get_twirled_circuits(
-				circuits_list, num_twirls=self._pauli_twirl["num_twirls"], gates_to_twirl=self._pauli_twirl["gates_to_twirl"]
+				circuits_list,
+				num_twirls=self._pauli_twirl["num_twirls"],
+				gates_to_twirl=self._pauli_twirl["gates_to_twirl"],
 			)
 			circuits_list = transpile(circuits_list, backend=self._backend, optimization_level=0)
 			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
@@ -364,7 +364,7 @@ class FiQCIBackend:
 			all_counts = [all_counts]
 		averaged = []
 		for i in range(0, len(all_counts), group_size):
-			averaged.append(self._average_counts(all_counts[i:i + group_size]))
+			averaged.append(self._average_counts(all_counts[i : i + group_size]))
 		return averaged
 
 	@staticmethod
@@ -473,7 +473,7 @@ class FiQCIBackend:
 			# Average mitigated counts by group
 			averaged_mitigated: list[dict[str, int]] = []
 			for i in range(0, len(mitigated_counts_list), twirl_group_size):
-				averaged_mitigated.append(self._average_counts(mitigated_counts_list[i:i + twirl_group_size]))
+				averaged_mitigated.append(self._average_counts(mitigated_counts_list[i : i + twirl_group_size]))
 			mitigated_counts_list = averaged_mitigated
 			num_groups = len(circuits) // twirl_group_size
 			result = self._trim_result_to_groups(result, num_groups)
@@ -481,7 +481,7 @@ class FiQCIBackend:
 		self._raw_counts_cache = raw_counts_list
 		mitigated_result = self._create_mitigated_result(result, mitigated_counts_list, raw_counts_list)
 		return MitigatedJob(job, mitigated_result)
-	
+
 	def _create_mitigated_result(
 		self, original_result: Result, mitigated_counts: list[dict[str, int]], raw_counts: list[dict[str, int]]
 	) -> Result:

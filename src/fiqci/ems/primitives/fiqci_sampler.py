@@ -84,7 +84,7 @@ class FiQCISampler:
 				See build_dd_options for details on each field.
 		"""
 		self.backend.dd(enabled, gate_sequences)
-	
+
 	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
 		"""Configure Pauli twirling settings for the estimator."""
 		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
