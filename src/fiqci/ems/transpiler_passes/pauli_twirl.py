@@ -10,9 +10,28 @@ import numpy as np
  
 from typing import Iterable, Optional
 
+# Module-level cache: gate name -> list of (pauli_left, pauli_right) pairs.
+# Computed once per gate type and reused across all PauliTwirl instances.
+_twirl_set_cache: dict[str, list] = {}
+
+
+def _get_twirl_set(gate: Gate) -> list:
+    """Get or compute the twirl pair set for a gate, using the module-level cache."""
+    if gate.name not in _twirl_set_cache:
+        twirl_list = []
+        for pauli_left in pauli_basis(2):
+            for pauli_right in pauli_basis(2):
+                if (Operator(pauli_left) @ Operator(gate)).equiv(
+                    Operator(gate) @ pauli_right
+                ):
+                    twirl_list.append((pauli_left, pauli_right))
+        _twirl_set_cache[gate.name] = twirl_list
+    return _twirl_set_cache[gate.name]
+
+
 class PauliTwirl(TransformationPass):
     """Add Pauli twirls to two-qubit gates."""
- 
+
     def __init__(
         self,
         gates_to_twirl: Optional[Iterable[Gate]] = None,
@@ -25,30 +44,8 @@ class PauliTwirl(TransformationPass):
         if gates_to_twirl is None:
             gates_to_twirl = [CZGate()]
         self.gates_to_twirl = gates_to_twirl
-        self.build_twirl_set()
+        self.twirl_set = {gate.name: _get_twirl_set(gate) for gate in self.gates_to_twirl}
         super().__init__()
- 
-    def build_twirl_set(self):
-        """
-        Build a set of Paulis to twirl for each gate and store internally as .twirl_set.
-        """
-        self.twirl_set = {}
- 
-        # iterate through gates to be twirled
-        for twirl_gate in self.gates_to_twirl:
-            twirl_list = []
- 
-            # iterate through Paulis on left of gate to twirl
-            for pauli_left in pauli_basis(2):
-                # iterate through Paulis on right of gate to twirl
-                for pauli_right in pauli_basis(2):
-                    # save pairs that produce identical operation as gate to twirl
-                    if (Operator(pauli_left) @ Operator(twirl_gate)).equiv(
-                        Operator(twirl_gate) @ pauli_right
-                    ):
-                        twirl_list.append((pauli_left, pauli_right))
- 
-            self.twirl_set[twirl_gate.name] = twirl_list
  
     def run(
         self,
@@ -88,33 +85,29 @@ class PauliTwirl(TransformationPass):
         return dag
     
 def get_twirled_circuits(
-    circuits: list[QuantumCircuit],  # list of QuantumCircuits to generate twirled circuits from
-    num_twirls: int,  # number of twirled circuits to generate per input circuit
-    gates_to_twirl: Optional[Iterable[Gate]] = None,  # optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled
-) -> tuple[list[QuantumCircuit], list[list[int]]]:
+    circuits: list[QuantumCircuit],
+    num_twirls: int,
+    gates_to_twirl: Optional[Iterable[Gate]] = None,
+) -> list[QuantumCircuit]:
     """
     Generate twirled circuits from input circuits.
+
+    For each input circuit, produces the original circuit followed by num_twirls
+    twirled copies, giving groups of (num_twirls + 1) circuits in a flat list.
 
     Args:
         circuits: List of QuantumCircuits to generate twirled circuits from.
         num_twirls: Number of twirled circuits to generate per input circuit.
         gates_to_twirl: Optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled.
     Returns:
-        Tuple of (list of twirled QuantumCircuits, list of circuit groups).
+        Flat list of circuits: [orig_0, twirl_0_1, ..., twirl_0_T, orig_1, twirl_1_1, ..., twirl_1_T, ...].
     """
     twirled_circuits = []
-    
-    circuit_groups = []
 
     pm = PassManager(PauliTwirl(gates_to_twirl=gates_to_twirl))
 
     for circuit in circuits:
+        twirled_circuits.append(circuit)
+        twirled_circuits.extend(pm.run(circuit) for _ in range(num_twirls))
 
-        start_idx = len(twirled_circuits)
-        
-        twirled_circuit = [pm.run(circuit) for _ in range(num_twirls)]
-        twirled_circuits.append(circuit) # include original circuit in list of twirled circuits
-        twirled_circuits.extend(twirled_circuit)
-
-        circuit_groups.append(list(range(start_idx, len(twirled_circuits))))
-    return twirled_circuits, circuit_groups
+    return twirled_circuits
