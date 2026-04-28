@@ -29,7 +29,7 @@ class FiQCIEstimator:
 	Mitigation levels:
 		- 0: No error mitigation (raw results)
 		- 1: Readout error mitigation using M3 (default)
-		- 2: Level 1 + TBD
+		- 2: Level 1 + dynamical decoupling (DD)
 		- 3: Level 2 + zero-noise extrapolation (ZNE) with local folding and exponential extrapolation
 
 	Args:
@@ -311,6 +311,10 @@ class FiQCIEstimator:
 			self._zne["extrapolation_degree"] = extrapolation_degree
 		else:
 			self._zne["extrapolation_degree"] = None
+	
+	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
+		"""Configure Pauli twirling settings for the estimator."""
+		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
 
 class FiQCIEstimatorJobCollection:
