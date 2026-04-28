@@ -125,12 +125,13 @@ class FiQCIEstimator:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
 		expectation_values = []
-		zne_expvs = []
+		all_zne_expvs = []
 
 		jobs = []
 
 		for i, obs_circ_groups in enumerate(obs_circuits):
 			obs_circs_list = [group[0] for group in obs_circ_groups]
+			zne_expvs = []
 
 			measurement_settings = _combine_pauli_ops(
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
@@ -181,9 +182,11 @@ class FiQCIEstimator:
 				)
 
 			expectation_values.append(expvs)
+			if self._zne["enabled"] and len(zne_expvs) > 0:
+				all_zne_expvs.append(zne_expvs)
 
-		if self._zne["enabled"] and len(zne_expvs) > 0:
-			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, zne_expvs)
+		if self._zne["enabled"] and len(all_zne_expvs) > 0:
+			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, all_zne_expvs)
 		else:
 			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
 
