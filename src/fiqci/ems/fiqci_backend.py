@@ -23,6 +23,7 @@ from fiqci.ems.transpiler_passes.pauli_twirl import get_twirled_circuits
 from fiqci.ems.utils import probabilities_to_counts
 
 from qiskit import QuantumCircuit, transpile
+from qiskit.circuit import Gate
 from qiskit.providers import JobV1
 from qiskit.result import Result
 
@@ -90,8 +91,9 @@ class FiQCIBackend:
 		self._dd: DDSettings = {"enabled": False, "gate_sequences": []}
 
 		class PauliTwirlSettings(TypedDict):
+			enabled: bool
 			num_twirls: int
-			gates_to_twirl: Optional[Iterable[str]]
+			gates_to_twirl: Optional[Iterable[Gate]]
 		
 		self._pauli_twirl: PauliTwirlSettings = {
 			"enabled": False,
@@ -143,14 +145,14 @@ class FiQCIBackend:
 		"""
 		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
 
-	def init_pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[str]] = None) -> None:
+	def init_pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[Gate]] = None) -> None:
 		"""
 		Initialize Pauli twirling settings.
 
 		Args:
 			enabled: Whether Pauli twirling is enabled.
 			num_twirls: Number of twirled circuits to generate per input circuit.
-			gates_to_twirl: Optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled.
+			gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
 		"""
 
 		self._pauli_twirl["enabled"] = enabled
@@ -284,7 +286,7 @@ class FiQCIBackend:
 		Args:
 			enabled: Whether to enable Pauli twirling.
 			num_twirls: Number of twirled circuits to generate per input circuit (default: 10).
-			gates_to_twirl: Optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled.
+			gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
 		"""
 		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
@@ -455,6 +457,7 @@ class FiQCIBackend:
 
 		for idx in range(len(circuits)):
 			raw_counts = result.get_counts(idx)
+			assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
 			raw_counts_list.append(raw_counts)
 			qubits = qubits_list[idx]
 

@@ -38,7 +38,7 @@ class PauliTwirl(TransformationPass):
     ):
         """
         Args:
-            gates_to_twirl: Names of gates to twirl. The default behavior is to twirl all
+            gates_to_twirl: Gates to twirl. The default behavior is to twirl all
                 two-qubit basis gates.
         """
         if gates_to_twirl is None:
@@ -98,7 +98,7 @@ def get_twirled_circuits(
     Args:
         circuits: List of QuantumCircuits to generate twirled circuits from.
         num_twirls: Number of twirled circuits to generate per input circuit.
-        gates_to_twirl: Optional list of gate names to twirl, if None, all two-qubit basis gates will be twirled.
+        gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
     Returns:
         Flat list of circuits: [orig_0, twirl_0_1, ..., twirl_0_T, orig_1, twirl_1_1, ..., twirl_1_T, ...].
     """
