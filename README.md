@@ -14,7 +14,7 @@ This python package can be pre-installed on a HPC system or installed by the use
 | 0 | None | Raw results |
 | 1 | Readout Error Mitigation | M3 (matrix-free measurement mitigation) |
 | 2 | Level 1 + Dynamical Decoupling | Dynamical Decoupling |
-| 3 | Level 2 + additional | TBD |
+| 3 | Level 2 + Pauli Twirling | Pauli Twirling |
 
 </details>
 

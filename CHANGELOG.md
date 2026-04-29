@@ -1,3 +1,17 @@
+## [0.5.0] - 28.4.2026
+
+### Added
+- Pauli Twirling for for `FiQCISampler` and `FiQCIBackend` as `mitigation_level=3` (REM + DD + Pauli Twirling). Can be manually enabled for `FiQCIEstimator`
+- Manual configuration using the `pauli_twirl()` method of the primitive
+  - `num_twirls`: number of twirled variant to generate per circuit
+  - `gates_to_twirl`: gates to be twirled, by default all two qubit gates
+- `transpiler_passes/pauli_twirl.py`: `get_twirled_circuits()` for generating twirled circuits 
+
+### Changed
+- Bugfix: ZNE expectation values in FiQCIEstimator now correctly scoped per observable group
+
+[https://github.com/FiQCI/fiqci-ems/pull/11](https://github.com/FiQCI/fiqci-ems/pull/11)
+
 ## [0.4.0] - 3.4.2026
 
 ### Added
