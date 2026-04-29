@@ -10,3 +10,4 @@ Guides
    Readout Error Mitigation <readout_mitigation>
    Zero Noise Extrapolation <zero_noise_extrapolation>
    Dynamical Decoupling <dynamical_decoupling>
+   Pauli Twirling <pauli_twirling>
