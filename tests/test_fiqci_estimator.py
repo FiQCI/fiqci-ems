@@ -197,6 +197,142 @@ class TestFiQCIEstimator:
 		assert call_kwargs["shots"] == 2048
 
 
+class TestEstimatorBatching:
+	"""Tests for FiQCIEstimator measurement-circuit flattening and batching."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		backend.target = _make_target()
+		return backend
+
+	@staticmethod
+	def _make_job(counts_per_circuit: list[dict[str, int]]) -> Mock:
+		mock_job = Mock()
+		mock_result = Mock()
+		mock_result.get_counts.return_value = counts_per_circuit
+		mock_job.result.return_value = mock_result
+		return mock_job
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_run_flattens_pairs_into_single_job_when_under_limit(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock
+	) -> None:
+		"""Multiple pairs whose total flat circuits fit in one batch share a single backend.run call."""
+		mock_fiqci_backend = Mock()
+		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend.run.return_value = self._make_job([{"00": 500, "11": 500}] * 3)
+		mock_fiqci_backend_class.return_value = mock_fiqci_backend
+
+		circuits = [QuantumCircuit(2) for _ in range(3)]
+		for qc in circuits:
+			qc.h(0)
+			qc.cx(0, 1)
+		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+
+		estimator = FiQCIEstimator(mock_backend)
+		estimator.run(circuits, obs, max_batch_size=10)
+
+		assert mock_fiqci_backend.run.call_count == 1
+		# All 3 measurement circuits sent in one batch
+		assert len(mock_fiqci_backend.run.call_args_list[0].args[0]) == 3
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_run_splits_into_multiple_batches_when_over_limit(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock
+	) -> None:
+		"""When flattened circuits exceed max_batch_size the estimator submits multiple jobs."""
+		mock_fiqci_backend = Mock()
+		mock_fiqci_backend.target = _make_target()
+		# 5 pairs * 1 circuit each = 5 flat circuits, max_batch_size=2 -> 3 batches (2, 2, 1)
+		mock_fiqci_backend.run.side_effect = [
+			self._make_job([{"00": 500, "11": 500}] * 2),
+			self._make_job([{"00": 500, "11": 500}] * 2),
+			self._make_job([{"00": 500, "11": 500}]),
+		]
+		mock_fiqci_backend_class.return_value = mock_fiqci_backend
+
+		circuits = [QuantumCircuit(2) for _ in range(5)]
+		for qc in circuits:
+			qc.h(0)
+			qc.cx(0, 1)
+		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+
+		estimator = FiQCIEstimator(mock_backend)
+		result = estimator.run(circuits, obs, max_batch_size=2)
+
+		assert isinstance(result, FiQCIEstimatorJobCollection)
+		assert mock_fiqci_backend.run.call_count == 3
+		batch_sizes = [len(call.args[0]) for call in mock_fiqci_backend.run.call_args_list]
+		assert batch_sizes == [2, 2, 1]
+		# One expectation value per pair
+		assert len(result.expectation_values()) == 5
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_run_default_max_batch_size_is_100(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock
+	) -> None:
+		"""Default max_batch_size is 100; 50 pairs (50 flat circuits) fit in a single batch."""
+		mock_fiqci_backend = Mock()
+		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend.run.return_value = self._make_job([{"00": 500, "11": 500}] * 50)
+		mock_fiqci_backend_class.return_value = mock_fiqci_backend
+
+		circuits = [QuantumCircuit(2) for _ in range(50)]
+		for qc in circuits:
+			qc.h(0)
+			qc.cx(0, 1)
+		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+
+		estimator = FiQCIEstimator(mock_backend)
+		estimator.run(circuits, obs)
+
+		assert mock_fiqci_backend.run.call_count == 1
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_run_per_pair_counts_assigned_correctly(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock
+	) -> None:
+		"""Counts returned across batches are sliced back to the correct pair using pair_lengths."""
+		mock_fiqci_backend = Mock()
+		mock_fiqci_backend.target = _make_target()
+		# Two pairs: pair 0 measures Z (all-zero counts -> +1), pair 1 measures Z (all-one counts -> -1)
+		mock_fiqci_backend.run.return_value = self._make_job([{"00": 1000}, {"11": 1000}])
+		mock_fiqci_backend_class.return_value = mock_fiqci_backend
+
+		circuits = [QuantumCircuit(2) for _ in range(2)]
+		for qc in circuits:
+			qc.h(0)
+			qc.cx(0, 1)
+		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+
+		estimator = FiQCIEstimator(mock_backend)
+		result = estimator.run(circuits, obs)
+
+		# Pair 0: '00' -> +1 parity for ZZ -> +1.0
+		# Pair 1: '11' -> +1 parity for ZZ ('11' has even number of 1s) -> +1.0
+		assert result.expectation_values(0) == pytest.approx([1.0])
+		assert result.expectation_values(1) == pytest.approx([1.0])
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_run_max_batch_size_forwarded_through_run(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""The public run() forwards max_batch_size to _run()."""
+		mock_fiqci_backend = Mock()
+		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend_class.return_value = mock_fiqci_backend
+
+		estimator = FiQCIEstimator(mock_backend)
+		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+		with patch.object(estimator, "_run") as mock_internal_run:
+			mock_internal_run.return_value = Mock()
+			estimator.run(mock_circuit, obs, max_batch_size=42)
+			mock_internal_run.assert_called_once_with(mock_circuit, obs, shots=2048, max_batch_size=42)
+
+
 class TestCalculateExpectationValues:
 	"""Tests for calculate_expectation_values method."""
 

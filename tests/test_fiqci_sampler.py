@@ -124,3 +124,31 @@ class TestFiQCISampler:
 
 		sampler = FiQCISampler(mock_backend)
 		assert sampler.backend is mock_fiqci_backend
+
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
+	def test_run_forwards_explicit_max_batch_size(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""An explicit max_batch_size is forwarded to FiQCIBackend.run."""
+		mock_fiqci_backend = Mock()
+		mock_fiqci_backend.run.return_value = Mock()
+		mock_fiqci_backend_class.return_value = mock_fiqci_backend
+
+		sampler = FiQCISampler(mock_backend)
+		sampler.run(mock_circuit, max_batch_size=42)
+
+		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048, max_batch_size=42)
+
+	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
+	def test_run_default_max_batch_size_is_100(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""When max_batch_size is omitted the sampler defaults to 100."""
+		mock_fiqci_backend = Mock()
+		mock_fiqci_backend.run.return_value = Mock()
+		mock_fiqci_backend_class.return_value = mock_fiqci_backend
+
+		sampler = FiQCISampler(mock_backend)
+		sampler.run(mock_circuit)
+
+		assert mock_fiqci_backend.run.call_args.kwargs["max_batch_size"] == 100
