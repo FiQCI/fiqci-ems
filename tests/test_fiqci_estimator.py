@@ -88,7 +88,7 @@ class TestFiQCIEstimator:
 		with patch.object(estimator, "_run") as mock_internal_run:
 			mock_internal_run.return_value = Mock()
 			estimator.run(mock_circuit, single_observable, shots=512)
-			mock_internal_run.assert_called_once_with(mock_circuit, single_observable, shots=512)
+			mock_internal_run.assert_called_once_with(mock_circuit, single_observable, shots=512, max_batch_size=100)
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_mismatched_list_lengths_raises_error(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
@@ -133,7 +133,7 @@ class TestFiQCIEstimator:
 		mock_fiqci_backend.target = _make_target()
 		mock_job = Mock()
 		mock_result = Mock()
-		mock_result.get_counts.return_value = {"00": 500, "11": 500}
+		mock_result.get_counts.return_value = [{"00": 500, "11": 500}, {"00": 500, "11": 500}]
 		mock_job.result.return_value = mock_result
 		mock_fiqci_backend.run.return_value = mock_job
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
@@ -148,7 +148,7 @@ class TestFiQCIEstimator:
 		result = estimator.run(circuits, obs)
 
 		assert isinstance(result, FiQCIEstimatorJobCollection)
-		assert mock_fiqci_backend.run.call_count == 2
+		assert mock_fiqci_backend.run.call_count == 1
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_paired_lists(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
@@ -157,7 +157,7 @@ class TestFiQCIEstimator:
 		mock_fiqci_backend.target = _make_target()
 		mock_job = Mock()
 		mock_result = Mock()
-		mock_result.get_counts.return_value = {"00": 500, "11": 500}
+		mock_result.get_counts.return_value = [{"00": 500, "11": 500}, {"00": 500, "11": 500}]
 		mock_job.result.return_value = mock_result
 		mock_fiqci_backend.run.return_value = mock_job
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
@@ -173,7 +173,7 @@ class TestFiQCIEstimator:
 		result = estimator.run(circuits, observables)
 
 		assert isinstance(result, FiQCIEstimatorJobCollection)
-		assert mock_fiqci_backend.run.call_count == 2
+		assert mock_fiqci_backend.run.call_count == 1
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_default_shots(

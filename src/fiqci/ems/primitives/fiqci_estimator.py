@@ -3,6 +3,7 @@ A class that runs quantum circuits and calculates expectation values of observab
 """
 
 from __future__ import annotations
+import logging
 import warnings
 from typing import Any, TypedDict, cast
 
@@ -18,6 +19,8 @@ from fiqci.ems.utils import _remove_idle_wires
 from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
 from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class FiQCIEstimator:
@@ -73,6 +76,36 @@ class FiQCIEstimator:
 	def mitigator_options(self) -> dict[str, Any]:
 		"""Get current mitigator settings."""
 		return {"zne": self._zne, **self.backend.mitigator_options}
+	
+	def total_circuits_generated(self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False) -> int:
+		"""Calculate total circuits generated for a given number of base circuits and observables."""
+		measurement_settings = _combine_pauli_ops(observables if isinstance(observables, SparsePauliOp) else observables[0])
+		num_measurement_circuits = len(measurement_settings)
+		num_calibration_circuits = 0
+		zne_circuits_multiplier = 1
+		pauli_twirl_circuits_multiplier = 1
+
+		if self._zne["enabled"]:
+			zne_circuits_multiplier = len(self._zne["scale_factors"])
+		if self.backend._pauli_twirl["enabled"]:
+			pauli_twirl_circuits_multiplier = self.backend._pauli_twirl["num_twirls"] + 1  # +1 for the original circuit without twirling
+		if self.backend._rem["calibration_file"] is None and self.backend._rem["enabled"]:
+			num_calibration_circuits = 2
+		
+		total_circuits = num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier + num_calibration_circuits
+
+		if detailed:
+			print(f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * circuits for conflicting basis measurements ({num_measurement_circuits}) * ZNE multiplier ({zne_circuits_multiplier}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}) + REM calibration circuits ({num_calibration_circuits})")
+			return {
+				"base_circuits": num_base_circuits,
+				"measurement_circuits_per_basis": num_measurement_circuits,
+				"zne_multiplier": zne_circuits_multiplier,
+				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
+				"rem_calibration_circuits": num_calibration_circuits,
+				"total_circuits": total_circuits
+			}
+		else:
+			return total_circuits
 
 	def _make_meas_instruction(self, circuit: QuantumCircuit, label: str):
 		"""Transpile a measurement circuit to basis gates and wrap as an instruction."""
@@ -85,6 +118,7 @@ class FiQCIEstimator:
 		circuits: QuantumCircuit | list[QuantumCircuit],
 		observables: SparsePauliOp | list[SparsePauliOp],
 		shots: int = 2048,
+		max_batch_size: int = 100,
 		**options,
 	) -> FiQCIEstimatorJobCollection:
 		x_meas = QuantumCircuit(1)
@@ -111,8 +145,6 @@ class FiQCIEstimator:
 					get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops)
 					for circ, obs in zip(circuits, observables)
 				]
-		# TODO: Better batching for estimator. No need to run multiple separate jobs if total number of circuits
-		# is not too large. We can just combine circuits into a single job and split the results afterwards.
 
 		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
@@ -124,31 +156,88 @@ class FiQCIEstimator:
 		else:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
+		num_pairs = len(obs_circuits)
+		if self._zne["enabled"]:
+			logger.info(
+				"FiQCIEstimator.run: %d circuit/observable pair(s); mitigation_level=%d, "
+				"ZNE=on (scales=%s, folding=%s, extrapolation=%s)",
+				num_pairs,
+				self._mitigation_level,
+				self._zne["scale_factors"],
+				self._zne["folding_method"],
+				self._zne["extrapolation_method"],
+			)
+		else:
+			logger.info(
+				"FiQCIEstimator.run: %d circuit/observable pair(s); mitigation_level=%d, ZNE=off",
+				num_pairs,
+				self._mitigation_level,
+			)
+
 		expectation_values = []
 		all_zne_expvs = []
 
-		jobs = []
+		flat_circuits: list[QuantumCircuit] = []
+		pair_lengths: list[int] = []
+		pair_measurement_settings: list[list[dict[int, str]]] = []
+		num_base_circuits = 0  # measurement-basis circuits before ZNE scale-factor expansion
 
 		for i, obs_circ_groups in enumerate(obs_circuits):
 			obs_circs_list = [group[0] for group in obs_circ_groups]
-			zne_expvs = []
 
 			measurement_settings = _combine_pauli_ops(
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
 			)
+			pair_measurement_settings.append(measurement_settings)
+			num_base_circuits += len(obs_circs_list)
 
 			if self._zne["enabled"]:
 				obs_circs_list = _get_zne_circuits(
 					obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"], self._zne["folding_method"]
 				)
 
-			job = self.backend.run(obs_circs_list, shots=shots, **options)
+			pair_lengths.append(len(obs_circs_list))
+			flat_circuits.extend(obs_circs_list)
 
+		num_batches = (len(flat_circuits) + max_batch_size - 1) // max_batch_size
+		if self._zne["enabled"]:
+			logger.info(
+				"Flattened %d pair(s) into %d measurement-basis circuit(s), expanded to %d after %dx ZNE; "
+				"submitting in %d batch(es) of up to %d",
+				num_pairs,
+				num_base_circuits,
+				len(flat_circuits),
+				len(self._zne["scale_factors"]),
+				num_batches,
+				max_batch_size,
+			)
+		else:
+			logger.info(
+				"Flattened %d pair(s) into %d measurement-basis circuit(s); submitting in %d batch(es) of up to %d",
+				num_pairs,
+				len(flat_circuits),
+				num_batches,
+				max_batch_size,
+			)
+
+		jobs = []
+		all_counts: list[dict[str, int]] = []
+		for batch_start in range(0, len(flat_circuits), max_batch_size):
+			batch = flat_circuits[batch_start : batch_start + max_batch_size]
+			job = self.backend.run(batch, shots=shots, **options)
 			jobs.append(job)
+			batch_counts = job.result().get_counts()
+			if not isinstance(batch_counts, list):
+				batch_counts = [batch_counts]
+			all_counts.extend(batch_counts)
 
-			results = job.result()
+		offset = 0
+		for i, length in enumerate(pair_lengths):
+			counts = all_counts[offset : offset + length]
+			offset += length
 
-			counts = results.get_counts()
+			measurement_settings = pair_measurement_settings[i]
+			zne_expvs = []
 
 			if self._zne["enabled"]:
 				split_counts = []
@@ -195,6 +284,7 @@ class FiQCIEstimator:
 		circuits: QuantumCircuit | list[QuantumCircuit],
 		observables: SparsePauliOp | list[SparsePauliOp],
 		shots: int = 2048,
+		max_batch_size: int = 100,
 		**options,
 	) -> FiQCIEstimatorJobCollection:
 		"""
@@ -204,12 +294,15 @@ class FiQCIEstimator:
 			circuits: A QuantumCircuit or list of QuantumCircuits to execute.
 			observables: A SparsePauliOp or list of SparsePauliOps representing the observables for which to calculate expectation values.
 			shots: Number of shots to execute each circuit (default: 2048).
+			max_batch_size: Maximum number of circuits to send in a single backend job. All measurement-basis subcircuits
+				(across all circuit/observable pairs and ZNE scale factors) are flattened and split into batches of this
+				size (default: 100).
 			**options: Additional options to pass to the backend's run method.
 
 		Returns:
 			A FiQCIEstimatorJobCollection containing the jobs and calculated expectation values.
 		"""
-		return self._run(circuits, observables, shots=shots, **options)
+		return self._run(circuits, observables, shots=shots, max_batch_size=max_batch_size, **options)
 
 	def _calculate_expectation_values(
 		self,

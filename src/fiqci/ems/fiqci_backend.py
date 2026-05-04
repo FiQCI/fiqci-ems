@@ -141,6 +141,29 @@ class FiQCIBackend:
 		"""
 		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
 
+	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int:
+		"""Calculate total circuits generated for a given number of base circuits and observables."""
+		num_calibration_circuits = 0
+		pauli_twirl_circuits_multiplier = 1
+
+		if self.backend._pauli_twirl["enabled"]:
+			pauli_twirl_circuits_multiplier = self.backend._pauli_twirl["num_twirls"] + 1  # +1 for the original circuit without twirling
+		if self.backend._rem["calibration_file"] is None and self.backend._rem["enabled"]:
+			num_calibration_circuits = 2
+		
+		total_circuits = num_base_circuits * pauli_twirl_circuits_multiplier + num_calibration_circuits
+
+		if detailed:
+			print(f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}) + REM calibration circuits ({num_calibration_circuits})")
+			return {
+				"base_circuits": num_base_circuits,
+				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
+				"rem_calibration_circuits": num_calibration_circuits,
+				"total_circuits": total_circuits
+			}
+		else:
+			return total_circuits
+
 	def init_pauli_twirl(
 		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[Gate]] = None
 	) -> None:
@@ -289,8 +312,12 @@ class FiQCIBackend:
 		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
 	def run(
-		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
-	) -> JobV1 | MitigatedJob:
+		self,
+		circuits: QuantumCircuit | list[QuantumCircuit],
+		shots: int = 1024,
+		max_batch_size: int = 100,
+		**kwargs: Any,
+	) -> JobV1 | MitigatedJob | BatchedJob:
 		"""Run quantum circuits with error mitigation.
 
 		This method runs the specified quantum circuit(s) on the backend and applies
@@ -299,6 +326,10 @@ class FiQCIBackend:
 		Args:
 			circuits: Single quantum circuit or list of circuits to execute.
 			shots: Number of shots. Default is 1024.
+			max_batch_size: Maximum number of circuits per backend job. The (post-twirl) circuit list is
+				flattened and split into batches of this size; the resulting jobs are wrapped so that the
+				returned job's ``result()`` exposes a single combined Result indexed in submission order
+				(default: 100).
 			**kwargs: Additional keyword arguments passed to backend.run().
 
 		Returns:
@@ -314,6 +345,16 @@ class FiQCIBackend:
 		if not circuits_list:
 			raise ValueError("No circuits provided")
 
+		input_circuit_count = len(circuits_list)
+		logger.info(
+			"FiQCIBackend.run: %d input circuit(s); mitigation_level=%d (REM=%s, DD=%s, pauli_twirl=%s)",
+			input_circuit_count,
+			self._mitigation_level,
+			"on" if self._rem["enabled"] else "off",
+			"on" if self._dd["enabled"] else "off",
+			"on" if self._pauli_twirl["enabled"] else "off",
+		)
+
 		# If Pauli Twirling is enabled, replace circuits with twirled versions
 		twirl_group_size = 0
 		if self._pauli_twirl["enabled"]:
@@ -324,14 +365,35 @@ class FiQCIBackend:
 			)
 			circuits_list = transpile(circuits_list, backend=self._backend, optimization_level=0)
 			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
+			logger.info(
+				"Pauli twirling expanded %d -> %d circuits (group size %d)",
+				input_circuit_count,
+				len(circuits_list),
+				twirl_group_size,
+			)
 
-		# Run circuits on backend (with DD options if enabled)
+		# Build run kwargs (DD options if enabled)
+		run_kwargs = dict(kwargs)
 		if self._dd["enabled"]:
-			dd_options = build_dd_options(self._dd["gate_sequences"])
-			job = self._backend.run(circuits_list, shots=shots, circuit_compilation_options=dd_options, **kwargs)
-		else:
-			job = self._backend.run(circuits_list, shots=shots, **kwargs)
-		assert job is not None, "Backend returned None job"
+			run_kwargs["circuit_compilation_options"] = build_dd_options(self._dd["gate_sequences"])
+
+		# Submit circuits in batches of at most max_batch_size, preserving submission order so the
+		# combined result indices match circuits_list.
+		num_batches = (len(circuits_list) + max_batch_size - 1) // max_batch_size
+		logger.info(
+			"Submitting %d circuit(s) to backend in %d batch(es) of up to %d",
+			len(circuits_list),
+			num_batches,
+			max_batch_size,
+		)
+		batch_jobs: list[JobV1] = []
+		for batch_start in range(0, len(circuits_list), max_batch_size):
+			batch = circuits_list[batch_start : batch_start + max_batch_size]
+			batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
+			assert batch_job is not None, "Backend returned None job"
+			batch_jobs.append(batch_job)
+
+		job: JobV1 | BatchedJob = batch_jobs[0] if len(batch_jobs) == 1 else BatchedJob(batch_jobs)
 
 		# No REM: return raw job (or averaged twirl results)
 		if not self._rem["enabled"]:
@@ -407,7 +469,7 @@ class FiQCIBackend:
 		return QiskitResult.from_dict(result_data)
 
 	def _run_with_m3_mitigation(
-		self, job: JobV1, circuits: list[QuantumCircuit], shots: int, twirl_group_size: int = 0
+		self, job: JobV1 | BatchedJob, circuits: list[QuantumCircuit], shots: int, twirl_group_size: int = 0
 	) -> MitigatedJob:
 		"""Run circuits with M3 readout error mitigation.
 
@@ -533,11 +595,12 @@ class MitigatedJob:
 	This class wraps the original job and provides access to mitigated results.
 	"""
 
-	def __init__(self, original_job: JobV1, mitigated_result: Result) -> None:
+	def __init__(self, original_job: JobV1 | BatchedJob, mitigated_result: Result) -> None:
 		"""Initialize mitigated job wrapper.
 
 		Args:
-			original_job: Original job from backend.
+			original_job: Original job from backend (a single ``JobV1`` or a ``BatchedJob`` wrapping
+				multiple per-batch jobs).
 			mitigated_result: Result object with mitigated counts.
 		"""
 		self._original_job = original_job
@@ -557,3 +620,36 @@ class MitigatedJob:
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate attribute access to original job object."""
 		return getattr(self._original_job, name)
+
+
+class BatchedJob:
+	"""Wrapper that combines results from multiple backend jobs into a single Result.
+
+	The wrapped jobs were submitted as ordered batches of a larger circuit list. Calling
+	``result()`` waits on each underlying job and concatenates their ``results`` lists in
+	submission order, so ``get_counts(idx)`` on the combined Result corresponds to the
+	original circuit index.
+	"""
+
+	def __init__(self, jobs: list[JobV1]) -> None:
+		self._jobs = jobs
+		self._combined_result: Result | None = None
+
+	def result(self, timeout: float | None = None) -> Result:
+		if self._combined_result is not None:
+			return self._combined_result
+
+		from qiskit.result import Result as QiskitResult
+
+		assert self._jobs, "BatchedJob must wrap at least one job"
+		combined_data: dict[str, Any] = self._jobs[0].result().to_dict()
+		merged_results: list[Any] = list(combined_data.get("results") or [])
+		for job in self._jobs[1:]:
+			merged_results.extend(job.result().to_dict().get("results") or [])
+		combined_data["results"] = merged_results
+		self._combined_result = QiskitResult.from_dict(combined_data)
+		return self._combined_result
+
+	def __getattr__(self, name: str) -> Any:
+		"""Delegate attribute access to the first underlying job."""
+		return getattr(self._jobs[0], name)

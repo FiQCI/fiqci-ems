@@ -58,7 +58,7 @@ class TestFiQCISampler:
 		sampler = FiQCISampler(mock_backend)
 		sampler.run(mock_circuit, shots=2048)
 
-		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048)
+		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048, max_batch_size=100)
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_default_shots(
@@ -72,7 +72,7 @@ class TestFiQCISampler:
 		sampler = FiQCISampler(mock_backend)
 		sampler._run(mock_circuit)
 
-		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048)
+		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=2048, max_batch_size=100)
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_passes_kwargs(
@@ -86,7 +86,7 @@ class TestFiQCISampler:
 		sampler = FiQCISampler(mock_backend)
 		sampler.run(mock_circuit, shots=512, some_option="value")
 
-		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=512, some_option="value")
+		mock_fiqci_backend.run.assert_called_once_with(mock_circuit, shots=512, max_batch_size=100, some_option="value")
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_run_returns_backend_result(
@@ -114,7 +114,7 @@ class TestFiQCISampler:
 		sampler = FiQCISampler(mock_backend)
 		sampler.run(circuits, shots=1024)
 
-		mock_fiqci_backend.run.assert_called_once_with(circuits, shots=1024)
+		mock_fiqci_backend.run.assert_called_once_with(circuits, shots=1024, max_batch_size=100)
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_backend_attribute_is_fiqci_backend(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
