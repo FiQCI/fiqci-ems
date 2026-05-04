@@ -1,3 +1,22 @@
+## [0.6.0] - 4.5.2026
+
+### Added
+- add an optional `max_batch_size` argument to primitives `.run()` methods. 
+    - `FiQCIBackend` now batches passed circuits into max `max_batch_size` sets before execution
+    - By default value is `100`
+    - Leads to more efficient use of QPU resources and less wait time in queue for user
+- add `BatchedJob` class:
+    - Wrapper to combine multiple jobs into a single result for easy use elsewhere
+- add `total_circuits_generated()` method to all primitives
+  - prints out the number of circuits to be generated using the active mitigation options
+- add some useful logging for batching and number of circuits being generated
+
+### Changed
+- `FiQCIEstimator` now always receives a single result from `FiQCIBackend` so `FiQCIEstimatorJobCollection` only takes one job as argumen -> rename to `FiQCIEstimatorJob`
+
+[https://github.com/FiQCI/fiqci-ems/pull/12](https://github.com/FiQCI/fiqci-ems/pull/12)
+
+
 ## [0.5.0] - 28.4.2026
 
 ### Added
