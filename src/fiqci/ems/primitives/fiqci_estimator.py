@@ -210,37 +210,29 @@ class FiQCIEstimator:
 			pair_lengths.append(len(obs_circs_list))
 			flat_circuits.extend(obs_circs_list)
 
-		num_batches = (len(flat_circuits) + max_batch_size - 1) // max_batch_size
 		if self._zne["enabled"]:
 			logger.info(
 				"Flattened %d pair(s) into %d measurement-basis circuit(s), expanded to %d after %dx ZNE; "
-				"submitting in %d batch(es) of up to %d",
+				"forwarding to backend with max_batch_size=%d",
 				num_pairs,
 				num_base_circuits,
 				len(flat_circuits),
 				len(self._zne["scale_factors"]),
-				num_batches,
 				max_batch_size,
 			)
 		else:
 			logger.info(
-				"Flattened %d pair(s) into %d measurement-basis circuit(s); submitting in %d batch(es) of up to %d",
+				"Flattened %d pair(s) into %d measurement-basis circuit(s); forwarding to backend with max_batch_size=%d",
 				num_pairs,
 				len(flat_circuits),
-				num_batches,
 				max_batch_size,
 			)
 
-		jobs = []
-		all_counts: list[dict[str, int]] = []
-		for batch_start in range(0, len(flat_circuits), max_batch_size):
-			batch = flat_circuits[batch_start : batch_start + max_batch_size]
-			job = self.backend.run(batch, shots=shots, **options)
-			jobs.append(job)
-			batch_counts = job.result().get_counts()
-			if not isinstance(batch_counts, list):
-				batch_counts = [batch_counts]
-			all_counts.extend(batch_counts)
+		# Backend handles batching internally and returns a single result-shaped job (JobV1, MitigatedJob, or BatchedJob).
+		job = self.backend.run(flat_circuits, shots=shots, max_batch_size=max_batch_size, **options)
+		all_counts = job.result().get_counts()
+		if not isinstance(all_counts, list):
+			all_counts = [all_counts]
 
 		offset = 0
 		for i, length in enumerate(pair_lengths):
@@ -286,9 +278,9 @@ class FiQCIEstimator:
 				all_zne_expvs.append(zne_expvs)
 
 		if self._zne["enabled"] and len(all_zne_expvs) > 0:
-			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, all_zne_expvs)
+			return FiQCIEstimatorJobCollection(job, expectation_values, observables, all_zne_expvs)
 		else:
-			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
+			return FiQCIEstimatorJobCollection(job, expectation_values, observables, expectation_values)
 
 	def run(
 		self,
@@ -422,32 +414,35 @@ class FiQCIEstimator:
 
 
 class FiQCIEstimatorJobCollection:
-	"""Wrapper for job results with mitigated data.
+	"""Wrapper around the single backend job that produced an estimator's results.
 
-	This class wraps the original job and provides access to mitigated results.
+	The estimator flattens all per-pair measurement-basis circuits into one backend call, so there
+	is exactly one underlying job (which may itself batch internally — see ``BatchedJob``). This
+	class exposes that job alongside the per-pair expectation values, raw expectation values
+	(pre-extrapolation when ZNE is enabled), and observables.
 	"""
 
-	def __init__(self, mitigated_jobs, expectation_values, observables, raw_expectation_values) -> None:
+	def __init__(self, mitigated_job, expectation_values, observables, raw_expectation_values) -> None:
 		"""Initialize the FiQCIEstimatorJobCollection with mitigated results.
 
 		Args:
-		    mitigated_jobs: List of original jobs that were run for each circuit/observable pair.
-		    expectation_values: List of mitigated expectation values corresponding to each job.
-		    observables: List of observables for which expectation values were calculated.
-		    raw_expectation_values: List of raw (unmitigated) expectation values before extrapolation
+		    mitigated_job: The single job that produced the results (JobV1, MitigatedJob, or BatchedJob).
+		    expectation_values: Per-pair list of mitigated expectation values.
+		    observables: Observable(s) for which expectation values were calculated.
+		    raw_expectation_values: Per-pair raw (unmitigated, pre-extrapolation) expectation values.
 		"""
-		self.mitigated_jobs = mitigated_jobs
+		self.mitigated_job = mitigated_job
 		self._expectation_values = expectation_values
-		self._raw_expectation_values = raw_expectation_values  # Store raw expectation values before extrapolation
+		self._raw_expectation_values = raw_expectation_values
 		self._observables = observables
 
-	def results(self):
-		"""Get all results for this estimator."""
-		return [job.result() for job in self.mitigated_jobs]
+	def result(self):
+		"""Get the underlying combined result for this estimator run."""
+		return self.mitigated_job.result()
 
-	def jobs(self):
-		"""Get all jobs ran for this estimator."""
-		return self.mitigated_jobs
+	def job(self):
+		"""Get the underlying job for this estimator run."""
+		return self.mitigated_job
 
 	def raw_expectation_values(self, index: int | None = None) -> list[float]:
 		"""Get the raw (unmitigated) expectation values before extrapolation."""
