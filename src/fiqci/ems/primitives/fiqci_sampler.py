@@ -52,10 +52,7 @@ class FiQCISampler:
 	) -> JobV1 | MitigatedJob | BatchedJob:
 		num_circuits = len(circuits) if isinstance(circuits, list) else 1
 		logger.info(
-			"FiQCISampler.run: %d input circuit(s), shots=%d, max_batch_size=%d",
-			num_circuits,
-			shots,
-			max_batch_size,
+			"FiQCISampler.run: %d input circuit(s), shots=%d, max_batch_size=%d", num_circuits, shots, max_batch_size
 		)
 		return self.backend.run(circuits, shots=shots, max_batch_size=max_batch_size, **options)
 

@@ -141,25 +141,29 @@ class FiQCIBackend:
 		"""
 		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
 
-	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int:
+	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int | dict[str, int]:
 		"""Calculate total circuits generated for a given number of base circuits and observables."""
 		num_calibration_circuits = 0
 		pauli_twirl_circuits_multiplier = 1
 
-		if self.backend._pauli_twirl["enabled"]:
-			pauli_twirl_circuits_multiplier = self.backend._pauli_twirl["num_twirls"] + 1  # +1 for the original circuit without twirling
-		if self.backend._rem["calibration_file"] is None and self.backend._rem["enabled"]:
+		if self._pauli_twirl["enabled"]:
+			pauli_twirl_circuits_multiplier = (
+				self._pauli_twirl["num_twirls"] + 1
+			)  # +1 for the original circuit without twirling
+		if self._rem["calibration_file"] is None and self._rem["enabled"]:
 			num_calibration_circuits = 2
-		
+
 		total_circuits = num_base_circuits * pauli_twirl_circuits_multiplier + num_calibration_circuits
 
 		if detailed:
-			print(f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}) + REM calibration circuits ({num_calibration_circuits})")
+			print(
+				f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}) + REM calibration circuits ({num_calibration_circuits})"
+			)
 			return {
 				"base_circuits": num_base_circuits,
 				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
 				"rem_calibration_circuits": num_calibration_circuits,
-				"total_circuits": total_circuits
+				"total_circuits": total_circuits,
 			}
 		else:
 			return total_circuits

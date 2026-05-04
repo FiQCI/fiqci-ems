@@ -271,9 +271,7 @@ class TestEstimatorBatching:
 		assert len(result.expectation_values()) == 5
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
-	def test_run_default_max_batch_size_is_100(
-		self, mock_fiqci_backend_class: Mock, mock_backend: Mock
-	) -> None:
+	def test_run_default_max_batch_size_is_100(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Default max_batch_size is 100; 50 pairs (50 flat circuits) fit in a single batch."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.target = _make_target()
@@ -292,9 +290,7 @@ class TestEstimatorBatching:
 		assert mock_fiqci_backend.run.call_count == 1
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
-	def test_run_per_pair_counts_assigned_correctly(
-		self, mock_fiqci_backend_class: Mock, mock_backend: Mock
-	) -> None:
+	def test_run_per_pair_counts_assigned_correctly(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Counts returned across batches are sliced back to the correct pair using pair_lengths."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.target = _make_target()

@@ -76,10 +76,14 @@ class FiQCIEstimator:
 	def mitigator_options(self) -> dict[str, Any]:
 		"""Get current mitigator settings."""
 		return {"zne": self._zne, **self.backend.mitigator_options}
-	
-	def total_circuits_generated(self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False) -> int:
+
+	def total_circuits_generated(
+		self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False
+	) -> int | dict[str, int]:
 		"""Calculate total circuits generated for a given number of base circuits and observables."""
-		measurement_settings = _combine_pauli_ops(observables if isinstance(observables, SparsePauliOp) else observables[0])
+		measurement_settings = _combine_pauli_ops(
+			observables if isinstance(observables, SparsePauliOp) else observables[0]
+		)
 		num_measurement_circuits = len(measurement_settings)
 		num_calibration_circuits = 0
 		zne_circuits_multiplier = 1
@@ -88,21 +92,28 @@ class FiQCIEstimator:
 		if self._zne["enabled"]:
 			zne_circuits_multiplier = len(self._zne["scale_factors"])
 		if self.backend._pauli_twirl["enabled"]:
-			pauli_twirl_circuits_multiplier = self.backend._pauli_twirl["num_twirls"] + 1  # +1 for the original circuit without twirling
+			pauli_twirl_circuits_multiplier = (
+				self.backend._pauli_twirl["num_twirls"] + 1
+			)  # +1 for the original circuit without twirling
 		if self.backend._rem["calibration_file"] is None and self.backend._rem["enabled"]:
 			num_calibration_circuits = 2
-		
-		total_circuits = num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier + num_calibration_circuits
+
+		total_circuits = (
+			num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier
+			+ num_calibration_circuits
+		)
 
 		if detailed:
-			print(f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * circuits for conflicting basis measurements ({num_measurement_circuits}) * ZNE multiplier ({zne_circuits_multiplier}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}) + REM calibration circuits ({num_calibration_circuits})")
+			print(
+				f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * circuits for conflicting basis measurements ({num_measurement_circuits}) * ZNE multiplier ({zne_circuits_multiplier}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}) + REM calibration circuits ({num_calibration_circuits})"
+			)
 			return {
 				"base_circuits": num_base_circuits,
 				"measurement_circuits_per_basis": num_measurement_circuits,
 				"zne_multiplier": zne_circuits_multiplier,
 				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
 				"rem_calibration_circuits": num_calibration_circuits,
-				"total_circuits": total_circuits
+				"total_circuits": total_circuits,
 			}
 		else:
 			return total_circuits
