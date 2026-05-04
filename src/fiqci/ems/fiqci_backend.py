@@ -321,8 +321,9 @@ class FiQCIBackend:
 				circuits_list,
 				num_twirls=self._pauli_twirl["num_twirls"],
 				gates_to_twirl=self._pauli_twirl["gates_to_twirl"],
+				backend=self._backend,
 			)
-			circuits_list = transpile(circuits_list, backend=self._backend, optimization_level=0)
+			#circuits_list = transpile(circuits_list, backend=self._backend, optimization_level=0)
 			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
 
 		# Run circuits on backend (with DD options if enabled)
