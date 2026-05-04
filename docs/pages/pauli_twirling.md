@@ -2,11 +2,11 @@
 
 ## What is Pauli Twirling
 
-Pauli Twirling is an error mitigation (or tailoring) technique that aims to transform gate noise towards a stochastic Pauli channel which can be more efficiently mitigated by other methods. Pauli twirling generates multiple variants of a circuit by sandwchiching gates in between random sets of Pauli gates. These random Pauli sets are chosen so that the action of the sandwhiched gate is equal to just the original gate. The results of all the variant circuits can then be averaged to get the mitigated/tailored results.
+Pauli Twirling is an error mitigation (or tailoring) technique that aims to transform gate noise towards a stochastic Pauli channel which can be more efficiently mitigated by other methods. Pauli twirling generates multiple variants of a circuit by sandwiching gates in between random sets of Pauli gates. These random Pauli sets are chosen so that the action of the sandwiched gate is equal to just the original gate. The results of all the variant circuits can then be averaged to get the mitigated/tailored results.
 
 The steps are then:
 
-1. **Generate variant circuits** by sandwhiching two-qubit gates between Pauli channels that cancel out.
+1. **Generate variant circuits** by sandwiching two-qubit gates between Pauli channels that cancel out.
 2. **Execute** all variant circuits
 3. **Average** the results from execution
 
