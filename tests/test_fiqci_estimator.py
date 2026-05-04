@@ -8,7 +8,7 @@ from qiskit.circuit.library import HGate, CXGate, RZGate, SXGate, XGate, SdgGate
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler import Target
 
-from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator, FiQCIEstimatorJobCollection
+from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator, FiQCIEstimatorJob
 
 
 def _make_target(num_qubits=5):
@@ -123,7 +123,7 @@ class TestFiQCIEstimator:
 		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
 		result = estimator.run(mock_circuit, obs)
 
-		assert isinstance(result, FiQCIEstimatorJobCollection)
+		assert isinstance(result, FiQCIEstimatorJob)
 		mock_fiqci_backend.run.assert_called_once()
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
@@ -147,7 +147,7 @@ class TestFiQCIEstimator:
 		estimator = FiQCIEstimator(mock_backend)
 		result = estimator.run(circuits, obs)
 
-		assert isinstance(result, FiQCIEstimatorJobCollection)
+		assert isinstance(result, FiQCIEstimatorJob)
 		assert mock_fiqci_backend.run.call_count == 1
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
@@ -172,7 +172,7 @@ class TestFiQCIEstimator:
 		estimator = FiQCIEstimator(mock_backend)
 		result = estimator.run(circuits, observables)
 
-		assert isinstance(result, FiQCIEstimatorJobCollection)
+		assert isinstance(result, FiQCIEstimatorJob)
 		assert mock_fiqci_backend.run.call_count == 1
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
@@ -420,20 +420,20 @@ class TestCalculateExpectationValues:
 		assert exp_vals[0] == pytest.approx(-1.0)
 
 
-class TestFiQCIEstimatorJobCollection:
-	"""Tests for FiQCIEstimatorJobCollection class."""
+class TestFiQCIEstimatorJob:
+	"""Tests for FiQCIEstimatorJob class."""
 
 	def test_expectation_values_returns_all(self) -> None:
 		"""Test that expectation_values() returns all values when no index given."""
 		exp_vals = [[0.5, 0.3], [0.1, -0.2]]
-		collection = FiQCIEstimatorJobCollection([Mock()], exp_vals, Mock(), exp_vals)
+		collection = FiQCIEstimatorJob([Mock()], exp_vals, Mock(), exp_vals)
 
 		assert collection.expectation_values() == exp_vals
 
 	def test_expectation_values_by_index(self) -> None:
 		"""Test that expectation_values(index) returns values for specific circuit."""
 		exp_vals = [[0.5, 0.3], [0.1, -0.2]]
-		collection = FiQCIEstimatorJobCollection([Mock()], exp_vals, Mock(), exp_vals)
+		collection = FiQCIEstimatorJob([Mock()], exp_vals, Mock(), exp_vals)
 
 		assert collection.expectation_values(0) == [0.5, 0.3]
 		assert collection.expectation_values(1) == [0.1, -0.2]
@@ -441,14 +441,14 @@ class TestFiQCIEstimatorJobCollection:
 	def test_observables_returns_all(self) -> None:
 		"""Test that observables() returns all observables when no index given."""
 		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
-		collection = FiQCIEstimatorJobCollection([Mock()], [[0.5]], obs, [[0.5]])
+		collection = FiQCIEstimatorJob([Mock()], [[0.5]], obs, [[0.5]])
 
 		assert collection.observables() is obs
 
 	def test_observables_by_index(self) -> None:
 		"""Test that observables(index) returns specific observable."""
 		obs_list = [SparsePauliOp.from_list([("ZZ", 1.0)]), SparsePauliOp.from_list([("XX", 1.0)])]
-		collection = FiQCIEstimatorJobCollection([Mock()], [[0.5], [0.3]], obs_list, [[0.5], [0.3]])
+		collection = FiQCIEstimatorJob([Mock()], [[0.5], [0.3]], obs_list, [[0.5], [0.3]])
 
 		assert collection.observables(0) == obs_list[0]
 		assert collection.observables(1) == obs_list[1]

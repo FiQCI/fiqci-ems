@@ -209,7 +209,7 @@ Use the :attr:`~fiqci.ems.FiQCIEstimator.mitigator_options` property to view cur
 Results
 -------
 
-:meth:`~fiqci.ems.FiQCIEstimator.run` returns a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection` with the following methods:
+:meth:`~fiqci.ems.FiQCIEstimator.run` returns a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob` with the following methods:
 
 .. list-table::
    :header-rows: 1

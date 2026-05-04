@@ -131,7 +131,7 @@ class FiQCIEstimator:
 		shots: int = 2048,
 		max_batch_size: int = 100,
 		**options,
-	) -> FiQCIEstimatorJobCollection:
+	) -> FiQCIEstimatorJob:
 		x_meas = QuantumCircuit(1)
 		x_meas.h(0)
 
@@ -278,9 +278,9 @@ class FiQCIEstimator:
 				all_zne_expvs.append(zne_expvs)
 
 		if self._zne["enabled"] and len(all_zne_expvs) > 0:
-			return FiQCIEstimatorJobCollection(job, expectation_values, observables, all_zne_expvs)
+			return FiQCIEstimatorJob(job, expectation_values, observables, all_zne_expvs)
 		else:
-			return FiQCIEstimatorJobCollection(job, expectation_values, observables, expectation_values)
+			return FiQCIEstimatorJob(job, expectation_values, observables, expectation_values)
 
 	def run(
 		self,
@@ -289,7 +289,7 @@ class FiQCIEstimator:
 		shots: int = 2048,
 		max_batch_size: int = 100,
 		**options,
-	) -> FiQCIEstimatorJobCollection:
+	) -> FiQCIEstimatorJob:
 		"""
 		Execute the given circuits on the backend and calculate expectation values for the provided observables.
 
@@ -303,7 +303,7 @@ class FiQCIEstimator:
 			**options: Additional options to pass to the backend's run method.
 
 		Returns:
-			A FiQCIEstimatorJobCollection containing the jobs and calculated expectation values.
+			A FiQCIEstimatorJob containing the jobs and calculated expectation values.
 		"""
 		return self._run(circuits, observables, shots=shots, max_batch_size=max_batch_size, **options)
 
@@ -413,7 +413,7 @@ class FiQCIEstimator:
 		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
 
-class FiQCIEstimatorJobCollection:
+class FiQCIEstimatorJob:
 	"""Wrapper around the single backend job that produced an estimator's results.
 
 	The estimator flattens all per-pair measurement-basis circuits into one backend call, so there
@@ -423,7 +423,7 @@ class FiQCIEstimatorJobCollection:
 	"""
 
 	def __init__(self, mitigated_job, expectation_values, observables, raw_expectation_values) -> None:
-		"""Initialize the FiQCIEstimatorJobCollection with mitigated results.
+		"""Initialize the FiQCIEstimatorJob with mitigated results.
 
 		Args:
 		    mitigated_job: The single job that produced the results (JobV1, MitigatedJob, or BatchedJob).
