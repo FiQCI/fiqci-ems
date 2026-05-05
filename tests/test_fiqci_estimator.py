@@ -225,9 +225,7 @@ class TestEstimatorBatching:
 		return mock_job
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
-	def test_run_flattens_pairs_into_single(
-		self, mock_fiqci_backend_class: Mock, mock_backend: Mock
-	) -> None:
+	def test_run_flattens_pairs_into_single(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Multiple pairs that should be flattened for batching by FiQCIBackend."""
 		mock_fiqci_backend = Mock()
 		mock_fiqci_backend.target = _make_target()
