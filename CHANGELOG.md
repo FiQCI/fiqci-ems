@@ -14,6 +14,7 @@
 ### Changed
 - `FiQCIEstimator` now always receives a single result from `FiQCIBackend` so `FiQCIEstimatorJobCollection` only takes one job as argument -> rename to `FiQCIEstimatorJob`
 - Raw counts from individual twirled circuits now included in the raw_results(). Also returned from the per circuit Result headers.
+- Update `IQMClient` to 34.0.2
 
 [https://github.com/FiQCI/fiqci-ems/pull/12](https://github.com/FiQCI/fiqci-ems/pull/12)
 
