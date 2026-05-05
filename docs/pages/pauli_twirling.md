@@ -17,7 +17,7 @@ Using the {class}`~fiqci.ems.FiQCISampler` or {class}`~fiqci.ems.FiQCIBackend` P
 ```python
 from fiqci.ems import FiQCISampler
 
-sampler = FiQCIEstimator(backend=backend, mitigation_level=3)
+sampler = FiQCISampler(backend=backend, mitigation_level=3)
 ```
 
 ### Manual Configuration
