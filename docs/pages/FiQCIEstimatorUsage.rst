@@ -175,11 +175,11 @@ Pauli Twirling
 
 Pauli twirling sandwiches two-qubit gates with random single-qubit Pauli gates to mitigate coherent errors. It is enabled at mitigation level 3.
 
-Configure Pauli Twirling using the :meth:`~fiqci.ems.FiQCISampler.pauli_twirl` method:
+Configure Pauli Twirling using the :meth:`~fiqci.ems.FiQCIEstimator.pauli_twirl` method:
 
 .. code-block:: python
 
-   sampler.pauli_twirl(enabled=True, num_twirls=10, gates_to_twirl=None) # None twirls all two-qubit gates
+   estimator.pauli_twirl(enabled=True, num_twirls=10, gates_to_twirl=None) # None twirls all two-qubit gates
 
 .. list-table::
    :header-rows: 1
