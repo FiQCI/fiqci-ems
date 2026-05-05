@@ -393,7 +393,7 @@ class TestBackendRunWithPauliTwirling:
 
 
 class TestAverageAndTrimMethods:
-	"""Tests for _average_counts, _average_group_counts, and _trim_result_to_groups."""
+	"""Tests for _average_counts, and _trim_result_to_groups."""
 
 	def test_average_counts_single(self):
 		"""Test averaging a single counts dict returns it unchanged."""
@@ -429,26 +429,6 @@ class TestAverageAndTrimMethods:
 		# (1+2+1)/3 = 1.33 -> 1, (2+1+1)/3 = 1.33 -> 1
 		assert result["00"] == 1
 		assert result["11"] == 1
-
-	def test_average_group_counts(self):
-		"""Test _average_group_counts with a mock result."""
-		mock_result = Mock()
-		mock_result.get_counts.return_value = [
-			{"00": 600, "11": 400},
-			{"00": 400, "11": 600},
-			{"00": 800, "11": 200},
-			{"00": 200, "11": 800},
-		]
-
-		backend = Mock(spec=FiQCIBackend)
-		backend._average_group_counts = FiQCIBackend._average_group_counts.__get__(backend)
-		backend._average_counts = FiQCIBackend._average_counts
-
-		result = backend._average_group_counts(mock_result, group_size=2)
-
-		assert len(result) == 2
-		assert result[0] == {"00": 500, "11": 500}
-		assert result[1] == {"00": 500, "11": 500}
 
 	def test_trim_result_to_groups(self):
 		"""Test _trim_result_to_groups keeps only first N results."""

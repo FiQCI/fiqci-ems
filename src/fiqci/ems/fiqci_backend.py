@@ -126,6 +126,11 @@ class FiQCIBackend:
 	def raw_counts(self) -> list[dict[str, int]] | None:
 		"""Get the raw (unmitigated) counts from the most recent run.
 
+		The list is flat with one entry per circuit submitted to the backend, in submission order.
+		With Pauli twirling enabled this is the per-twirl counts before any averaging, so the length
+		is ``num_input_circuits * (num_twirls + 1)`` and entries for the same input circuit are
+		contiguous.
+
 		Returns:
 			List of raw count dictionaries, or None if no run has been performed yet.
 		"""
@@ -405,33 +410,26 @@ class FiQCIBackend:
 				return job
 
 			result = job.result()
-			raw_counts_list = self._average_group_counts(result, twirl_group_size)
+			all_counts = result.get_counts()
+			if not isinstance(all_counts, list):
+				all_counts = [all_counts]
+			raw_counts_list: list[dict[str, int]] = list(all_counts)
 			self._raw_counts_cache = raw_counts_list
+
+			averaged_counts_list = [
+				self._average_counts(raw_counts_list[i : i + twirl_group_size])
+				for i in range(0, len(raw_counts_list), twirl_group_size)
+			]
+
 			num_groups = len(circuits_list) // twirl_group_size
 			result_to_use = self._trim_result_to_groups(result, num_groups)
-			mitigated_result = self._create_mitigated_result(result_to_use, raw_counts_list, raw_counts_list)
+			mitigated_result = self._create_mitigated_result(
+				result_to_use, averaged_counts_list, raw_counts_list, twirl_group_size=twirl_group_size
+			)
 			return MitigatedJob(job, mitigated_result)
 
 		# REM enabled: run with M3 mitigation
 		return self._run_with_m3_mitigation(job, circuits_list, shots, twirl_group_size=twirl_group_size)
-
-	def _average_group_counts(self, result: Result, group_size: int) -> list[dict[str, int]]:
-		"""Average raw counts across twirled circuit groups.
-
-		Args:
-			result: Result object from backend.
-			group_size: Number of circuits per group (num_twirls + 1).
-
-		Returns:
-			List of averaged count dictionaries, one per group.
-		"""
-		all_counts = result.get_counts()
-		if not isinstance(all_counts, list):
-			all_counts = [all_counts]
-		averaged = []
-		for i in range(0, len(all_counts), group_size):
-			averaged.append(self._average_counts(all_counts[i : i + group_size]))
-		return averaged
 
 	@staticmethod
 	def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
@@ -533,10 +531,8 @@ class FiQCIBackend:
 			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
 			mitigated_counts_list.append(mitigated_counts[0])
 
-		# If Pauli twirling, average across groups
+		# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
 		if twirl_group_size:
-			raw_counts_list = self._average_group_counts(result, twirl_group_size)
-			# Average mitigated counts by group
 			averaged_mitigated: list[dict[str, int]] = []
 			for i in range(0, len(mitigated_counts_list), twirl_group_size):
 				averaged_mitigated.append(self._average_counts(mitigated_counts_list[i : i + twirl_group_size]))
@@ -545,21 +541,33 @@ class FiQCIBackend:
 			result = self._trim_result_to_groups(result, num_groups)
 
 		self._raw_counts_cache = raw_counts_list
-		mitigated_result = self._create_mitigated_result(result, mitigated_counts_list, raw_counts_list)
+		mitigated_result = self._create_mitigated_result(
+			result, mitigated_counts_list, raw_counts_list, twirl_group_size=twirl_group_size or 1
+		)
 		return MitigatedJob(job, mitigated_result)
 
 	def _create_mitigated_result(
-		self, original_result: Result, mitigated_counts: list[dict[str, int]], raw_counts: list[dict[str, int]]
+		self,
+		original_result: Result,
+		mitigated_counts: list[dict[str, int]],
+		raw_counts: list[dict[str, int]],
+		twirl_group_size: int = 1,
 	) -> Result:
 		"""Create a new Result object with mitigated counts and metadata.
 
 		Args:
-			original_result: Original result from backend.
-			mitigated_counts: List of mitigated count dictionaries.
-			raw_counts: List of raw (unmitigated) count dictionaries.
+			original_result: Original result from backend, already trimmed to one entry per group.
+			mitigated_counts: List of mitigated count dictionaries, one per group.
+			raw_counts: Flat list of raw (unmitigated) count dictionaries, one per submitted circuit.
+				When ``twirl_group_size > 1`` this contains all per-twirl counts in submission order.
+			twirl_group_size: Number of submitted circuits per group (``num_twirls + 1``), or 1 when
+				twirling is disabled. Used to slice ``raw_counts`` into the per-group entries that get
+				attached to each result header.
 
 		Returns:
-			New Result object with mitigated data and FiQCI EMS metadata.
+			New Result object with mitigated data and FiQCI EMS metadata. Each header's
+			``fiqci_ems["raw_counts"]`` is a single dict when ``twirl_group_size == 1`` and a list of
+			per-twirl dicts when ``twirl_group_size > 1``.
 		"""
 		# Get original result data
 		results_data = original_result.to_dict()
@@ -576,11 +584,18 @@ class FiQCIBackend:
 					if "header" not in results_list[idx]:
 						results_list[idx]["header"] = {}  # type: ignore[index]
 
+					if twirl_group_size > 1:
+						raw_for_group: dict[str, int] | list[dict[str, int]] = raw_counts[
+							idx * twirl_group_size : (idx + 1) * twirl_group_size
+						]
+					else:
+						raw_for_group = raw_counts[idx]
+
 					results_list[idx]["header"]["fiqci_ems"] = {  # type: ignore[index]
 						"mitigation_level": self._mitigation_level,
 						"mitigation_method": "M3" if self._mitigation_level == 1 else None,
 						"calibration_shots": self._rem["calibration_shots"] if self._mitigation_level == 1 else None,
-						"raw_counts": raw_counts[idx],
+						"raw_counts": raw_for_group,
 					}
 
 		# Create new result from modified data
