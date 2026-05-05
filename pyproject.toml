@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "iqm-client[qiskit]==33.0.5",
+    "iqm-client[qiskit]==34.0.2",
     "matplotlib>=3.10.7",
     "mthree>=3.0.0",
 ]
