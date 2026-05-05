@@ -29,7 +29,7 @@ class FiQCIEstimator:
 	Mitigation levels:
 		- 0: No error mitigation (raw results)
 		- 1: Readout error mitigation using M3 (default)
-		- 2: Level 1 + TBD
+		- 2: Level 1 + dynamical decoupling (DD)
 		- 3: Level 2 + zero-noise extrapolation (ZNE) with local folding and exponential extrapolation
 
 	Args:
@@ -125,12 +125,13 @@ class FiQCIEstimator:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
 		expectation_values = []
-		zne_expvs = []
+		all_zne_expvs = []
 
 		jobs = []
 
 		for i, obs_circ_groups in enumerate(obs_circuits):
 			obs_circs_list = [group[0] for group in obs_circ_groups]
+			zne_expvs = []
 
 			measurement_settings = _combine_pauli_ops(
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
@@ -181,9 +182,11 @@ class FiQCIEstimator:
 				)
 
 			expectation_values.append(expvs)
+			if self._zne["enabled"] and len(zne_expvs) > 0:
+				all_zne_expvs.append(zne_expvs)
 
-		if self._zne["enabled"] and len(zne_expvs) > 0:
-			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, zne_expvs)
+		if self._zne["enabled"] and len(all_zne_expvs) > 0:
+			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, all_zne_expvs)
 		else:
 			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
 
@@ -308,6 +311,10 @@ class FiQCIEstimator:
 			self._zne["extrapolation_degree"] = extrapolation_degree
 		else:
 			self._zne["extrapolation_degree"] = None
+
+	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
+		"""Configure Pauli twirling settings for the estimator."""
+		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
 
 class FiQCIEstimatorJobCollection:
