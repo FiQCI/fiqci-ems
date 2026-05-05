@@ -40,8 +40,8 @@ Mitigation levels apply predefined sets of error mitigation techniques.
      - Level 1 + Dynamical Decoupling
      - Dynamical Decoupling standard sequence (see :ref:`below <fiqci-sampler-dd>`)
    * - 3
-     - Level 2 + additional
-     - TBD
+     - Level 2 + Pauli Twirling
+     - Pauli Twirling with 10 twirls on all two-qubit gates
 
 Mitigation Options
 ------------------
@@ -50,6 +50,7 @@ Mitigators can also be configured manually using the provided methods.
 
 - :ref:`Readout Error Mitigation (REM) <fiqci-sampler-rem>`
 - :ref:`Dynamical Decoupling (DD) <fiqci-sampler-dd>`
+- :ref:`Pauli Twirling <fiqci-sampler-pt>`
 
 .. _fiqci-sampler-rem:
 
@@ -121,6 +122,35 @@ The standard sequence is:
              - ``"asap"``: Apply the sequence as soon as possible whenever the idle period exceeds the threshold.
              - ``"alap"``: Apply the sequence _as late as possible_ whenever the idle period exceeds the threshold.
              - ``"center"``: Apply the sequence centered within idle periods exceeding the threshold.
+
+.. _fiqci-sampler-pt:
+
+Pauli Twirling
+~~~~~~~~~~~~~~~~
+
+Pauli twirling sandwiches two-qubit gates with random single-qubit Pauli gates to mitigate coherent errors. It is enabled at mitigation level 3.
+
+Configure Pauli Twirling using the :meth:`~fiqci.ems.FiQCISampler.pauli_twirl` method:
+
+.. code-block:: python
+
+   sampler.pauli_twirl(enabled=True, num_twirls=10, gates_to_twirl=None) # None twirls all two-qubit gates
+
+.. list-table::
+   :header-rows: 1
+
+    * - Parameter
+      - Default
+      - Description
+   * - ``enabled``
+     - ``True``
+     - Enable or disable Pauli twirling
+   * - ``num_twirls``
+     - ``10``
+     - Number of twirled variant circuits to generate for each original circuit
+   * - ``gates_to_twirl``
+     - ``None``
+     - List of two-qubit gates to twirl. If ``None``, twirls all two-qubit gates.
 
 
 Inspecting Options

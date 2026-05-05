@@ -157,6 +157,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../dynamical_decoupling.html">Dynamical Decoupling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pauli_twirling.html">Pauli Twirling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -182,6 +183,7 @@
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
@@ -341,6 +343,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.run"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.rem"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.dd"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.dd()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -378,6 +381,8 @@ with minimal setup.</p>
 <dt>Mitigation levels:</dt><dd><ul class="simple">
 <li><p>0: No error mitigation (raw results)</p></li>
 <li><p>1: Readout error mitigation using M3 (default)</p></li>
+<li><p>2: Level 1 + dynamical decoupling (DD)</p></li>
+<li><p>3: Level 2 + Pauli twirling</p></li>
 </ul>
 </dd>
 </dl>
@@ -452,6 +457,12 @@ See build_dd_options for details on each field.</p></li>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_sampler.FiQCISampler.pauli_twirl">
+<span class="sig-name descname"><span class="pre">pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.pauli_twirl" title="Link to this definition">#</a></dt>
+<dd><p>Configure Pauli twirling settings for the estimator.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -509,6 +520,7 @@ See build_dd_options for details on each field.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.run"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.rem"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.dd"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.dd()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 </ul>

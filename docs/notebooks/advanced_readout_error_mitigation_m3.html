@@ -157,6 +157,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../pages/readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../pages/dynamical_decoupling.html">Dynamical Decoupling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/pauli_twirling.html">Pauli Twirling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../pages/Examples.html">Example Notebooks</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
@@ -182,6 +183,7 @@
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../pages/api/fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../pages/api/fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
@@ -420,11 +422,8 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Matplotlib is building the font cache; this may take a moment.
-</pre></div>
-</div>
 <img alt="../_images/ff12c03959995bb152e24e50b8868d9aa44b7511f286584f2fdcffc52c1ddfb5.png" src="../_images/ff12c03959995bb152e24e50b8868d9aa44b7511f286584f2fdcffc52c1ddfb5.png" />
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;10&#39;: 8, &#39;01&#39;: 27, &#39;11&#39;: 980, &#39;00&#39;: 1031}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Mitigated counts: {&#39;01&#39;: 20, &#39;10&#39;: 33, &#39;00&#39;: 968, &#39;11&#39;: 1025}
 </pre></div>
 </div>
 </div>
@@ -443,8 +442,8 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 54, &#39;name&#39;: &#39;circuit-19877&#39;, &#39;qreg_sizes&#39;: [[&#39;q&#39;, 2], [&#39;ancilla&#39;, 52]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 2048, &#39;raw_counts&#39;: {&#39;01&#39;: 112, &#39;11&#39;: 901, &#39;10&#39;: 102, &#39;00&#39;: 933}}}
-{&#39;01&#39;: 112, &#39;11&#39;: 901, &#39;10&#39;: 102, &#39;00&#39;: 933}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 54, &#39;name&#39;: &#39;circuit-19877&#39;, &#39;qreg_sizes&#39;: [[&#39;q&#39;, 2], [&#39;ancilla&#39;, 52]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 2048, &#39;raw_counts&#39;: {&#39;10&#39;: 117, &#39;00&#39;: 881, &#39;01&#39;: 125, &#39;11&#39;: 925}}}
+{&#39;10&#39;: 117, &#39;00&#39;: 881, &#39;01&#39;: 125, &#39;11&#39;: 925}
 </pre></div>
 </div>
 </div>
@@ -469,7 +468,7 @@ Mitigation level: 1
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/f49241f3f5a996b9329a3dee149f743c2fae12614d5278c776c349dc44fac77f.png" src="../_images/f49241f3f5a996b9329a3dee149f743c2fae12614d5278c776c349dc44fac77f.png" />
+<img alt="../_images/4a24e4db5008287573a17d533c005bfeaeaa40f280f0d6d3d7bcae4c1beba57c.png" src="../_images/4a24e4db5008287573a17d533c005bfeaeaa40f280f0d6d3d7bcae4c1beba57c.png" />
 </div>
 </div>
 </section>
@@ -500,12 +499,12 @@ Mitigation level: 1
 <div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>QB26 (index 8 ) calibration matrix:
 </pre></div>
 </div>
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.94970703 0.04492188]
- [0.05029297 0.9550781 ]]
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9316406  0.05126953]
+ [0.06835938 0.94873047]]
 
 QB27 (index 16 ) calibration matrix:
-[[0.9511719  0.04150391]
- [0.04882812 0.9584961 ]]
+[[0.953125   0.04882812]
+ [0.046875   0.9511719 ]]
 </pre></div>
 </div>
 </div>
@@ -532,10 +531,10 @@ QB27 (index 16 ) calibration matrix:
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Expectation value: 0.9542 ± 0.0272
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Expectation value: 1.0071 ± 0.0283
 
-Raw counts: {&#39;01&#39;: 98, &#39;10&#39;: 122, &#39;00&#39;: 928, &#39;11&#39;: 900}
-Mitigated counts: {&#39;01&#39;: 11, &#39;10&#39;: 35, &#39;11&#39;: 977, &#39;00&#39;: 1023}
+Raw counts: {&#39;01&#39;: 108, &#39;00&#39;: 919, &#39;10&#39;: 95, &#39;11&#39;: 926}
+Mitigated counts: {&#39;11&#39;: 1019, &#39;00&#39;: 1028}
 </pre></div>
 </div>
 </div>
@@ -556,7 +555,7 @@ Mitigated counts: {&#39;01&#39;: 11, &#39;10&#39;: 35, &#39;11&#39;: 977, &#39;0
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/9d495e90f0d6b5c17a272f71c078bccaffe114b5d62a2cccc6f31cbffed4875c.png" src="../_images/9d495e90f0d6b5c17a272f71c078bccaffe114b5d62a2cccc6f31cbffed4875c.png" />
+<img alt="../_images/7ececdba4a9f2b494fa20f37be3e75b9223f5f309fb15adc1e5c7adeccc2afc6.png" src="../_images/7ececdba4a9f2b494fa20f37be3e75b9223f5f309fb15adc1e5c7adeccc2afc6.png" />
 </div>
 </div>
 </section>

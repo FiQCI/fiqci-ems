@@ -156,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="pages/readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pages/zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="pages/dynamical_decoupling.html">Dynamical Decoupling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pages/pauli_twirling.html">Pauli Twirling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="pages/Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -181,6 +182,7 @@
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="pages/api/fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
 <li class="toctree-l4"><a class="reference internal" href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
@@ -299,6 +301,7 @@
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
+ | <a href="#I"><strong>I</strong></a>
  | <a href="#J"><strong>J</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#O"><strong>O</strong></a>
@@ -325,6 +328,8 @@
         <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob.__init__">(MitigatedJob method)</a>
 </li>
         <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis.__init__">(ModifyMeasurementBasis method)</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.__init__">(PauliTwirl method)</a>
 </li>
         <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__">(ZNECircuits method)</a>
 </li>
@@ -471,6 +476,13 @@
 </li>
       </ul></li>
       <li>
+    fiqci.ems.transpiler_passes.pauli_twirl
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html#module-fiqci.ems.transpiler_passes.pauli_twirl">module</a>
+</li>
+      </ul></li>
+      <li>
     fiqci.ems.transpiler_passes.zne_circuits
 
       <ul>
@@ -515,6 +527,18 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.get_obs_subcircuits">get_obs_subcircuits() (in module fiqci.ems.transpiler_passes.basis_measurement)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html#fiqci.ems.transpiler_passes.pauli_twirl.get_twirled_circuits">get_twirled_circuits() (in module fiqci.ems.transpiler_passes.pauli_twirl)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="I">I</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.init_pauli_twirl">init_pauli_twirl() (FiQCIBackend method)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.init_pauli_twirl">[1]</a>
 </li>
   </ul></td>
 </tr></table>
@@ -572,6 +596,8 @@
 </li>
         <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#module-fiqci.ems.transpiler_passes.basis_measurement">fiqci.ems.transpiler_passes.basis_measurement</a>
 </li>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html#module-fiqci.ems.transpiler_passes.pauli_twirl">fiqci.ems.transpiler_passes.pauli_twirl</a>
+</li>
         <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#module-fiqci.ems.transpiler_passes.zne_circuits">fiqci.ems.transpiler_passes.zne_circuits</a>
 </li>
         <li><a href="pages/api/fiqci.ems.utils.html#module-fiqci.ems.utils">fiqci.ems.utils</a>
@@ -591,10 +617,20 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="pages/api/fiqci.ems.mitigators.zne.html#fiqci.ems.mitigators.zne.polynomial_extrapolation">polynomial_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
+      <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.pauli_twirl">pauli_twirl() (FiQCIBackend method)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.pauli_twirl">[1]</a>
+
+      <ul>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.pauli_twirl">(FiQCIEstimator method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCIEstimator.pauli_twirl">[2]</a>
 </li>
+        <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler.pauli_twirl">(FiQCISampler method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.pauli_twirl">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler.pauli_twirl">[2]</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl">PauliTwirl (class in fiqci.ems.transpiler_passes.pauli_twirl)</a>
+</li>
+      <li><a href="pages/api/fiqci.ems.mitigators.zne.html#fiqci.ems.mitigators.zne.polynomial_extrapolation">polynomial_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
+</li>
       <li><a href="pages/api/fiqci.ems.utils.html#fiqci.ems.utils.probabilities_to_counts">probabilities_to_counts() (in module fiqci.ems.utils)</a>
 </li>
   </ul></td>
@@ -617,10 +653,10 @@
       </ul></li>
       <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob.result">result() (MitigatedJob method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="pages/api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection.results">results() (FiQCIEstimatorJobCollection method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="pages/api/fiqci.ems.mitigators.zne.html#fiqci.ems.mitigators.zne.richardson_extrapolation">richardson_extrapolation() (in module fiqci.ems.mitigators.zne)</a>
 </li>
       <li><a href="pages/api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.FiQCIBackend.run">run() (FiQCIBackend method)</a>, <a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCIBackend.run">[1]</a>
@@ -631,6 +667,8 @@
         <li><a href="pages/api/fiqci.ems.html#fiqci.ems.FiQCISampler.run">(FiQCISampler method)</a>, <a href="pages/api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler.run">[1]</a>, <a href="pages/api/fiqci.ems.primitives.html#fiqci.ems.primitives.FiQCISampler.run">[2]</a>
 </li>
         <li><a href="pages/api/fiqci.ems.transpiler_passes.basis_measurement.html#fiqci.ems.transpiler_passes.basis_measurement.ModifyMeasurementBasis.run">(ModifyMeasurementBasis method)</a>
+</li>
+        <li><a href="pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.run">(PauliTwirl method)</a>
 </li>
         <li><a href="pages/api/fiqci.ems.transpiler_passes.zne_circuits.html#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run">(ZNECircuits method)</a>
 </li>

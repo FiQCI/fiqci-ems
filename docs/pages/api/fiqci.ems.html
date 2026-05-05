@@ -157,6 +157,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../dynamical_decoupling.html">Dynamical Decoupling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pauli_twirling.html">Pauli Twirling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -182,6 +183,7 @@
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
@@ -341,6 +343,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.run"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.rem"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.dd"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.dd()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code></a><ul class="nav section-nav flex-column">
@@ -350,6 +353,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.zne"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.zne()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend</span></code></a><ul class="nav section-nav flex-column">
@@ -358,8 +362,10 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigation_level"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigation_level</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.raw_counts"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.raw_counts</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigator_options</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.init_pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.init_pauli_twirl()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.rem()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.pauli_twirl()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.run"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.run()</span></code></a></li>
 </ul>
 </li>
@@ -389,6 +395,8 @@ with minimal setup.</p>
 <dt>Mitigation levels:</dt><dd><ul class="simple">
 <li><p>0: No error mitigation (raw results)</p></li>
 <li><p>1: Readout error mitigation using M3 (default)</p></li>
+<li><p>2: Level 1 + dynamical decoupling (DD)</p></li>
+<li><p>3: Level 2 + Pauli twirling</p></li>
 </ul>
 </dd>
 </dl>
@@ -463,6 +471,12 @@ See build_dd_options for details on each field.</p></li>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.FiQCISampler.pauli_twirl">
+<span class="sig-name descname"><span class="pre">pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCISampler.pauli_twirl" title="Link to this definition">#</a></dt>
+<dd><p>Configure Pauli twirling settings for the estimator.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -476,7 +490,7 @@ eliminating the need for manual post-processing of measurement counts.</p>
 <dt>Mitigation levels:</dt><dd><ul class="simple">
 <li><p>0: No error mitigation (raw results)</p></li>
 <li><p>1: Readout error mitigation using M3 (default)</p></li>
-<li><p>2: Level 1 + TBD</p></li>
+<li><p>2: Level 1 + dynamical decoupling (DD)</p></li>
 <li><p>3: Level 2 + zero-noise extrapolation (ZNE) with local folding and exponential extrapolation</p></li>
 </ul>
 </dd>
@@ -559,6 +573,12 @@ See build_dd_options for details on each field.</p></li>
 <dd><p>Configure zero-noise extrapolation settings.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.FiQCIEstimator.pauli_twirl">
+<span class="sig-name descname"><span class="pre">pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCIEstimator.pauli_twirl" title="Link to this definition">#</a></dt>
+<dd><p>Configure Pauli twirling settings for the estimator.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -570,6 +590,8 @@ See build_dd_options for details on each field.</p></li>
 <dt>Mitigation levels:</dt><dd><ul class="simple">
 <li><p>0: No error mitigation (raw results)</p></li>
 <li><p>1: Readout error mitigation using M3 (default)</p></li>
+<li><p>2: Level 1 + dynamical decoupling (DD)</p></li>
+<li><p>3: Level 2 + Pauli twirling</p></li>
 </ul>
 </dd>
 </dl>
@@ -637,6 +659,21 @@ See build_dd_options for details on each field.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.FiQCIBackend.init_pauli_twirl">
+<span class="sig-name descname"><span class="pre">init_pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Gate</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCIBackend.init_pauli_twirl" title="Link to this definition">#</a></dt>
+<dd><p>Initialize Pauli twirling settings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>enabled</strong> – Whether Pauli twirling is enabled.</p></li>
+<li><p><strong>num_twirls</strong> – Number of twirled circuits to generate per input circuit.</p></li>
+<li><p><strong>gates_to_twirl</strong> – Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.FiQCIBackend.dd">
 <span class="sig-name descname"><span class="pre">dd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_sequences</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCIBackend.dd" title="Link to this definition">#</a></dt>
 <dd><p>Set dynamical decoupling settings for the backend.</p>
@@ -661,6 +698,21 @@ See build_dd_options for details on each field.</p></li>
 <li><p><strong>enabled</strong> – Whether to enable readout error mitigation.</p></li>
 <li><p><strong>calibration_shots</strong> – Number of shots to use for calibration circuits (default: 1000).</p></li>
 <li><p><strong>calibration_file</strong> – Optional calibration file to use for readout error mitigation.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.FiQCIBackend.pauli_twirl">
+<span class="sig-name descname"><span class="pre">pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.FiQCIBackend.pauli_twirl" title="Link to this definition">#</a></dt>
+<dd><p>Set Pauli twirling settings for the backend.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>enabled</strong> – Whether to enable Pauli twirling.</p></li>
+<li><p><strong>num_twirls</strong> – Number of twirled circuits to generate per input circuit (default: 10).</p></li>
+<li><p><strong>gates_to_twirl</strong> – Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.</p></li>
 </ul>
 </dd>
 </dl>
@@ -767,6 +819,7 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.run"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.run()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.rem"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.dd"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.dd()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCISampler.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCISampler.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code></a><ul class="nav section-nav flex-column">
@@ -776,6 +829,7 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.zne"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.zne()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIEstimator.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend</span></code></a><ul class="nav section-nav flex-column">
@@ -784,8 +838,10 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigation_level"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigation_level</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.raw_counts"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.raw_counts</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigator_options</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.init_pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.init_pauli_twirl()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.rem()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.pauli_twirl()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.FiQCIBackend.run"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.run()</span></code></a></li>
 </ul>
 </li>

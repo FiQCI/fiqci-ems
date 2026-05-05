@@ -11,4 +11,5 @@ fiqci.ems.transpiler\_passes
    :recursive:
 
    basis_measurement
+   pauli_twirl
    zne_circuits

@@ -157,6 +157,7 @@
 <li class="toctree-l2"><a class="reference internal" href="readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dynamical_decoupling.html">Dynamical Decoupling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pauli_twirling.html">Pauli Twirling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -182,6 +183,7 @@
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="api/fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
@@ -340,6 +342,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dynamical-decoupling-dd">Dynamical Decoupling (DD)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pauli-twirling">Pauli Twirling</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
@@ -393,8 +396,8 @@
 <td><p>Dynamical Decoupling standard sequence (see <a class="reference internal" href="#fiqci-sampler-dd"><span class="std std-ref">below</span></a>)</p></td>
 </tr>
 <tr class="row-odd"><td><p>3</p></td>
-<td><p>Level 2 + additional</p></td>
-<td><p>TBD</p></td>
+<td><p>Level 2 + Pauli Twirling</p></td>
+<td><p>Pauli Twirling with 10 twirls on all two-qubit gates</p></td>
 </tr>
 </tbody>
 </table>
@@ -406,6 +409,7 @@
 <ul class="simple">
 <li><p><a class="reference internal" href="#fiqci-sampler-rem"><span class="std std-ref">Readout Error Mitigation (REM)</span></a></p></li>
 <li><p><a class="reference internal" href="#fiqci-sampler-dd"><span class="std std-ref">Dynamical Decoupling (DD)</span></a></p></li>
+<li><p><a class="reference internal" href="#fiqci-sampler-pt"><span class="std std-ref">Pauli Twirling</span></a></p></li>
 </ul>
 <section id="rem-readout-error-mitigation">
 <span id="fiqci-sampler-rem"></span><h3>REM (Readout Error Mitigation)<a class="headerlink" href="#rem-readout-error-mitigation" title="Link to this heading">#</a></h3>
@@ -489,6 +493,14 @@
 </table>
 </div>
 </section>
+<section id="pauli-twirling">
+<span id="fiqci-sampler-pt"></span><h3>Pauli Twirling<a class="headerlink" href="#pauli-twirling" title="Link to this heading">#</a></h3>
+<p>Pauli twirling sandwiches two-qubit gates with random single-qubit Pauli gates to mitigate coherent errors. It is enabled at mitigation level 3.</p>
+<p>Configure Pauli Twirling using the <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.pauli_twirl" title="fiqci.ems.FiQCISampler.pauli_twirl"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pauli_twirl()</span></code></a> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler</span><span class="o">.</span><span class="n">pauli_twirl</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_twirls</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">gates_to_twirl</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># None twirls all two-qubit gates</span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="inspecting-options">
 <h2>Inspecting Options<a class="headerlink" href="#inspecting-options" title="Link to this heading">#</a></h2>
@@ -558,6 +570,7 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#dynamical-decoupling-dd">Dynamical Decoupling (DD)</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pauli-twirling">Pauli Twirling</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>

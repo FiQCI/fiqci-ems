@@ -157,6 +157,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../readout_mitigation.html">Readout Error Mitigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../zero_noise_extrapolation.html">Zero Noise Extrapolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../dynamical_decoupling.html">Dynamical Decoupling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pauli_twirling.html">Pauli Twirling</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../Examples.html">Example Notebooks</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -182,6 +183,7 @@
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
+<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
@@ -342,6 +344,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.zne()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimatorJobCollection</span></code></a><ul class="nav section-nav flex-column">
@@ -390,7 +393,7 @@ eliminating the need for manual post-processing of measurement counts.</p>
 <dt>Mitigation levels:</dt><dd><ul class="simple">
 <li><p>0: No error mitigation (raw results)</p></li>
 <li><p>1: Readout error mitigation using M3 (default)</p></li>
-<li><p>2: Level 1 + TBD</p></li>
+<li><p>2: Level 1 + dynamical decoupling (DD)</p></li>
 <li><p>3: Level 2 + zero-noise extrapolation (ZNE) with local folding and exponential extrapolation</p></li>
 </ul>
 </dd>
@@ -471,6 +474,12 @@ See build_dd_options for details on each field.</p></li>
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne">
 <span class="sig-name descname"><span class="pre">zne</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fold_gates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folding_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'local'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrapolation_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'exponential'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrapolation_degree</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne" title="Link to this definition">#</a></dt>
 <dd><p>Configure zero-noise extrapolation settings.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl">
+<span class="sig-name descname"><span class="pre">pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl" title="Link to this definition">#</a></dt>
+<dd><p>Configure Pauli twirling settings for the estimator.</p>
 </dd></dl>
 
 </dd></dl>
@@ -585,6 +594,7 @@ See build_dd_options for details on each field.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.rem()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.zne()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimator.pauli_twirl()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection"><code class="docutils literal notranslate"><span class="pre">FiQCIEstimatorJobCollection</span></code></a><ul class="nav section-nav flex-column">

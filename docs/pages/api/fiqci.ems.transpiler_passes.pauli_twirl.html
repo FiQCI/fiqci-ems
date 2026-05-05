@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>fiqci.ems.mitigators.zne &#8212; FiQCI EMS</title>
+    <title>fiqci.ems.transpiler_passes.pauli_twirl &#8212; FiQCI EMS</title>
   
   
   
@@ -46,13 +46,13 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/api/fiqci.ems.mitigators.zne';</script>
-    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/api/fiqci.ems.mitigators.zne.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/api/fiqci.ems.transpiler_passes.pauli_twirl';</script>
+    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/api/fiqci.ems.transpiler_passes.pauli_twirl.html" />
     <link rel="icon" href="../../_static/FiQCI-logo-nobg.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="fiqci.ems.primitives" href="fiqci.ems.primitives.html" />
-    <link rel="prev" title="fiqci.ems.mitigators.rem" href="fiqci.ems.mitigators.rem.html" />
+    <link rel="next" title="fiqci.ems.transpiler_passes.zne_circuits" href="fiqci.ems.transpiler_passes.zne_circuits.html" />
+    <link rel="prev" title="fiqci.ems.transpiler_passes.basis_measurement" href="fiqci.ems.transpiler_passes.basis_measurement.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
@@ -170,10 +170,10 @@
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../Api.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="fiqci.ems.html">fiqci.ems</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="fiqci.ems.fiqci_backend.html">fiqci.ems.fiqci_backend</a></li>
-<li class="toctree-l3 current active has-children"><a class="reference internal" href="fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.mitigators.html">fiqci.ems.mitigators</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.dd.html">fiqci.ems.mitigators.dd</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.rem.html">fiqci.ems.mitigators.rem</a></li>
-<li class="toctree-l4 current active"><a class="current reference internal" href="#">fiqci.ems.mitigators.zne</a></li>
+<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.mitigators.zne.html">fiqci.ems.mitigators.zne</a></li>
 </ul>
 </details></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.primitives.html">fiqci.ems.primitives</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -181,9 +181,9 @@
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.primitives.fiqci_sampler.html">fiqci.ems.primitives.fiqci_sampler</a></li>
 </ul>
 </details></li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 current active has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
-<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
+<li class="toctree-l4 current active"><a class="current reference internal" href="#">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
@@ -251,7 +251,7 @@
       
       
       
-      <li><a href="../../_sources/pages/api/fiqci.ems.mitigators.zne.rst" target="_blank"
+      <li><a href="../../_sources/pages/api/fiqci.ems.transpiler_passes.pauli_twirl.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -327,7 +327,7 @@
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>fiqci.ems.mitigators.zne</h1>
+    <h1>fiqci.ems.transpiler_passes.pauli_twirl</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -337,9 +337,12 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.zne.exponential_extrapolation"><code class="docutils literal notranslate"><span class="pre">exponential_extrapolation()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.zne.richardson_extrapolation"><code class="docutils literal notranslate"><span class="pre">richardson_extrapolation()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.zne.polynomial_extrapolation"><code class="docutils literal notranslate"><span class="pre">polynomial_extrapolation()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl"><code class="docutils literal notranslate"><span class="pre">PauliTwirl</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.__init__"><code class="docutils literal notranslate"><span class="pre">PauliTwirl.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.run"><code class="docutils literal notranslate"><span class="pre">PauliTwirl.run()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.get_twirled_circuits"><code class="docutils literal notranslate"><span class="pre">get_twirled_circuits()</span></code></a></li>
 </ul>
             </nav>
         </div>
@@ -351,73 +354,78 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fiqci.ems.mitigators.zne">
-<span id="fiqci-ems-mitigators-zne"></span><h1>fiqci.ems.mitigators.zne<a class="headerlink" href="#module-fiqci.ems.mitigators.zne" title="Link to this heading">#</a></h1>
-<p>Extrapolation methods for Zero-Noise Extrapolation.</p>
+  <section id="module-fiqci.ems.transpiler_passes.pauli_twirl">
+<span id="fiqci-ems-transpiler-passes-pauli-twirl"></span><h1>fiqci.ems.transpiler_passes.pauli_twirl<a class="headerlink" href="#module-fiqci.ems.transpiler_passes.pauli_twirl" title="Link to this heading">#</a></h1>
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.mitigators.zne.exponential_extrapolation" title="fiqci.ems.mitigators.zne.exponential_extrapolation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exponential_extrapolation</span></code></a>(...)</p></td>
-<td><p>Perform exponential extrapolation to estimate the zero-noise value.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#fiqci.ems.mitigators.zne.polynomial_extrapolation" title="fiqci.ems.mitigators.zne.polynomial_extrapolation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">polynomial_extrapolation</span></code></a>(expectation_values, ...)</p></td>
-<td><p>Polynomial least-squares extrapolation to estimate the zero-noise value.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.mitigators.zne.richardson_extrapolation" title="fiqci.ems.mitigators.zne.richardson_extrapolation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">richardson_extrapolation</span></code></a>(expectation_values, ...)</p></td>
-<td><p>Richardson extrapolation to estimate the zero-noise value.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.transpiler_passes.pauli_twirl.get_twirled_circuits" title="fiqci.ems.transpiler_passes.pauli_twirl.get_twirled_circuits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_twirled_circuits</span></code></a>(circuits, num_twirls[, ...])</p></td>
+<td><p>Generate twirled circuits from input circuits.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<dl class="py function">
-<dt class="sig sig-object py" id="fiqci.ems.mitigators.zne.exponential_extrapolation">
-<span class="sig-name descname"><span class="pre">exponential_extrapolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expectation_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.mitigators.zne.exponential_extrapolation" title="Link to this definition">#</a></dt>
-<dd><p>Perform exponential extrapolation to estimate the zero-noise value.</p>
-<dl class="field-list simple">
+<p class="rubric">Classes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl" title="fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PauliTwirl</span></code></a>(*args, **kwargs)</p></td>
+<td><p>Add Pauli twirls to two-qubit gates.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">PauliTwirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformationPass</span></code></p>
+<p>Add Pauli twirls to two-qubit gates.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Gate</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.__init__" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>expectation_values</strong> – A list of expectation values corresponding to different noise levels.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The extrapolated zero-noise expectation value.</p>
+<dd class="field-odd"><p><strong>gates_to_twirl</strong> – Gates to twirl. The default behavior is to twirl all
+two-qubit basis gates.</p>
 </dd>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="fiqci.ems.mitigators.zne.richardson_extrapolation">
-<span class="sig-name descname"><span class="pre">richardson_extrapolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expectation_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.mitigators.zne.richardson_extrapolation" title="Link to this definition">#</a></dt>
-<dd><p>Richardson extrapolation to estimate the zero-noise value.</p>
-<p>Computes exact Lagrange interpolation coefficients evaluated at x=0:
-cᵢ = ∏_{j≠i} λⱼ / (λⱼ - λᵢ) and returns E(0) = Σᵢ cᵢ · E(λᵢ).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DAGCircuit</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DAGCircuit</span></span></span><a class="headerlink" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.run" title="Link to this definition">#</a></dt>
+<dd><p>Run a pass on the DAGCircuit. This is implemented by the pass developer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>expectation_values</strong> – Array-like of shape (n_scales, n_obs) or (n_scales,)</p></li>
-<li><p><strong>scales</strong> – Noise scale factors used (e.g., [1, 3, 5])</p></li>
-</ul>
+<dd class="field-odd"><p><strong>dag</strong> – the dag on which the pass is run.</p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Zero-noise estimate(s) per observable.</p>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>NotImplementedError</strong> – when this is left unimplemented for a pass.</p>
 </dd>
 </dl>
 </dd></dl>
 
+</dd></dl>
+
 <dl class="py function">
-<dt class="sig sig-object py" id="fiqci.ems.mitigators.zne.polynomial_extrapolation">
-<span class="sig-name descname"><span class="pre">polynomial_extrapolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expectation_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scales</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.mitigators.zne.polynomial_extrapolation" title="Link to this definition">#</a></dt>
-<dd><p>Polynomial least-squares extrapolation to estimate the zero-noise value.</p>
-<p>Fits a polynomial of the given degree to the (scale, expectation_value)
-data and evaluates it at x=0.</p>
+<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.pauli_twirl.get_twirled_circuits">
+<span class="sig-name descname"><span class="pre">get_twirled_circuits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">circuits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">QuantumCircuit</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Gate</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">IQMBackendBase</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">QuantumCircuit</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.transpiler_passes.pauli_twirl.get_twirled_circuits" title="Link to this definition">#</a></dt>
+<dd><p>Generate twirled circuits from input circuits.</p>
+<p>For each input circuit, produces the original circuit followed by num_twirls
+twirled copies, giving groups of (num_twirls + 1) circuits in a flat list.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>expectation_values</strong> – Array-like of shape (n_scales, n_obs) or (n_scales,)</p></li>
-<li><p><strong>scales</strong> – Noise scale factors used (e.g., [1, 3, 5])</p></li>
-<li><p><strong>degree</strong> – Polynomial degree. Defaults to min(n_scales - 1, 2).</p></li>
+<li><p><strong>circuits</strong> – List of QuantumCircuits to generate twirled circuits from.</p></li>
+<li><p><strong>num_twirls</strong> – Number of twirled circuits to generate per input circuit.</p></li>
+<li><p><strong>gates_to_twirl</strong> – Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
+backend: The backend to transpile the circuits for.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Zero-noise estimate(s) per observable.</p>
+<dd class="field-even"><p>[orig_0, twirl_0_1, …, twirl_0_T, orig_1, twirl_1_1, …, twirl_1_T, …].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Flat list of circuits</p>
 </dd>
 </dl>
 </dd></dl>
@@ -436,20 +444,20 @@ data and evaluates it at x=0.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="fiqci.ems.mitigators.rem.html"
+       href="fiqci.ems.transpiler_passes.basis_measurement.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">fiqci.ems.mitigators.rem</p>
+        <p class="prev-next-title">fiqci.ems.transpiler_passes.basis_measurement</p>
       </div>
     </a>
     <a class="right-next"
-       href="fiqci.ems.primitives.html"
+       href="fiqci.ems.transpiler_passes.zne_circuits.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">fiqci.ems.primitives</p>
+        <p class="prev-next-title">fiqci.ems.transpiler_passes.zne_circuits</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -471,9 +479,12 @@ data and evaluates it at x=0.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.zne.exponential_extrapolation"><code class="docutils literal notranslate"><span class="pre">exponential_extrapolation()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.zne.richardson_extrapolation"><code class="docutils literal notranslate"><span class="pre">richardson_extrapolation()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.mitigators.zne.polynomial_extrapolation"><code class="docutils literal notranslate"><span class="pre">polynomial_extrapolation()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl"><code class="docutils literal notranslate"><span class="pre">PauliTwirl</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.__init__"><code class="docutils literal notranslate"><span class="pre">PauliTwirl.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.PauliTwirl.run"><code class="docutils literal notranslate"><span class="pre">PauliTwirl.run()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.pauli_twirl.get_twirled_circuits"><code class="docutils literal notranslate"><span class="pre">get_twirled_circuits()</span></code></a></li>
 </ul>
   </nav></div>
 
