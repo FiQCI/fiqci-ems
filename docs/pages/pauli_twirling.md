@@ -35,3 +35,8 @@ estimator.pauli_twirl(
     gates_to_twirl=[CZGate()]
 )
 ```
+
+## References
+
+- J. J. Wallman, J. Emerson, "Noise Tailoring for Scalable Quantum Computation via Randomized Compiling", [https://arxiv.org/pdf/1512.01098](https://arxiv.org/pdf/1512.01098)
+- The QEM Zoo, "Pauli Twirling", [https://qemzoo.com/technique.html?id=pauli-twirling](https://qemzoo.com/technique.html?id=pauli-twirling)
