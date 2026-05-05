@@ -1,10 +1,13 @@
 from qiskit import QuantumCircuit
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.circuit import QuantumRegister, Gate
+from qiskit.circuit import QuantumRegister, Gate, StandardEquivalenceLibrary
 from qiskit.circuit.library import CZGate
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.basepasses import TransformationPass
+from qiskit.transpiler.passes import BasisTranslator, Decompose
 from qiskit.quantum_info import Operator, pauli_basis
+
+from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 
 import numpy as np
 
@@ -70,7 +73,10 @@ class PauliTwirl(TransformationPass):
 
 
 def get_twirled_circuits(
-	circuits: list[QuantumCircuit], num_twirls: int, gates_to_twirl: Optional[Iterable[Gate]] = None
+	circuits: list[QuantumCircuit],
+	num_twirls: int,
+	gates_to_twirl: Optional[Iterable[Gate]] = None,
+	backend: Optional[IQMBackendBase] = None,
 ) -> list[QuantumCircuit]:
 	"""
 	Generate twirled circuits from input circuits.
@@ -82,12 +88,23 @@ def get_twirled_circuits(
 	    circuits: List of QuantumCircuits to generate twirled circuits from.
 	    num_twirls: Number of twirled circuits to generate per input circuit.
 	    gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
+		backend: The backend to transpile the circuits for.
 	Returns:
 	    Flat list of circuits: [orig_0, twirl_0_1, ..., twirl_0_T, orig_1, twirl_1_1, ..., twirl_1_T, ...].
 	"""
 	twirled_circuits = []
 
-	pm = PassManager(PauliTwirl(gates_to_twirl=gates_to_twirl))
+	if backend is not None:
+		basis_gates = list({i[0].name for i in backend.target.instructions})
+		pm = PassManager(
+			[
+				PauliTwirl(gates_to_twirl=gates_to_twirl),
+				Decompose(gates_to_decompose=["pauli"]),
+				BasisTranslator(target_basis=basis_gates, equivalence_library=StandardEquivalenceLibrary),
+			]
+		)
+	else:
+		pm = PassManager([PauliTwirl(gates_to_twirl=gates_to_twirl)])
 
 	for circuit in circuits:
 		twirled_circuits.append(circuit)

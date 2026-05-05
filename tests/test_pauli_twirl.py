@@ -8,6 +8,8 @@ from qiskit import QuantumCircuit
 from qiskit.circuit.library import CZGate, CXGate
 from qiskit.quantum_info import Operator
 
+from iqm.qiskit_iqm import IQMFakeAphrodite
+
 from fiqci.ems.transpiler_passes.pauli_twirl import PauliTwirl, get_twirled_circuits, _get_twirl_set, _twirl_set_cache
 from fiqci.ems.fiqci_backend import FiQCIBackend, MitigatedJob
 
@@ -152,38 +154,51 @@ class TestPauliTwirlPass:
 class TestGetTwirledCircuits:
 	"""Tests for get_twirled_circuits function."""
 
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		"""Create a mock IQM backend."""
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	@pytest.fixture
+	def backend(self, mock_backend: Mock) -> FiQCIBackend:
+		"""Create a FiQCIBackend with mitigation level 0."""
+		return FiQCIBackend(IQMFakeAphrodite())
+
 	def setup_method(self):
 		_twirl_set_cache.clear()
 
-	def test_returns_correct_number_of_circuits(self):
+	def test_returns_correct_number_of_circuits(self, backend):
 		"""Test that output has len(circuits) * (num_twirls + 1) circuits."""
 		qc = QuantumCircuit(2)
 		qc.cz(0, 1)
 
-		result = get_twirled_circuits([qc], num_twirls=5)
+		result = get_twirled_circuits([qc], num_twirls=5, backend=backend)
 		assert len(result) == 6  # 1 original + 5 twirled
 
-	def test_multiple_input_circuits(self):
+	def test_multiple_input_circuits(self, backend):
 		"""Test with multiple input circuits."""
 		circuits = [QuantumCircuit(2) for _ in range(3)]
 		for qc in circuits:
 			qc.cz(0, 1)
 
-		result = get_twirled_circuits(circuits, num_twirls=4)
+		result = get_twirled_circuits(circuits, num_twirls=4, backend=backend)
 		assert len(result) == 15  # 3 * (4 + 1)
 
-	def test_original_circuit_is_first_in_each_group(self):
+	def test_original_circuit_is_first_in_each_group(self, backend):
 		"""Test that the original circuit is at the start of each group."""
 		qc = QuantumCircuit(2)
 		qc.h(0)
 		qc.cz(0, 1)
 		qc.measure_all()
 
-		result = get_twirled_circuits([qc], num_twirls=3)
+		result = get_twirled_circuits([qc], num_twirls=3, backend=backend)
 		# First circuit in the group should be the original
 		assert result[0] is qc
 
-	def test_original_circuits_at_group_boundaries(self):
+	def test_original_circuits_at_group_boundaries(self, backend):
 		"""Test that original circuits appear at positions 0, group_size, 2*group_size, etc."""
 		qc1 = QuantumCircuit(2)
 		qc1.cz(0, 1)
@@ -192,38 +207,38 @@ class TestGetTwirledCircuits:
 		qc2.cz(0, 1)
 
 		num_twirls = 3
-		result = get_twirled_circuits([qc1, qc2], num_twirls=num_twirls)
+		result = get_twirled_circuits([qc1, qc2], num_twirls=num_twirls, backend=backend)
 		group_size = num_twirls + 1
 
 		assert result[0] is qc1
 		assert result[group_size] is qc2
 
-	def test_twirled_circuits_preserve_unitary(self):
+	def test_twirled_circuits_preserve_unitary(self, backend):
 		"""Test that each twirled circuit is unitarily equivalent to the original."""
 		qc = QuantumCircuit(2)
 		qc.h(0)
 		qc.cz(0, 1)
 		original_op = Operator(qc)
 
-		result = get_twirled_circuits([qc], num_twirls=5)
+		result = get_twirled_circuits([qc], num_twirls=5, backend=backend)
 		for twirled in result[1:]:  # skip original at index 0
 			assert original_op.equiv(Operator(twirled))
 
-	def test_num_twirls_zero(self):
+	def test_num_twirls_zero(self, backend):
 		"""Test with num_twirls=0 returns just the original circuits."""
 		qc = QuantumCircuit(2)
 		qc.cz(0, 1)
 
-		result = get_twirled_circuits([qc], num_twirls=0)
+		result = get_twirled_circuits([qc], num_twirls=0, backend=backend)
 		assert len(result) == 1
 		assert result[0] is qc
 
-	def test_returns_flat_list(self):
+	def test_returns_flat_list(self, backend):
 		"""Test that result is a flat list, not nested."""
 		qc = QuantumCircuit(2)
 		qc.cz(0, 1)
 
-		result = get_twirled_circuits([qc], num_twirls=3)
+		result = get_twirled_circuits([qc], num_twirls=3, backend=backend)
 		assert isinstance(result, list)
 		for item in result:
 			assert isinstance(item, QuantumCircuit)
@@ -314,14 +329,12 @@ class TestBackendRunWithPauliTwirling:
 		assert result == mock_job
 		mock_backend.run.assert_called_once()
 
-	@patch("fiqci.ems.fiqci_backend.transpile")
 	@patch("fiqci.ems.fiqci_backend.get_twirled_circuits")
-	def test_run_with_twirling_expands_circuits(self, mock_get_twirled, mock_transpile, mock_backend, mock_circuit):
+	def test_run_with_twirling_expands_circuits(self, mock_get_twirled, mock_backend, mock_circuit):
 		"""Test that twirling expands the circuit list before running."""
 		num_twirls = 3
 		expanded = [mock_circuit] * 4  # 1 original + 3 twirled
 		mock_get_twirled.return_value = expanded
-		mock_transpile.return_value = expanded
 
 		mock_job = Mock()
 		mock_result = Mock()
@@ -346,14 +359,12 @@ class TestBackendRunWithPauliTwirling:
 		# Result should be MitigatedJob since twirling requires post-processing
 		assert isinstance(result, MitigatedJob)
 
-	@patch("fiqci.ems.fiqci_backend.transpile")
 	@patch("fiqci.ems.fiqci_backend.get_twirled_circuits")
-	def test_run_with_twirling_and_rem(self, mock_get_twirled, mock_transpile, mock_backend, mock_circuit):
+	def test_run_with_twirling_and_rem(self, mock_get_twirled, mock_backend, mock_circuit):
 		"""Test that twirling works together with REM."""
 		num_twirls = 2
 		expanded = [mock_circuit] * 3  # 1 original + 2 twirled
 		mock_get_twirled.return_value = expanded
-		mock_transpile.return_value = expanded
 
 		mock_job = Mock()
 		mock_result = Mock()

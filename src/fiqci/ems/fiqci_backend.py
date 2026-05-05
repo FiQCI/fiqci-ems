@@ -22,7 +22,7 @@ from fiqci.ems.mitigators.dd import DDGateSequenceEntry, build_dd_options
 from fiqci.ems.transpiler_passes.pauli_twirl import get_twirled_circuits
 from fiqci.ems.utils import probabilities_to_counts
 
-from qiskit import QuantumCircuit, transpile
+from qiskit import QuantumCircuit
 from qiskit.circuit import Gate
 from qiskit.providers import JobV1
 from qiskit.result import Result
@@ -367,8 +367,8 @@ class FiQCIBackend:
 				circuits_list,
 				num_twirls=self._pauli_twirl["num_twirls"],
 				gates_to_twirl=self._pauli_twirl["gates_to_twirl"],
+				backend=self._backend,
 			)
-			circuits_list = transpile(circuits_list, backend=self._backend, optimization_level=0)
 			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
 			logger.info(
 				"Pauli twirling expanded %d -> %d circuits (group size %d)",
@@ -512,11 +512,13 @@ class FiQCIBackend:
 		result = job.result()
 
 		# Apply M3 correction to each circuit's results
+		# Apply M3 correction to each circuit's results
 		raw_counts_list: list[dict[str, int]] = []
 		mitigated_counts_list: list[dict[str, int]] = []
 
 		for idx in range(len(circuits)):
 			raw_counts = result.get_counts(idx)
+			assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
 			assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
 			raw_counts_list.append(raw_counts)
 			qubits = qubits_list[idx]
