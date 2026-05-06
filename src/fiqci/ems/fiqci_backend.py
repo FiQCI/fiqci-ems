@@ -512,13 +512,11 @@ class FiQCIBackend:
 		result = job.result()
 
 		# Apply M3 correction to each circuit's results
-		# Apply M3 correction to each circuit's results
 		raw_counts_list: list[dict[str, int]] = []
 		mitigated_counts_list: list[dict[str, int]] = []
 
 		for idx in range(len(circuits)):
 			raw_counts = result.get_counts(idx)
-			assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
 			assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
 			raw_counts_list.append(raw_counts)
 			qubits = qubits_list[idx]
