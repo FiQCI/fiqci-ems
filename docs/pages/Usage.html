@@ -421,13 +421,13 @@ Estimator</label><div class="sd-tab-content docutils">
 <span class="n">device_observables</span> <span class="o">=</span> <span class="n">observables</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
 
 <span class="c1"># Execute the job</span>
-<span class="n">job_collection</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
+<span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
 
 <span class="c1"># Get expectation values</span>
-<span class="n">evs</span> <span class="o">=</span> <span class="n">job_collection</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">()</span>
+<span class="n">evs</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">()</span>
 
-<span class="c1"># Access all jobs executed by estimator</span>
-<span class="n">jobs</span> <span class="o">=</span> <span class="n">job_collection</span><span class="o">.</span><span class="n">jobs</span><span class="p">()</span>
+<span class="c1"># Access the underlying backend job</span>
+<span class="n">underlying_job</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">job</span><span class="p">()</span>
 
 <span class="c1"># Or manually set mitigation options</span>
 <span class="n">estimator</span><span class="o">.</span><span class="n">rem</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>

@@ -9,5 +9,5 @@ fiqci.ems.primitives.fiqci\_estimator
    .. autosummary::
    
       FiQCIEstimator
-      FiQCIEstimatorJobCollection
+      FiQCIEstimatorJob
    

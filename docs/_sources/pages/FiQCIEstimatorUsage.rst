@@ -206,10 +206,30 @@ Use the :attr:`~fiqci.ems.FiQCIEstimator.mitigator_options` property to view cur
 
    estimator.mitigator_options
 
+Counting Circuits
+-----------------
+
+Use :meth:`~fiqci.ems.FiQCIEstimator.total_circuits_generated` to see how many circuits will actually be executed under the current mitigation settings (accounts for measurement-basis splitting, ZNE scale factors and Pauli twirls):
+
+.. code-block:: python
+
+   estimator.total_circuits_generated(num_base_circuits=1, observables=device_observables, detailed=True)
+
+Set ``detailed=True`` to print the breakdown and return a dictionary with each multiplier; otherwise the method returns the total as an ``int``. The count does not include REM calibration circuits.
+
+Running Circuits
+----------------
+
+:meth:`~fiqci.ems.FiQCIEstimator.run` accepts a ``max_batch_size`` parameter (default ``100``) that controls how many circuits are sent to the backend in a single job. All measurement-basis subcircuits across every circuit/observable pair (and every ZNE scale factor) are flattened and split into batches of this size, then re-combined transparently.
+
+.. code-block:: python
+
+   job = estimator.run(qc_transpiled, observables=device_observables, shots=2048, max_batch_size=100)
+
 Results
 -------
 
-:meth:`~fiqci.ems.FiQCIEstimator.run` returns a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection` with the following methods:
+:meth:`~fiqci.ems.FiQCIEstimator.run` returns a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob` that wraps the single backend job produced by the run. It exposes the following methods:
 
 .. list-table::
    :header-rows: 1
@@ -220,10 +240,10 @@ Results
      - Mitigated expectation values
    * - ``raw_expectation_values(index=None)``
      - Raw (pre-extrapolation) expectation values
-   * - ``jobs()``
-     - All jobs executed by the estimator
-   * - ``results()``
-     - Results for each job
+   * - ``job()``
+     - The underlying backend job
+   * - ``result()``
+     - Combined ``Result`` from the backend job
    * - ``observables(index=None)``
      - Observables used in the computation
 

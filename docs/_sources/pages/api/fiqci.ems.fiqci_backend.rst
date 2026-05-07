@@ -8,6 +8,7 @@ fiqci.ems.fiqci\_backend
 
    .. autosummary::
    
+      BatchedJob
       FiQCIBackend
       MitigatedJob
    

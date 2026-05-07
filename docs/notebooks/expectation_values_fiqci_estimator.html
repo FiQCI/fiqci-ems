@@ -405,7 +405,7 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1000,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f9c34e438f0&gt;},
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f3856e01130&gt;},
  &#39;dd&#39;: {&#39;enabled&#39;: False, &#39;gate_sequences&#39;: []},
  &#39;pauli_twirl&#39;: {&#39;enabled&#39;: False, &#39;num_twirls&#39;: 0, &#39;gates_to_twirl&#39;: None}}
 </pre></div>
@@ -450,7 +450,7 @@
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9726027397260274, -0.004887585532746823]]
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[[0.9138099902056807, 0.01466275659824047]]
 </pre></div>
 </div>
 </div>
@@ -460,21 +460,18 @@
 <h2>Access job metadata<a class="headerlink" href="#access-job-metadata" title="Link to this heading">#</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get all jobs</span>
-<span class="n">jobs</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">jobs</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get the underlying backend job</span>
+<span class="n">backend_job</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">job</span><span class="p">()</span>
 
-<span class="c1"># Get the first job</span>
-<span class="n">job0</span> <span class="o">=</span> <span class="n">jobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
-<span class="c1"># Access raw counts for the first job</span>
-<span class="n">raw_counts</span> <span class="o">=</span> <span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;fiqci_ems&quot;</span><span class="p">][</span><span class="s2">&quot;raw_counts&quot;</span><span class="p">]</span>
+<span class="c1"># Access raw counts for the first circuit in the job</span>
+<span class="n">raw_counts</span> <span class="o">=</span> <span class="n">backend_job</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;fiqci_ems&quot;</span><span class="p">][</span><span class="s2">&quot;raw_counts&quot;</span><span class="p">]</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">raw_counts</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;01&#39;: 52, &#39;11&#39;: 469, &#39;10&#39;: 44, &#39;00&#39;: 459}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;01&#39;: 49, &#39;10&#39;: 61, &#39;00&#39;: 476, &#39;11&#39;: 438}
 </pre></div>
 </div>
 </div>
@@ -505,7 +502,7 @@
  &#39;rem&#39;: {&#39;enabled&#39;: True,
   &#39;calibration_shots&#39;: 1024,
   &#39;calibration_file&#39;: None,
-  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f9c353bd880&gt;},
+  &#39;mitigator&#39;: &lt;fiqci.ems.mitigators.rem.M3IQM at 0x7f3856fe5f40&gt;},
  &#39;dd&#39;: {&#39;enabled&#39;: False, &#39;gate_sequences&#39;: []},
  &#39;pauli_twirl&#39;: {&#39;enabled&#39;: False, &#39;num_twirls&#39;: 0, &#39;gates_to_twirl&#39;: None}}
 </pre></div>
@@ -517,28 +514,25 @@
 <h2>Access Job Information and Metadata<a class="headerlink" href="#access-job-information-and-metadata" title="Link to this heading">#</a></h2>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Estimator may execute multiple circuits depending on observables and mitigator settings. Here we fecth them all as a list</span>
-<span class="n">jobs</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">jobs</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># All measurement-basis subcircuits the estimator runs are flattened into a single backend job. Access it via job.job().</span>
+<span class="n">backend_job</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">job</span><span class="p">()</span>
 
-<span class="c1"># Look at the first job</span>
-<span class="n">job0</span> <span class="o">=</span> <span class="n">jobs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="c1"># Get the counts for every circuit in the job</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">backend_job</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">get_counts</span><span class="p">())</span>
 
-<span class="c1"># Get the counts for the first job</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">get_counts</span><span class="p">())</span>
+<span class="c1"># Get raw counts for the first circuit in the job</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">backend_job</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
 
-<span class="c1"># Get raw counts for the circuit in the first job</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
-
-<span class="n">raw_counts</span> <span class="o">=</span> <span class="n">job0</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;fiqci_ems&quot;</span><span class="p">][</span><span class="s2">&quot;raw_counts&quot;</span><span class="p">]</span>
+<span class="n">raw_counts</span> <span class="o">=</span> <span class="n">backend_job</span><span class="o">.</span><span class="n">result</span><span class="p">()</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;fiqci_ems&quot;</span><span class="p">][</span><span class="s2">&quot;raw_counts&quot;</span><span class="p">]</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">raw_counts</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01&#39;: 14, &#39;00&#39;: 495, &#39;11&#39;: 513}, {&#39;0&#39;: 509, &#39;1&#39;: 514}]
-{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 5, &#39;name&#39;: &#39;circuit-13855&#39;, &#39;qreg_sizes&#39;: [[&#39;ancilla&#39;, 3], [&#39;q&#39;, 2]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 1000, &#39;raw_counts&#39;: {&#39;01&#39;: 52, &#39;11&#39;: 469, &#39;10&#39;: 44, &#39;00&#39;: 459}}}
-{&#39;01&#39;: 52, &#39;11&#39;: 469, &#39;10&#39;: 44, &#39;00&#39;: 459}
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[{&#39;01&#39;: 21, &#39;10&#39;: 23, &#39;11&#39;: 466, &#39;00&#39;: 511}, {&#39;1&#39;: 504, &#39;0&#39;: 519}]
+{&#39;creg_sizes&#39;: [[&#39;meas&#39;, 2]], &#39;global_phase&#39;: 0.0, &#39;memory_slots&#39;: 2, &#39;n_qubits&#39;: 5, &#39;name&#39;: &#39;circuit-13855&#39;, &#39;qreg_sizes&#39;: [[&#39;ancilla&#39;, 3], [&#39;q&#39;, 2]], &#39;metadata&#39;: {}, &#39;fiqci_ems&#39;: {&#39;mitigation_level&#39;: 1, &#39;mitigation_method&#39;: &#39;M3&#39;, &#39;calibration_shots&#39;: 1000, &#39;raw_counts&#39;: {&#39;01&#39;: 49, &#39;10&#39;: 61, &#39;00&#39;: 476, &#39;11&#39;: 438}}}
+{&#39;01&#39;: 49, &#39;10&#39;: 61, &#39;00&#39;: 476, &#39;11&#39;: 438}
 </pre></div>
 </div>
 </div>

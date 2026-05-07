@@ -343,6 +343,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.mitigation_level"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigation_level</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.raw_counts"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.raw_counts</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigator_options</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.total_circuits_generated"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.total_circuits_generated()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.init_pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.init_pauli_twirl()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.rem()</span></code></a></li>
@@ -353,6 +354,11 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.MitigatedJob"><code class="docutils literal notranslate"><span class="pre">MitigatedJob</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.MitigatedJob.__init__"><code class="docutils literal notranslate"><span class="pre">MitigatedJob.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.MitigatedJob.result"><code class="docutils literal notranslate"><span class="pre">MitigatedJob.result()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.BatchedJob"><code class="docutils literal notranslate"><span class="pre">BatchedJob</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.BatchedJob.__init__"><code class="docutils literal notranslate"><span class="pre">BatchedJob.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.BatchedJob.result"><code class="docutils literal notranslate"><span class="pre">BatchedJob.result()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -376,10 +382,13 @@ backend interface without additional code.</p>
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.fiqci_backend.FiQCIBackend" title="fiqci.ems.fiqci_backend.FiQCIBackend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FiQCIBackend</span></code></a>(backend[, mitigation_level, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.fiqci_backend.BatchedJob" title="fiqci.ems.fiqci_backend.BatchedJob"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BatchedJob</span></code></a>(jobs)</p></td>
+<td><p>Wrapper that combines results from multiple backend jobs into a single Result.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#fiqci.ems.fiqci_backend.FiQCIBackend" title="fiqci.ems.fiqci_backend.FiQCIBackend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FiQCIBackend</span></code></a>(backend[, mitigation_level, ...])</p></td>
 <td><p>FiQCI backend wrapper that applies error mitigation automatically.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#fiqci.ems.fiqci_backend.MitigatedJob" title="fiqci.ems.fiqci_backend.MitigatedJob"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MitigatedJob</span></code></a>(original_job, mitigated_result)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.fiqci_backend.MitigatedJob" title="fiqci.ems.fiqci_backend.MitigatedJob"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MitigatedJob</span></code></a>(original_job, mitigated_result)</p></td>
 <td><p>Wrapper for job results with mitigated data.</p></td>
 </tr>
 </tbody>
@@ -444,6 +453,10 @@ backend interface without additional code.</p>
 <dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.FiQCIBackend.raw_counts">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">raw_counts</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.FiQCIBackend.raw_counts" title="Link to this definition">#</a></dt>
 <dd><p>Get the raw (unmitigated) counts from the most recent run.</p>
+<p>The list is flat with one entry per circuit submitted to the backend, in submission order.
+With Pauli twirling enabled this is the per-twirl counts before any averaging, so the length
+is <code class="docutils literal notranslate"><span class="pre">num_input_circuits</span> <span class="pre">*</span> <span class="pre">(num_twirls</span> <span class="pre">+</span> <span class="pre">1)</span></code> and entries for the same input circuit are
+contiguous.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>List of raw count dictionaries, or None if no run has been performed yet.</p>
@@ -460,6 +473,12 @@ backend interface without additional code.</p>
 <dd class="field-odd"><p>A dictionary of current mitigator settings and their values.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.FiQCIBackend.total_circuits_generated">
+<span class="sig-name descname"><span class="pre">total_circuits_generated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_base_circuits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detailed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.FiQCIBackend.total_circuits_generated" title="Link to this definition">#</a></dt>
+<dd><p>Calculate total circuits generated for a given number of base circuits and observables.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -524,7 +543,7 @@ See build_dd_options for details on each field.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.FiQCIBackend.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">circuits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QuantumCircuit</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">QuantumCircuit</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shots</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">JobV1</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fiqci.ems.fiqci_backend.MitigatedJob" title="fiqci.ems.fiqci_backend.MitigatedJob"><span class="pre">MitigatedJob</span></a></span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.FiQCIBackend.run" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">circuits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QuantumCircuit</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">QuantumCircuit</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shots</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">JobV1</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fiqci.ems.fiqci_backend.MitigatedJob" title="fiqci.ems.fiqci_backend.MitigatedJob"><span class="pre">MitigatedJob</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fiqci.ems.fiqci_backend.BatchedJob" title="fiqci.ems.fiqci_backend.BatchedJob"><span class="pre">BatchedJob</span></a></span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.FiQCIBackend.run" title="Link to this definition">#</a></dt>
 <dd><p>Run quantum circuits with error mitigation.</p>
 <p>This method runs the specified quantum circuit(s) on the backend and applies
 error mitigation based on the configured mitigation level.</p>
@@ -533,6 +552,10 @@ error mitigation based on the configured mitigation level.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>circuits</strong> – Single quantum circuit or list of circuits to execute.</p></li>
 <li><p><strong>shots</strong> – Number of shots. Default is 1024.</p></li>
+<li><p><strong>max_batch_size</strong> – Maximum number of circuits per backend job. The (post-twirl) circuit list is
+flattened and split into batches of this size; the resulting jobs are wrapped so that the
+returned job’s <code class="docutils literal notranslate"><span class="pre">result()</span></code> exposes a single combined Result indexed in submission order
+(default: 100).</p></li>
 <li><p><strong>**kwargs</strong> – Additional keyword arguments passed to backend.run().</p></li>
 </ul>
 </dd>
@@ -549,18 +572,19 @@ error mitigation based on the configured mitigation level.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.MitigatedJob">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MitigatedJob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_job</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">JobV1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mitigated_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Result</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.fiqci_backend.MitigatedJob" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">MitigatedJob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_job</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">JobV1</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fiqci.ems.fiqci_backend.BatchedJob" title="fiqci.ems.fiqci_backend.BatchedJob"><span class="pre">BatchedJob</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mitigated_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Result</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.fiqci_backend.MitigatedJob" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Wrapper for job results with mitigated data.</p>
 <p>This class wraps the original job and provides access to mitigated results.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.MitigatedJob.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_job</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">JobV1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mitigated_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Result</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.MitigatedJob.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">original_job</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">JobV1</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fiqci.ems.fiqci_backend.BatchedJob" title="fiqci.ems.fiqci_backend.BatchedJob"><span class="pre">BatchedJob</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mitigated_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Result</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.MitigatedJob.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Initialize mitigated job wrapper.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>original_job</strong> – Original job from backend.</p></li>
+<li><p><strong>original_job</strong> – Original job from backend (a single <code class="docutils literal notranslate"><span class="pre">JobV1</span></code> or a <code class="docutils literal notranslate"><span class="pre">BatchedJob</span></code> wrapping
+multiple per-batch jobs).</p></li>
 <li><p><strong>mitigated_result</strong> – Result object with mitigated counts.</p></li>
 </ul>
 </dd>
@@ -580,6 +604,27 @@ error mitigation based on the configured mitigation level.</p>
 </dd>
 </dl>
 </dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.BatchedJob">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">BatchedJob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">JobV1</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.fiqci_backend.BatchedJob" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Wrapper that combines results from multiple backend jobs into a single Result.</p>
+<p>The wrapped jobs were submitted as ordered batches of a larger circuit list. Calling
+<code class="docutils literal notranslate"><span class="pre">result()</span></code> waits on each underlying job and concatenates their <code class="docutils literal notranslate"><span class="pre">results</span></code> lists in
+submission order, so <code class="docutils literal notranslate"><span class="pre">get_counts(idx)</span></code> on the combined Result corresponds to the
+original circuit index.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.BatchedJob.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jobs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">JobV1</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.BatchedJob.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.fiqci_backend.BatchedJob.result">
+<span class="sig-name descname"><span class="pre">result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Result</span></span></span><a class="headerlink" href="#fiqci.ems.fiqci_backend.BatchedJob.result" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -638,6 +683,7 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.mitigation_level"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigation_level</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.raw_counts"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.raw_counts</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.mitigator_options"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.mitigator_options</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.total_circuits_generated"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.total_circuits_generated()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.init_pauli_twirl"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.init_pauli_twirl()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.dd"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.dd()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.FiQCIBackend.rem"><code class="docutils literal notranslate"><span class="pre">FiQCIBackend.rem()</span></code></a></li>
@@ -648,6 +694,11 @@ error mitigation based on the configured mitigation level.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.MitigatedJob"><code class="docutils literal notranslate"><span class="pre">MitigatedJob</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.MitigatedJob.__init__"><code class="docutils literal notranslate"><span class="pre">MitigatedJob.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.MitigatedJob.result"><code class="docutils literal notranslate"><span class="pre">MitigatedJob.result()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.BatchedJob"><code class="docutils literal notranslate"><span class="pre">BatchedJob</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.BatchedJob.__init__"><code class="docutils literal notranslate"><span class="pre">BatchedJob.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.fiqci_backend.BatchedJob.result"><code class="docutils literal notranslate"><span class="pre">BatchedJob.result()</span></code></a></li>
 </ul>
 </li>
 </ul>

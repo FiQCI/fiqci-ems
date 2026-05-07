@@ -347,6 +347,8 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#counting-circuits">Counting Circuits</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-circuits">Running Circuits</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>
@@ -561,9 +563,24 @@
 </pre></div>
 </div>
 </section>
+<section id="counting-circuits">
+<h2>Counting Circuits<a class="headerlink" href="#counting-circuits" title="Link to this heading">#</a></h2>
+<p>Use <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.total_circuits_generated" title="fiqci.ems.FiQCIEstimator.total_circuits_generated"><code class="xref py py-meth docutils literal notranslate"><span class="pre">total_circuits_generated()</span></code></a> to see how many circuits will actually be executed under the current mitigation settings (accounts for measurement-basis splitting, ZNE scale factors and Pauli twirls):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">total_circuits_generated</span><span class="p">(</span><span class="n">num_base_circuits</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">detailed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Set <code class="docutils literal notranslate"><span class="pre">detailed=True</span></code> to print the breakdown and return a dictionary with each multiplier; otherwise the method returns the total as an <code class="docutils literal notranslate"><span class="pre">int</span></code>. The count does not include REM calibration circuits.</p>
+</section>
+<section id="running-circuits">
+<h2>Running Circuits<a class="headerlink" href="#running-circuits" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.run" title="fiqci.ems.FiQCIEstimator.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> accepts a <code class="docutils literal notranslate"><span class="pre">max_batch_size</span></code> parameter (default <code class="docutils literal notranslate"><span class="pre">100</span></code>) that controls how many circuits are sent to the backend in a single job. All measurement-basis subcircuits across every circuit/observable pair (and every ZNE scale factor) are flattened and split into batches of this size, then re-combined transparently.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span> <span class="n">max_batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 <section id="results">
 <h2>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.run" title="fiqci.ems.FiQCIEstimator.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> returns a <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJobCollection"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimatorJobCollection</span></code></a> with the following methods:</p>
+<p><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.run" title="fiqci.ems.FiQCIEstimator.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> returns a <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimatorJob</span></code></a> that wraps the single backend job produced by the run. It exposes the following methods:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Method</p></th>
@@ -577,11 +594,11 @@
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">raw_expectation_values(index=None)</span></code></p></td>
 <td><p>Raw (pre-extrapolation) expectation values</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jobs()</span></code></p></td>
-<td><p>All jobs executed by the estimator</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">job()</span></code></p></td>
+<td><p>The underlying backend job</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">results()</span></code></p></td>
-<td><p>Results for each job</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">result()</span></code></p></td>
+<td><p>Combined <code class="docutils literal notranslate"><span class="pre">Result</span></code> from the backend job</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">observables(index=None)</span></code></p></td>
 <td><p>Observables used in the computation</p></td>
@@ -656,6 +673,8 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#counting-circuits">Counting Circuits</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-circuits">Running Circuits</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>
