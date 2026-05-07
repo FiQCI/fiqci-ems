@@ -126,6 +126,11 @@ class FiQCIBackend:
 	def raw_counts(self) -> list[dict[str, int]] | None:
 		"""Get the raw (unmitigated) counts from the most recent run.
 
+		The list is flat with one entry per circuit submitted to the backend, in submission order.
+		With Pauli twirling enabled this is the per-twirl counts before any averaging, so the length
+		is ``num_input_circuits * (num_twirls + 1)`` and entries for the same input circuit are
+		contiguous.
+
 		Returns:
 			List of raw count dictionaries, or None if no run has been performed yet.
 		"""
@@ -140,6 +145,29 @@ class FiQCIBackend:
 			A dictionary of current mitigator settings and their values.
 		"""
 		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
+
+	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int | dict[str, int]:
+		"""Calculate total circuits generated for a given number of base circuits and observables."""
+		pauli_twirl_circuits_multiplier = 1
+
+		if self._pauli_twirl["enabled"]:
+			pauli_twirl_circuits_multiplier = (
+				self._pauli_twirl["num_twirls"] + 1
+			)  # +1 for the original circuit without twirling
+
+		total_circuits = num_base_circuits * pauli_twirl_circuits_multiplier
+
+		if detailed:
+			print(
+				f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}). This does not include circuits ran to calibrate readout error mitigation (REM)."
+			)
+			return {
+				"base_circuits": num_base_circuits,
+				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
+				"total_circuits": total_circuits,
+			}
+		else:
+			return total_circuits
 
 	def init_pauli_twirl(
 		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[Gate]] = None
@@ -289,8 +317,12 @@ class FiQCIBackend:
 		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
 	def run(
-		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 1024, **kwargs: Any
-	) -> JobV1 | MitigatedJob:
+		self,
+		circuits: QuantumCircuit | list[QuantumCircuit],
+		shots: int = 1024,
+		max_batch_size: int = 100,
+		**kwargs: Any,
+	) -> JobV1 | MitigatedJob | BatchedJob:
 		"""Run quantum circuits with error mitigation.
 
 		This method runs the specified quantum circuit(s) on the backend and applies
@@ -299,6 +331,10 @@ class FiQCIBackend:
 		Args:
 			circuits: Single quantum circuit or list of circuits to execute.
 			shots: Number of shots. Default is 1024.
+			max_batch_size: Maximum number of circuits per backend job. The (post-twirl) circuit list is
+				flattened and split into batches of this size; the resulting jobs are wrapped so that the
+				returned job's ``result()`` exposes a single combined Result indexed in submission order
+				(default: 100).
 			**kwargs: Additional keyword arguments passed to backend.run().
 
 		Returns:
@@ -314,6 +350,16 @@ class FiQCIBackend:
 		if not circuits_list:
 			raise ValueError("No circuits provided")
 
+		input_circuit_count = len(circuits_list)
+		logger.info(
+			"FiQCIBackend.run: %d input circuit(s); mitigation_level=%d (REM=%s, DD=%s, pauli_twirl=%s)",
+			input_circuit_count,
+			self._mitigation_level,
+			"on" if self._rem["enabled"] else "off",
+			"on" if self._dd["enabled"] else "off",
+			"on" if self._pauli_twirl["enabled"] else "off",
+		)
+
 		# If Pauli Twirling is enabled, replace circuits with twirled versions
 		twirl_group_size = 0
 		if self._pauli_twirl["enabled"]:
@@ -323,16 +369,36 @@ class FiQCIBackend:
 				gates_to_twirl=self._pauli_twirl["gates_to_twirl"],
 				backend=self._backend,
 			)
-			# circuits_list = transpile(circuits_list, backend=self._backend, optimization_level=0)
 			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
+			logger.info(
+				"Pauli twirling expanded %d -> %d circuits (group size %d)",
+				input_circuit_count,
+				len(circuits_list),
+				twirl_group_size,
+			)
 
-		# Run circuits on backend (with DD options if enabled)
+		# Build run kwargs (DD options if enabled)
+		run_kwargs = dict(kwargs)
 		if self._dd["enabled"]:
-			dd_options = build_dd_options(self._dd["gate_sequences"])
-			job = self._backend.run(circuits_list, shots=shots, circuit_compilation_options=dd_options, **kwargs)
-		else:
-			job = self._backend.run(circuits_list, shots=shots, **kwargs)
-		assert job is not None, "Backend returned None job"
+			run_kwargs["circuit_compilation_options"] = build_dd_options(self._dd["gate_sequences"])
+
+		# Submit circuits in batches of at most max_batch_size, preserving submission order so the
+		# combined result indices match circuits_list.
+		num_batches = (len(circuits_list) + max_batch_size - 1) // max_batch_size
+		logger.info(
+			"Submitting %d circuit(s) to backend in %d batch(es) of up to %d",
+			len(circuits_list),
+			num_batches,
+			max_batch_size,
+		)
+		batch_jobs: list[JobV1] = []
+		for batch_start in range(0, len(circuits_list), max_batch_size):
+			batch = circuits_list[batch_start : batch_start + max_batch_size]
+			batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
+			assert batch_job is not None, "Backend returned None job"
+			batch_jobs.append(batch_job)
+
+		job: JobV1 | BatchedJob = batch_jobs[0] if len(batch_jobs) == 1 else BatchedJob(batch_jobs)
 
 		# No REM: return raw job (or averaged twirl results)
 		if not self._rem["enabled"]:
@@ -340,33 +406,26 @@ class FiQCIBackend:
 				return job
 
 			result = job.result()
-			raw_counts_list = self._average_group_counts(result, twirl_group_size)
+			all_counts = result.get_counts()
+			if not isinstance(all_counts, list):
+				all_counts = [all_counts]
+			raw_counts_list: list[dict[str, int]] = list(all_counts)
 			self._raw_counts_cache = raw_counts_list
+
+			averaged_counts_list = [
+				self._average_counts(raw_counts_list[i : i + twirl_group_size])
+				for i in range(0, len(raw_counts_list), twirl_group_size)
+			]
+
 			num_groups = len(circuits_list) // twirl_group_size
 			result_to_use = self._trim_result_to_groups(result, num_groups)
-			mitigated_result = self._create_mitigated_result(result_to_use, raw_counts_list, raw_counts_list)
+			mitigated_result = self._create_mitigated_result(
+				result_to_use, averaged_counts_list, raw_counts_list, twirl_group_size=twirl_group_size
+			)
 			return MitigatedJob(job, mitigated_result)
 
 		# REM enabled: run with M3 mitigation
 		return self._run_with_m3_mitigation(job, circuits_list, shots, twirl_group_size=twirl_group_size)
-
-	def _average_group_counts(self, result: Result, group_size: int) -> list[dict[str, int]]:
-		"""Average raw counts across twirled circuit groups.
-
-		Args:
-			result: Result object from backend.
-			group_size: Number of circuits per group (num_twirls + 1).
-
-		Returns:
-			List of averaged count dictionaries, one per group.
-		"""
-		all_counts = result.get_counts()
-		if not isinstance(all_counts, list):
-			all_counts = [all_counts]
-		averaged = []
-		for i in range(0, len(all_counts), group_size):
-			averaged.append(self._average_counts(all_counts[i : i + group_size]))
-		return averaged
 
 	@staticmethod
 	def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
@@ -408,7 +467,7 @@ class FiQCIBackend:
 		return QiskitResult.from_dict(result_data)
 
 	def _run_with_m3_mitigation(
-		self, job: JobV1, circuits: list[QuantumCircuit], shots: int, twirl_group_size: int = 0
+		self, job: JobV1 | BatchedJob, circuits: list[QuantumCircuit], shots: int, twirl_group_size: int = 0
 	) -> MitigatedJob:
 		"""Run circuits with M3 readout error mitigation.
 
@@ -468,10 +527,8 @@ class FiQCIBackend:
 			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
 			mitigated_counts_list.append(mitigated_counts[0])
 
-		# If Pauli twirling, average across groups
+		# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
 		if twirl_group_size:
-			raw_counts_list = self._average_group_counts(result, twirl_group_size)
-			# Average mitigated counts by group
 			averaged_mitigated: list[dict[str, int]] = []
 			for i in range(0, len(mitigated_counts_list), twirl_group_size):
 				averaged_mitigated.append(self._average_counts(mitigated_counts_list[i : i + twirl_group_size]))
@@ -480,21 +537,33 @@ class FiQCIBackend:
 			result = self._trim_result_to_groups(result, num_groups)
 
 		self._raw_counts_cache = raw_counts_list
-		mitigated_result = self._create_mitigated_result(result, mitigated_counts_list, raw_counts_list)
+		mitigated_result = self._create_mitigated_result(
+			result, mitigated_counts_list, raw_counts_list, twirl_group_size=twirl_group_size or 1
+		)
 		return MitigatedJob(job, mitigated_result)
 
 	def _create_mitigated_result(
-		self, original_result: Result, mitigated_counts: list[dict[str, int]], raw_counts: list[dict[str, int]]
+		self,
+		original_result: Result,
+		mitigated_counts: list[dict[str, int]],
+		raw_counts: list[dict[str, int]],
+		twirl_group_size: int = 1,
 	) -> Result:
 		"""Create a new Result object with mitigated counts and metadata.
 
 		Args:
-			original_result: Original result from backend.
-			mitigated_counts: List of mitigated count dictionaries.
-			raw_counts: List of raw (unmitigated) count dictionaries.
+			original_result: Original result from backend, already trimmed to one entry per group.
+			mitigated_counts: List of mitigated count dictionaries, one per group.
+			raw_counts: Flat list of raw (unmitigated) count dictionaries, one per submitted circuit.
+				When ``twirl_group_size > 1`` this contains all per-twirl counts in submission order.
+			twirl_group_size: Number of submitted circuits per group (``num_twirls + 1``), or 1 when
+				twirling is disabled. Used to slice ``raw_counts`` into the per-group entries that get
+				attached to each result header.
 
 		Returns:
-			New Result object with mitigated data and FiQCI EMS metadata.
+			New Result object with mitigated data and FiQCI EMS metadata. Each header's
+			``fiqci_ems["raw_counts"]`` is a single dict when ``twirl_group_size == 1`` and a list of
+			per-twirl dicts when ``twirl_group_size > 1``.
 		"""
 		# Get original result data
 		results_data = original_result.to_dict()
@@ -511,11 +580,18 @@ class FiQCIBackend:
 					if "header" not in results_list[idx]:
 						results_list[idx]["header"] = {}  # type: ignore[index]
 
+					if twirl_group_size > 1:
+						raw_for_group: dict[str, int] | list[dict[str, int]] = raw_counts[
+							idx * twirl_group_size : (idx + 1) * twirl_group_size
+						]
+					else:
+						raw_for_group = raw_counts[idx]
+
 					results_list[idx]["header"]["fiqci_ems"] = {  # type: ignore[index]
 						"mitigation_level": self._mitigation_level,
 						"mitigation_method": "M3" if self._mitigation_level == 1 else None,
 						"calibration_shots": self._rem["calibration_shots"] if self._mitigation_level == 1 else None,
-						"raw_counts": raw_counts[idx],
+						"raw_counts": raw_for_group,
 					}
 
 		# Create new result from modified data
@@ -534,11 +610,12 @@ class MitigatedJob:
 	This class wraps the original job and provides access to mitigated results.
 	"""
 
-	def __init__(self, original_job: JobV1, mitigated_result: Result) -> None:
+	def __init__(self, original_job: JobV1 | BatchedJob, mitigated_result: Result) -> None:
 		"""Initialize mitigated job wrapper.
 
 		Args:
-			original_job: Original job from backend.
+			original_job: Original job from backend (a single ``JobV1`` or a ``BatchedJob`` wrapping
+				multiple per-batch jobs).
 			mitigated_result: Result object with mitigated counts.
 		"""
 		self._original_job = original_job
@@ -558,3 +635,36 @@ class MitigatedJob:
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate attribute access to original job object."""
 		return getattr(self._original_job, name)
+
+
+class BatchedJob:
+	"""Wrapper that combines results from multiple backend jobs into a single Result.
+
+	The wrapped jobs were submitted as ordered batches of a larger circuit list. Calling
+	``result()`` waits on each underlying job and concatenates their ``results`` lists in
+	submission order, so ``get_counts(idx)`` on the combined Result corresponds to the
+	original circuit index.
+	"""
+
+	def __init__(self, jobs: list[JobV1]) -> None:
+		self._jobs = jobs
+		self._combined_result: Result | None = None
+
+	def result(self, timeout: float | None = None) -> Result:
+		if self._combined_result is not None:
+			return self._combined_result
+
+		from qiskit.result import Result as QiskitResult
+
+		assert self._jobs, "BatchedJob must wrap at least one job"
+		combined_data: dict[str, Any] = self._jobs[0].result().to_dict()
+		merged_results: list[Any] = list(combined_data.get("results") or [])
+		for job in self._jobs[1:]:
+			merged_results.extend(job.result().to_dict().get("results") or [])
+		combined_data["results"] = merged_results
+		self._combined_result = QiskitResult.from_dict(combined_data)
+		return self._combined_result
+
+	def __getattr__(self, name: str) -> Any:
+		"""Delegate attribute access to the first underlying job."""
+		return getattr(self._jobs[0], name)

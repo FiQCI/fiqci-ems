@@ -85,13 +85,13 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         device_observables = observables.apply_layout(qc_transpiled.layout)
 
         # Execute the job
-        job_collection = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+        job = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
 
         # Get expectation values
-        evs = job_collection.expectation_values()
+        evs = job.expectation_values()
 
-        # Access all jobs executed by estimator
-        jobs = job_collection.jobs()
+        # Access the underlying backend job
+        underlying_job = job.job()
 
         # Or manually set mitigation options
         estimator.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")

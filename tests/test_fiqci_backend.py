@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 from qiskit import QuantumCircuit
 
-from fiqci.ems.fiqci_backend import FiQCIBackend, MitigatedJob
+from fiqci.ems.fiqci_backend import BatchedJob, FiQCIBackend, MitigatedJob
 
 
 class TestFiQCIBackend:
@@ -293,3 +293,165 @@ class TestMitigatedJob:
 		# Should not raise error
 		result = mitigated_job.result(timeout=10.0)
 		assert result == mock_mitigated_result
+
+
+def _make_result_mock(counts_per_circuit: list[dict[str, int]]) -> Mock:
+	"""Build a Mock job whose result.to_dict()/get_counts behave like a real backend job."""
+	mock_job = Mock()
+	mock_result = Mock()
+	mock_result.to_dict.return_value = {
+		"results": [
+			{"data": {"counts": counts}, "shots": sum(counts.values()), "success": True}
+			for counts in counts_per_circuit
+		],
+		"backend_name": "mock",
+		"job_id": "test-job-id",
+		"qobj_id": "test-qobj-id",
+		"success": True,
+		"status": "COMPLETED",
+	}
+	mock_result.get_counts.return_value = counts_per_circuit if len(counts_per_circuit) > 1 else counts_per_circuit[0]
+	mock_job.result.return_value = mock_result
+	return mock_job
+
+
+class TestBackendBatching:
+	"""Tests for FiQCIBackend.run circuit batching."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	def test_run_single_batch_returns_underlying_job(self, mock_backend: Mock) -> None:
+		"""Input <= max_batch_size: backend.run is called once and the underlying job is returned as-is."""
+		circuits = [QuantumCircuit(2) for _ in range(3)]
+		mock_job = _make_result_mock([{"00": 1024}] * 3)
+		mock_backend.run.return_value = mock_job
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=10)
+
+		assert result is mock_job
+		assert mock_backend.run.call_count == 1
+		assert not isinstance(result, BatchedJob)
+
+	def test_run_multiple_batches_returns_batched_job(self, mock_backend: Mock) -> None:
+		"""Input > max_batch_size: input is split and a BatchedJob wraps the per-batch jobs."""
+		circuits = [QuantumCircuit(2) for _ in range(7)]
+		mock_backend.run.side_effect = [
+			_make_result_mock([{"00": 1024}] * 3),
+			_make_result_mock([{"00": 1024}] * 3),
+			_make_result_mock([{"00": 1024}]),
+		]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=3)
+
+		assert isinstance(result, BatchedJob)
+		assert mock_backend.run.call_count == 3
+
+	def test_run_passes_correct_circuits_per_batch(self, mock_backend: Mock) -> None:
+		"""Each batch sent to the underlying backend is a contiguous slice of the input list."""
+		circuits = [QuantumCircuit(2) for _ in range(5)]
+		mock_backend.run.side_effect = [
+			_make_result_mock([{"00": 1024}] * 2),
+			_make_result_mock([{"00": 1024}] * 2),
+			_make_result_mock([{"00": 1024}]),
+		]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		fiqci_backend.run(circuits, shots=1024, max_batch_size=2)
+
+		batches_sent = [call.args[0] for call in mock_backend.run.call_args_list]
+		assert batches_sent[0] == circuits[0:2]
+		assert batches_sent[1] == circuits[2:4]
+		assert batches_sent[2] == circuits[4:5]
+
+	def test_run_default_max_batch_size_is_100(self, mock_backend: Mock) -> None:
+		"""Default max_batch_size of 100 keeps a 50-circuit input as a single backend job."""
+		circuits = [QuantumCircuit(2) for _ in range(50)]
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}] * 50)
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		fiqci_backend.run(circuits, shots=1024)
+
+		assert mock_backend.run.call_count == 1
+
+	def test_run_default_max_batch_size_splits_above_100(self, mock_backend: Mock) -> None:
+		"""Default max_batch_size of 100 splits a 250-circuit input into 3 batches."""
+		circuits = [QuantumCircuit(2) for _ in range(250)]
+		mock_backend.run.side_effect = [
+			_make_result_mock([{"00": 1024}] * 100),
+			_make_result_mock([{"00": 1024}] * 100),
+			_make_result_mock([{"00": 1024}] * 50),
+		]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		fiqci_backend.run(circuits, shots=1024)
+
+		assert mock_backend.run.call_count == 3
+		batch_sizes = [len(call.args[0]) for call in mock_backend.run.call_args_list]
+		assert batch_sizes == [100, 100, 50]
+
+	def test_run_combined_result_indices_match_submission_order(self, mock_backend: Mock) -> None:
+		"""Counts retrieved from the BatchedJob's result match the original circuit submission order."""
+		circuits = [QuantumCircuit(2) for _ in range(5)]
+		mock_backend.run.side_effect = [
+			_make_result_mock([{"a": 1}, {"b": 2}]),
+			_make_result_mock([{"c": 3}, {"d": 4}]),
+			_make_result_mock([{"e": 5}]),
+		]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=2)
+
+		assert isinstance(result, BatchedJob)
+		combined = result.result()
+		assert combined.get_counts(0) == {"a": 1}
+		assert combined.get_counts(1) == {"b": 2}
+		assert combined.get_counts(2) == {"c": 3}
+		assert combined.get_counts(3) == {"d": 4}
+		assert combined.get_counts(4) == {"e": 5}
+
+
+class TestBatchedJob:
+	"""Tests for BatchedJob class."""
+
+	def test_result_combines_results_from_all_jobs(self) -> None:
+		"""result() concatenates each underlying job's results list in submission order."""
+		job_a = _make_result_mock([{"00": 1}, {"11": 2}])
+		job_b = _make_result_mock([{"01": 3}])
+
+		batched = BatchedJob([job_a, job_b])
+		combined = batched.result()
+
+		assert combined.get_counts(0) == {"00": 1}
+		assert combined.get_counts(1) == {"11": 2}
+		assert combined.get_counts(2) == {"01": 3}
+
+	def test_result_is_cached(self) -> None:
+		"""Calling result() twice does not call result() on the underlying jobs again."""
+		job_a = _make_result_mock([{"00": 1}])
+		job_b = _make_result_mock([{"11": 2}])
+
+		batched = BatchedJob([job_a, job_b])
+		first = batched.result()
+		second = batched.result()
+
+		assert first is second
+		assert job_a.result.call_count == 1
+		assert job_b.result.call_count == 1
+
+	def test_getattr_delegates_to_first_job(self) -> None:
+		"""Attribute access on a BatchedJob delegates to the first underlying job."""
+		job_a = Mock()
+		job_a.job_id = "first-job"
+		job_b = Mock()
+		job_b.job_id = "second-job"
+
+		batched = BatchedJob([job_a, job_b])
+
+		assert batched.job_id == "first-job"

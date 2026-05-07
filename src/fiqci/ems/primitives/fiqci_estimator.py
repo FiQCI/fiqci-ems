@@ -3,6 +3,7 @@ A class that runs quantum circuits and calculates expectation values of observab
 """
 
 from __future__ import annotations
+import logging
 import warnings
 from typing import Any, TypedDict, cast
 
@@ -18,6 +19,8 @@ from fiqci.ems.utils import _remove_idle_wires
 from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
 from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class FiQCIEstimator:
@@ -74,6 +77,42 @@ class FiQCIEstimator:
 		"""Get current mitigator settings."""
 		return {"zne": self._zne, **self.backend.mitigator_options}
 
+	def total_circuits_generated(
+		self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False
+	) -> int | dict[str, int]:
+		"""Calculate total circuits generated for a given number of base circuits and observables."""
+		measurement_settings = _combine_pauli_ops(
+			observables if isinstance(observables, SparsePauliOp) else observables[0]
+		)
+		num_measurement_circuits = len(measurement_settings)
+		zne_circuits_multiplier = 1
+		pauli_twirl_circuits_multiplier = 1
+
+		if self._zne["enabled"]:
+			zne_circuits_multiplier = len(self._zne["scale_factors"])
+		if self.backend._pauli_twirl["enabled"]:
+			pauli_twirl_circuits_multiplier = (
+				self.backend._pauli_twirl["num_twirls"] + 1
+			)  # +1 for the original circuit without twirling
+
+		total_circuits = (
+			num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier
+		)
+
+		if detailed:
+			print(
+				f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * circuits for conflicting basis measurements ({num_measurement_circuits}) * ZNE multiplier ({zne_circuits_multiplier}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}). This does not include circuits ran to calibrate readout error mitigation (REM)."
+			)
+			return {
+				"base_circuits": num_base_circuits,
+				"measurement_circuits_per_basis": num_measurement_circuits,
+				"zne_multiplier": zne_circuits_multiplier,
+				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
+				"total_circuits": total_circuits,
+			}
+		else:
+			return total_circuits
+
 	def _make_meas_instruction(self, circuit: QuantumCircuit, label: str):
 		"""Transpile a measurement circuit to basis gates and wrap as an instruction."""
 		circuit = transpile(circuit, target=self.backend.target, optimization_level=3)
@@ -85,8 +124,9 @@ class FiQCIEstimator:
 		circuits: QuantumCircuit | list[QuantumCircuit],
 		observables: SparsePauliOp | list[SparsePauliOp],
 		shots: int = 2048,
+		max_batch_size: int = 100,
 		**options,
-	) -> FiQCIEstimatorJobCollection:
+	) -> FiQCIEstimatorJob:
 		x_meas = QuantumCircuit(1)
 		x_meas.h(0)
 
@@ -111,8 +151,6 @@ class FiQCIEstimator:
 					get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops)
 					for circ, obs in zip(circuits, observables)
 				]
-		# TODO: Better batching for estimator. No need to run multiple separate jobs if total number of circuits
-		# is not too large. We can just combine circuits into a single job and split the results afterwards.
 
 		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
@@ -124,10 +162,31 @@ class FiQCIEstimator:
 		else:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
+		num_pairs = len(obs_circuits)
+		if self._zne["enabled"]:
+			logger.info(
+				"FiQCIEstimator.run: %d circuit/observable pair(s); mitigation_level=%d, "
+				"ZNE=on (scales=%s, folding=%s, extrapolation=%s)",
+				num_pairs,
+				self._mitigation_level,
+				self._zne["scale_factors"],
+				self._zne["folding_method"],
+				self._zne["extrapolation_method"],
+			)
+		else:
+			logger.info(
+				"FiQCIEstimator.run: %d circuit/observable pair(s); mitigation_level=%d, ZNE=off",
+				num_pairs,
+				self._mitigation_level,
+			)
+
 		expectation_values = []
 		all_zne_expvs = []
 
-		jobs = []
+		flat_circuits: list[QuantumCircuit] = []
+		pair_lengths: list[int] = []
+		pair_measurement_settings: list[list[dict[int, str]]] = []
+		num_base_circuits = 0  # measurement-basis circuits before ZNE scale-factor expansion
 
 		for i, obs_circ_groups in enumerate(obs_circuits):
 			obs_circs_list = [group[0] for group in obs_circ_groups]
@@ -136,19 +195,48 @@ class FiQCIEstimator:
 			measurement_settings = _combine_pauli_ops(
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
 			)
+			pair_measurement_settings.append(measurement_settings)
+			num_base_circuits += len(obs_circs_list)
 
 			if self._zne["enabled"]:
 				obs_circs_list = _get_zne_circuits(
 					obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"], self._zne["folding_method"]
 				)
 
-			job = self.backend.run(obs_circs_list, shots=shots, **options)
+			pair_lengths.append(len(obs_circs_list))
+			flat_circuits.extend(obs_circs_list)
 
-			jobs.append(job)
+		if self._zne["enabled"]:
+			logger.info(
+				"Flattened %d pair(s) into %d measurement-basis circuit(s), expanded to %d after %dx ZNE; "
+				"forwarding to backend with max_batch_size=%d",
+				num_pairs,
+				num_base_circuits,
+				len(flat_circuits),
+				len(self._zne["scale_factors"]),
+				max_batch_size,
+			)
+		else:
+			logger.info(
+				"Flattened %d pair(s) into %d measurement-basis circuit(s); forwarding to backend with max_batch_size=%d",
+				num_pairs,
+				len(flat_circuits),
+				max_batch_size,
+			)
 
-			results = job.result()
+		# Backend handles batching internally and returns a single result-shaped job (JobV1, MitigatedJob, or BatchedJob).
+		job = self.backend.run(flat_circuits, shots=shots, max_batch_size=max_batch_size, **options)
+		all_counts = job.result().get_counts()
+		if not isinstance(all_counts, list):
+			all_counts = [all_counts]
 
-			counts = results.get_counts()
+		offset = 0
+		for i, length in enumerate(pair_lengths):
+			counts = all_counts[offset : offset + length]
+			offset += length
+
+			measurement_settings = pair_measurement_settings[i]
+			zne_expvs = []
 
 			if self._zne["enabled"]:
 				split_counts = []
@@ -186,17 +274,18 @@ class FiQCIEstimator:
 				all_zne_expvs.append(zne_expvs)
 
 		if self._zne["enabled"] and len(all_zne_expvs) > 0:
-			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, all_zne_expvs)
+			return FiQCIEstimatorJob(job, expectation_values, observables, all_zne_expvs)
 		else:
-			return FiQCIEstimatorJobCollection(jobs, expectation_values, observables, expectation_values)
+			return FiQCIEstimatorJob(job, expectation_values, observables, expectation_values)
 
 	def run(
 		self,
 		circuits: QuantumCircuit | list[QuantumCircuit],
 		observables: SparsePauliOp | list[SparsePauliOp],
 		shots: int = 2048,
+		max_batch_size: int = 100,
 		**options,
-	) -> FiQCIEstimatorJobCollection:
+	) -> FiQCIEstimatorJob:
 		"""
 		Execute the given circuits on the backend and calculate expectation values for the provided observables.
 
@@ -204,12 +293,15 @@ class FiQCIEstimator:
 			circuits: A QuantumCircuit or list of QuantumCircuits to execute.
 			observables: A SparsePauliOp or list of SparsePauliOps representing the observables for which to calculate expectation values.
 			shots: Number of shots to execute each circuit (default: 2048).
+			max_batch_size: Maximum number of circuits to send in a single backend job. All measurement-basis subcircuits
+				(across all circuit/observable pairs and ZNE scale factors) are flattened and split into batches of this
+				size (default: 100).
 			**options: Additional options to pass to the backend's run method.
 
 		Returns:
-			A FiQCIEstimatorJobCollection containing the jobs and calculated expectation values.
+			A FiQCIEstimatorJob containing the jobs and calculated expectation values.
 		"""
-		return self._run(circuits, observables, shots=shots, **options)
+		return self._run(circuits, observables, shots=shots, max_batch_size=max_batch_size, **options)
 
 	def _calculate_expectation_values(
 		self,
@@ -317,33 +409,36 @@ class FiQCIEstimator:
 		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
 
 
-class FiQCIEstimatorJobCollection:
-	"""Wrapper for job results with mitigated data.
+class FiQCIEstimatorJob:
+	"""Wrapper around the single backend job that produced an estimator's results.
 
-	This class wraps the original job and provides access to mitigated results.
+	The estimator flattens all per-pair measurement-basis circuits into one backend call, so there
+	is exactly one underlying job (which may itself batch internally — see ``BatchedJob``). This
+	class exposes that job alongside the per-pair expectation values, raw expectation values
+	(pre-extrapolation when ZNE is enabled), and observables.
 	"""
 
-	def __init__(self, mitigated_jobs, expectation_values, observables, raw_expectation_values) -> None:
-		"""Initialize the FiQCIEstimatorJobCollection with mitigated results.
+	def __init__(self, mitigated_job, expectation_values, observables, raw_expectation_values) -> None:
+		"""Initialize the FiQCIEstimatorJob with mitigated results.
 
 		Args:
-		    mitigated_jobs: List of original jobs that were run for each circuit/observable pair.
-		    expectation_values: List of mitigated expectation values corresponding to each job.
-		    observables: List of observables for which expectation values were calculated.
-		    raw_expectation_values: List of raw (unmitigated) expectation values before extrapolation
+		    mitigated_job: The single job that produced the results (JobV1, MitigatedJob, or BatchedJob).
+		    expectation_values: Per-pair list of mitigated expectation values.
+		    observables: Observable(s) for which expectation values were calculated.
+		    raw_expectation_values: Per-pair raw (unmitigated, pre-extrapolation) expectation values.
 		"""
-		self.mitigated_jobs = mitigated_jobs
+		self.mitigated_job = mitigated_job
 		self._expectation_values = expectation_values
-		self._raw_expectation_values = raw_expectation_values  # Store raw expectation values before extrapolation
+		self._raw_expectation_values = raw_expectation_values
 		self._observables = observables
 
-	def results(self):
-		"""Get all results for this estimator."""
-		return [job.result() for job in self.mitigated_jobs]
+	def result(self):
+		"""Get the underlying combined result for this estimator run."""
+		return self.mitigated_job.result()
 
-	def jobs(self):
-		"""Get all jobs ran for this estimator."""
-		return self.mitigated_jobs
+	def job(self):
+		"""Get the underlying job for this estimator run."""
+		return self.mitigated_job
 
 	def raw_expectation_values(self, index: int | None = None) -> list[float]:
 		"""Get the raw (unmitigated) expectation values before extrapolation."""

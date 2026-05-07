@@ -70,7 +70,6 @@ class ModifyMeasurementBasis(TransformationPass):
 		return cloned_dag
 
 
-# TODO: refactor for better batching in estimator
 def get_obs_subcircuits(
 	subcircuits: list[QuantumCircuit],
 	measurement_settings: list[dict[int, str]],

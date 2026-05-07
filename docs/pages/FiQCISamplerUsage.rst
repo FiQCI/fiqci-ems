@@ -162,6 +162,29 @@ Use the :attr:`~fiqci.ems.FiQCISampler.mitigator_options` property to view curre
 
    sampler.mitigator_options
 
+Counting Circuits
+-----------------
+
+Use :meth:`~fiqci.ems.FiQCISampler.total_circuits_generated` to see how many circuits will actually be executed under the current mitigation settings (accounts for Pauli twirls):
+
+.. code-block:: python
+
+   sampler.total_circuits_generated(num_base_circuits=len(circuits), detailed=True)
+
+Set ``detailed=True`` to print the breakdown and return a dictionary with each multiplier; otherwise the method returns the total as an ``int``. The count does not include REM calibration circuits.
+
+Running Circuits
+----------------
+
+:meth:`~fiqci.ems.FiQCISampler.run` accepts a ``max_batch_size`` parameter (default ``100``) that controls how many circuits are sent to the backend in a single job. Larger circuit lists are split into batches automatically; results are re-combined so indexing matches the order of the input circuits.
+
+.. code-block:: python
+
+   job = sampler.run(circuits, shots=1024, max_batch_size=100)
+
+Depending on mitigation level and batch count, ``run`` returns either a Qiskit ``JobV1``, a :class:`~fiqci.ems.fiqci_backend.MitigatedJob`, or a :class:`~fiqci.ems.fiqci_backend.BatchedJob`. In all cases ``job.result()`` exposes a single combined ``Result``.
+
+
 Examples
 --------
 

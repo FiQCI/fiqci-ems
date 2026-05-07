@@ -2,13 +2,16 @@
 A lightweight wrapper around FiQCIBackend for sampling quantum circuits with error mitigation.
 """
 
+import logging
 from typing import Any
 
 from fiqci.ems import FiQCIBackend
 from qiskit import QuantumCircuit
 from qiskit.providers import JobV1
-from fiqci.ems.fiqci_backend import MitigatedJob
+from fiqci.ems.fiqci_backend import BatchedJob, MitigatedJob
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class FiQCISampler:
@@ -40,26 +43,37 @@ class FiQCISampler:
 		"""Get current mitigator settings."""
 		return {**self.backend.mitigator_options}
 
+	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int | dict[str, int]:
+		"""Calculate total circuits generated for a given number of base circuits and observables."""
+		return self.backend.total_circuits_generated(num_base_circuits, detailed)
+
 	def _run(
-		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, **options
-	) -> JobV1 | MitigatedJob:
-		return self.backend.run(circuits, shots=shots, **options)
+		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, max_batch_size: int = 100, **options
+	) -> JobV1 | MitigatedJob | BatchedJob:
+		num_circuits = len(circuits) if isinstance(circuits, list) else 1
+		logger.info(
+			"FiQCISampler.run: %d input circuit(s), shots=%d, max_batch_size=%d", num_circuits, shots, max_batch_size
+		)
+		return self.backend.run(circuits, shots=shots, max_batch_size=max_batch_size, **options)
 
 	def run(
-		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, **options
-	) -> JobV1 | MitigatedJob:
+		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, max_batch_size: int = 100, **options
+	) -> JobV1 | MitigatedJob | BatchedJob:
 		"""
 		Execute the given circuits on the backend and return mitigated measurement counts.
 
 		Args:
 			circuits: A QuantumCircuit or list of QuantumCircuits to execute.
 			shots: Number of shots to execute each circuit (default: 2048).
+			max_batch_size: Maximum number of circuits per backend job. Inputs longer than this are split
+				into multiple jobs whose results are combined into a single Result indexed in submission
+				order (default: 100).
 			**options: Additional options to pass to the backend's run method.
 
 		Returns:
-			A JobV1 or MitigatedJob instance containing the results of the execution.
+			A JobV1, MitigatedJob, or BatchedJob instance containing the results of the execution.
 		"""
-		return self._run(circuits, shots, **options)
+		return self._run(circuits, shots, max_batch_size=max_batch_size, **options)
 
 	def rem(self, enabled: bool, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
