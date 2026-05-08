@@ -52,26 +52,10 @@ def estimator() -> FiQCIEstimator:
 @pytest.mark.parametrize(
 	"name, circuit, obs",
 	[
-		(
-			"bell-uniform-support",
-			_bell(),
-			SparsePauliOp(["ZZ", "XX", "YY"]),
-		),
-		(
-			"bell-mixed-support",
-			_bell(),
-			SparsePauliOp(["IZ", "ZI", "ZZ", "IX", "XI", "XX"]),
-		),
-		(
-			"ghz3-mixed-support",
-			_ghz(3),
-			SparsePauliOp(["IIZ", "IZI", "ZII", "ZZI", "IZZ", "ZZZ", "XXX"]),
-		),
-		(
-			"superposition-x-basis",
-			_superposition(3),
-			SparsePauliOp(["IIX", "IXI", "XII", "XXX", "IIZ", "ZZZ"]),
-		),
+		("bell-uniform-support", _bell(), SparsePauliOp(["ZZ", "XX", "YY"])),
+		("bell-mixed-support", _bell(), SparsePauliOp(["IZ", "ZI", "ZZ", "IX", "XI", "XX"])),
+		("ghz3-mixed-support", _ghz(3), SparsePauliOp(["IIZ", "IZI", "ZII", "ZZI", "IZZ", "ZZZ", "XXX"])),
+		("superposition-x-basis", _superposition(3), SparsePauliOp(["IIX", "IXI", "XII", "XXX", "IIZ", "ZZZ"])),
 	],
 )
 def test_estimator_matches_statevector(
@@ -91,6 +75,6 @@ def test_estimator_distinguishes_single_qubit_supports(estimator: FiQCIEstimator
 
 	obs = SparsePauliOp(["IIZ", "IZI", "ZII"])
 	got = estimator.run(qc, obs, shots=SHOTS).expectation_values(0)
-	
+
 	want = [1.0, -1.0, 0.0]
 	assert got == pytest.approx(want, abs=TOL)
