@@ -483,6 +483,7 @@ dev = [
     { name = "pyrefly" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "qiskit-aer" },
     { name = "ruff" },
 ]
 docs = [
@@ -498,7 +499,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "iqm-client", extras = ["qiskit"], specifier = "==34.0.2" },
+    { name = "iqm-client", extras = ["qiskit"], specifier = ">=34.0.2" },
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "mthree", specifier = ">=3.0.0" },
 ]
@@ -509,6 +510,7 @@ dev = [
     { name = "pyrefly", specifier = ">=0.44.0" },
     { name = "pytest", specifier = ">=9.0.1" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "qiskit-aer", specifier = ">=0.15" },
     { name = "ruff", specifier = ">=0.14.7" },
 ]
 docs = [
