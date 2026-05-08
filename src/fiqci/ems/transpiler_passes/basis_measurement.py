@@ -123,7 +123,12 @@ def _get_observable_circuit_index(pauli: Pauli, combined: list[dict[int, str]]) 
 	for idx, setting in enumerate(combined):
 		# All non-identity qubits must be measured in the matching basis
 		if all(setting.get(q) == p for q, p in non_identity.items()):
-			return {"circuit_index": idx, "obs_indices": list(range(len(non_identity))), "num_meas": len(non_identity)}
+			num_meas = len(setting)
+			# clbit order matches setting.items() iteration order (see ModifyMeasurementBasis.run);
+			# bitstring is MSB-left, so bitstring_pos = num_meas - 1 - clbit.
+			qubit_to_bitpos = {q: num_meas - 1 - c for c, q in enumerate(setting.keys())}
+			obs_indices = [qubit_to_bitpos[q] for q in non_identity]
+			return {"circuit_index": idx, "obs_indices": obs_indices, "num_meas": len(non_identity)}
 
 	return {"circuit_index": None, "obs_indices": [], "num_meas": 0}
 
