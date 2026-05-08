@@ -498,7 +498,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "iqm-client", extras = ["qiskit"], specifier = "==34.0.2" },
+    { name = "iqm-client", extras = ["qiskit"], specifier = ">=34.0.2" },
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "mthree", specifier = ">=3.0.0" },
 ]
