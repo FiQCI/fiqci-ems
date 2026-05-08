@@ -1,3 +1,10 @@
+## [0.6.1] - 8.5.2026
+
+## Changed
+- Fix for a bug in expectation value calculation
+
+[https://github.com/FiQCI/fiqci-ems/pull/13](https://github.com/FiQCI/fiqci-ems/pull/13)
+
 ## [0.6.0] - 4.5.2026
 
 ### Added
