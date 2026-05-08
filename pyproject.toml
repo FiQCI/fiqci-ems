@@ -76,6 +76,7 @@ dev = [
     "pyrefly>=0.44.0",
     "pytest>=9.0.1",
     "pytest-cov>=6.0.0",
+    "qiskit-aer>=0.15",
     "ruff>=0.14.7",
 ]
 

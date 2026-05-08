@@ -483,6 +483,7 @@ dev = [
     { name = "pyrefly" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "qiskit-aer" },
     { name = "ruff" },
 ]
 docs = [
@@ -509,6 +510,7 @@ dev = [
     { name = "pyrefly", specifier = ">=0.44.0" },
     { name = "pytest", specifier = ">=9.0.1" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "qiskit-aer", specifier = ">=0.15" },
     { name = "ruff", specifier = ">=0.14.7" },
 ]
 docs = [
