@@ -1,3 +1,10 @@
+## [0.7.0] - 29.5.2026
+
+## Changed
+- Add support for applying readout error mitigation on circuits with measurements on multiple classical registers
+
+[https://github.com/FiQCI/fiqci-ems/pull/13](https://github.com/FiQCI/fiqci-ems/pull/14)
+
 ## [0.6.1] - 8.5.2026
 
 ## Changed
