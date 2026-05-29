@@ -550,21 +550,32 @@ class FiQCIBackend:
 
 	@staticmethod
 	def _trim_result_to_groups(result: Result, num_groups: int) -> Result:
-		"""Trim a Result to only include the first num_groups experiment results.
+		"""Trim a flat (per-twirl) Result down to one entry per twirl group.
+
+		The flat result list is ``[g0_orig, g0_tw1..g0_twN, g1_orig, g1_tw1.., ...]`` of length
+		``num_groups * twirl_group_size``. We must keep the *representative* entry of each group
+		(its original circuit, at stride ``twirl_group_size``) rather than the first ``num_groups``
+		flat entries: a plain ``[:num_groups]`` slice keeps mostly group 0's twirl copies, so every
+		kept entry carries group 0's header. Since ``Result.get_counts()`` reconstructs each
+		bitstring's structure (creg sizes, memory slots) from the per-entry header, wrong headers
+		yield misaligned, wrongly-structured counts even though ``_create_mitigated_result`` later
+		overwrites ``data["counts"]``. Keeping ``results_list[i * stride]`` makes each kept entry's
+		header match input circuit ``i``.
 
 		Args:
-			result: Original Result object.
-			num_groups: Number of experiment results to keep.
+			result: Original Result object (flat, one entry per submitted twirl circuit).
+			num_groups: Number of twirl groups (== number of input circuits).
 
 		Returns:
-			New Result object with only the first num_groups results.
+			New Result object with one representative entry per group, in input-circuit order.
 		"""
 		from qiskit.result import Result as QiskitResult
 
 		result_data = result.to_dict()
 		results_list = result_data.get("results")
-		if results_list is not None:
-			result_data["results"] = results_list[:num_groups]
+		if results_list is not None and num_groups:
+			stride = len(results_list) // num_groups  # == twirl_group_size
+			result_data["results"] = [results_list[i * stride] for i in range(num_groups)]
 		return QiskitResult.from_dict(result_data)
 
 	def _run_with_m3_mitigation(
