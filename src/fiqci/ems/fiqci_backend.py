@@ -395,6 +395,15 @@ class FiQCIBackend:
 		for batch_start in range(0, len(circuits_list), max_batch_size):
 			batch = circuits_list[batch_start : batch_start + max_batch_size]
 			batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
+
+			logger.info(
+				"Submitted batch of %d circuit(s) (indices %d-%d) to backend, got job ID %s",
+				len(batch),
+				batch_start,
+				batch_start + len(batch) - 1,
+				batch_job.job_id(),
+			)
+
 			assert batch_job is not None, "Backend returned None job"
 			batch_jobs.append(batch_job)
 
