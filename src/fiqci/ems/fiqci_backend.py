@@ -437,6 +437,47 @@ class FiQCIBackend:
 		return self._run_with_m3_mitigation(job, circuits_list, shots, twirl_group_size=twirl_group_size)
 
 	@staticmethod
+	def _space_positions(counts: dict[str, int]) -> list[int]:
+		"""Find the positions of spaces in count dictionary keys.
+
+		Bitstring keys contain spaces when the circuit has multiple classical registers
+		(e.g. ``"00 11"``). The space positions are identical across all keys of a single
+		count dictionary, so they are read from any one key.
+
+		Args:
+			counts: Count dictionary whose keys may contain spaces.
+
+		Returns:
+			Sorted list of indices at which spaces occur, or an empty list if there are none.
+		"""
+		if not counts:
+			return []
+		sample_key = next(iter(counts))
+		return [i for i, char in enumerate(sample_key) if char == " "]
+
+	@staticmethod
+	def _reinsert_spaces(counts: dict[str, int], positions: list[int]) -> dict[str, int]:
+		"""Reinsert spaces into count dictionary keys at the given positions.
+
+		Args:
+			counts: Count dictionary with space-free keys.
+			positions: Sorted indices (relative to the original spaced key) at which to
+				reinsert spaces.
+
+		Returns:
+			Count dictionary with spaces reinserted into every key.
+		"""
+		if not positions:
+			return counts
+
+		def restore(key: str) -> str:
+			for pos in positions:
+				key = key[:pos] + " " + key[pos:]
+			return key
+
+		return {restore(key): value for key, value in counts.items()}
+
+	@staticmethod
 	def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
 		"""Average multiple count dictionaries.
 
@@ -530,11 +571,20 @@ class FiQCIBackend:
 			raw_counts_list.append(raw_counts)
 			qubits = qubits_list[idx]
 
+			# M3 cannot handle bitstring keys containing spaces (multiple classical
+			# registers), so strip the spaces before correction and restore them afterwards.
+			space_positions = self._space_positions(raw_counts)
+			counts_for_correction = (
+				{key.replace(" ", ""): value for key, value in raw_counts.items()}
+				if space_positions
+				else raw_counts
+			)
+
 			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
-			quasi_dist = self._rem["mitigator"].apply_correction(raw_counts, qubits)
+			quasi_dist = self._rem["mitigator"].apply_correction(counts_for_correction, qubits)
 			mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
 			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
-			mitigated_counts_list.append(mitigated_counts[0])
+			mitigated_counts_list.append(self._reinsert_spaces(mitigated_counts[0], space_positions))
 
 		# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
 		if twirl_group_size:
