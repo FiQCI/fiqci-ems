@@ -54,7 +54,15 @@ And to build the image
 LUMI
 ~~~~
 
-On `LUMI <https://docs.lumi-supercomputer.eu/>`_ it is highly recommended to
+On `LUMI <https://docs.lumi-supercomputer.eu/>`_ `fiqci-ems` comes pre-installed in
+the `fiqci-vtt-qiskit` module which can be used via
+
+.. code-block:: bash
+
+    module load Local-quantum
+    module load fiqci-vtt-qiskit
+
+Otherwise you can use it in your own containers. It is highly recommended to
 use one of the two container-based workflows below. See the LUMI documentation
 on `installing Python <https://docs.lumi-supercomputer.eu/software/installing/python/#use-the-lumi-container-wrapper>`_,
 the `container wrapper <https://docs.lumi-supercomputer.eu/software/installing/container-wrapper/>`_
