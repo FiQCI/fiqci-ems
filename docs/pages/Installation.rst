@@ -14,10 +14,8 @@ Requires Python 3.11 or 3.12.
 Verifying the installation
 --------------------------
 
-The unit test suite is not shipped on PyPI, so to test your installation clone
-the repository and run the tests against the installed package. ``uv`` installs
-the test dependencies (``pytest``, ``qiskit-aer``) from the ``dev`` group
-automatically:
+To test your installation clone
+the repository and run the tests against the installed package.
 
 .. code-block:: bash
 
@@ -25,8 +23,6 @@ automatically:
     cd fiqci-ems
     uv run --group dev pytest
 
-The tests run on a local simulator and do not require access to a quantum
-backend.
 
 HPC systems (Apptainer / Singularity)
 -------------------------------------
@@ -65,7 +61,7 @@ the `container wrapper <https://docs.lumi-supercomputer.eu/software/installing/c
 and `Singularity/Apptainer <https://docs.lumi-supercomputer.eu/software/containers/singularity/>`_
 for background.
 
-Define the environment once in an ``env.yml`` file (both workflows reuse it).
+Define the environment once in an ``env.yml`` file.
 
 .. code-block:: yaml
 
