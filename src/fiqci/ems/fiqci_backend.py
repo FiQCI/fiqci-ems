@@ -395,6 +395,7 @@ class FiQCIBackend:
 		for batch_start in range(0, len(circuits_list), max_batch_size):
 			batch = circuits_list[batch_start : batch_start + max_batch_size]
 			batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
+			assert batch_job is not None, "Backend returned None job"
 
 			logger.info(
 				"Submitted batch of %d circuit(s) (indices %d-%d) to backend, got job ID %s",
@@ -404,7 +405,6 @@ class FiQCIBackend:
 				batch_job.job_id(),
 			)
 
-			assert batch_job is not None, "Backend returned None job"
 			batch_jobs.append(batch_job)
 
 		job: JobV1 | BatchedJob = batch_jobs[0] if len(batch_jobs) == 1 else BatchedJob(batch_jobs)
@@ -575,9 +575,7 @@ class FiQCIBackend:
 			# registers), so strip the spaces before correction and restore them afterwards.
 			space_positions = self._space_positions(raw_counts)
 			counts_for_correction = (
-				{key.replace(" ", ""): value for key, value in raw_counts.items()}
-				if space_positions
-				else raw_counts
+				{key.replace(" ", ""): value for key, value in raw_counts.items()} if space_positions else raw_counts
 			)
 
 			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
