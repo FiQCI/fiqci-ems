@@ -314,7 +314,9 @@
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
 </button>
-
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
 </div></div>
       
     </div>
@@ -330,6 +332,22 @@
     <div id="print-main-content">
         <div id="jb-print-toc">
             
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifying-the-installation">Verifying the installation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hpc-systems-apptainer-singularity">HPC systems (Apptainer / Singularity)</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lumi">LUMI</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#option-1-lumi-container-wrapper-recommended">Option 1: LUMI container wrapper (recommended)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#option-2-build-a-sif-image-with-cotainr">Option 2: Build a SIF image with cotainr</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+            </nav>
         </div>
     </div>
 </div>
@@ -341,13 +359,116 @@
                   
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h1>
-<p><a class="reference external" href="https://docs.astral.sh/uv/getting-started/installation/">UV</a> is recommended for installation</p>
+<p><a class="reference external" href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> is recommended for installation:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>fiqci-ems
-<span class="c1">#or</span>
+<span class="c1"># or</span>
 uv<span class="w"> </span>add<span class="w"> </span>fiqci-ems
 </pre></div>
 </div>
 <p>Requires Python 3.11 or 3.12.</p>
+<section id="verifying-the-installation">
+<h2>Verifying the installation<a class="headerlink" href="#verifying-the-installation" title="Link to this heading">#</a></h2>
+<p>To test your installation clone
+the repository and run the tests against the installed package.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/fiqci/fiqci-ems.git
+<span class="nb">cd</span><span class="w"> </span>fiqci-ems
+uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </span>dev<span class="w"> </span>pytest
+</pre></div>
+</div>
+</section>
+<section id="hpc-systems-apptainer-singularity">
+<h2>HPC systems (Apptainer / Singularity)<a class="headerlink" href="#hpc-systems-apptainer-singularity" title="Link to this heading">#</a></h2>
+<p>On shared HPC systems it is recommended to install Python environments inside a
+container using Apptainer/Singularity. The definition file below builds on the
+official <a class="reference external" href="https://docs.astral.sh/uv/guides/integration/docker/">uv</a> image, so
+<code class="docutils literal notranslate"><span class="pre">uv</span></code> is already available in the container.</p>
+<p>Save it as <code class="docutils literal notranslate"><span class="pre">fiqci-ems.def</span></code>:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Bootstrap: docker
+From: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+
+%post
+    uv pip install --system --no-cache fiqci-ems
+</pre></div>
+</div>
+<p>And to build the image</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>apptainer<span class="w"> </span>build<span class="w"> </span>--fakeroot<span class="w"> </span>fiqci-ems.sif<span class="w"> </span>fiqci-ems.def
+apptainer<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>fiqci-ems.sif<span class="w"> </span>python3<span class="w"> </span>my_script.py
+</pre></div>
+</div>
+<section id="lumi">
+<h3>LUMI<a class="headerlink" href="#lumi" title="Link to this heading">#</a></h3>
+<p>On <a class="reference external" href="https://docs.lumi-supercomputer.eu/">LUMI</a> <cite>fiqci-ems</cite> comes pre-installed in
+the <cite>fiqci-vtt-qiskit</cite> module which can be used via</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>module<span class="w"> </span>load<span class="w"> </span>Local-quantum
+module<span class="w"> </span>load<span class="w"> </span>fiqci-vtt-qiskit
+</pre></div>
+</div>
+<p>Otherwise you can use it in your own containers. It is highly recommended to
+use one of the two container-based workflows below. See the LUMI documentation
+on <a class="reference external" href="https://docs.lumi-supercomputer.eu/software/installing/python/#use-the-lumi-container-wrapper">installing Python</a>,
+the <a class="reference external" href="https://docs.lumi-supercomputer.eu/software/installing/container-wrapper/">container wrapper</a>
+and <a class="reference external" href="https://docs.lumi-supercomputer.eu/software/containers/singularity/">Singularity/Apptainer</a>
+for background.</p>
+<p>Define the environment once in an <code class="docutils literal notranslate"><span class="pre">env.yml</span></code> file.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">channels</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda-forge</span>
+<span class="nt">dependencies</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python=3.12</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">pip</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fiqci-ems</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytest</span>
+</pre></div>
+</div>
+<section id="option-1-lumi-container-wrapper-recommended">
+<h4>Option 1: LUMI container wrapper (recommended)<a class="headerlink" href="#option-1-lumi-container-wrapper-recommended" title="Link to this heading">#</a></h4>
+<p>The <code class="docutils literal notranslate"><span class="pre">lumi-container-wrapper</span></code> builds a container behind the scenes but exposes
+the executables (<code class="docutils literal notranslate"><span class="pre">python</span></code>, <code class="docutils literal notranslate"><span class="pre">pip</span></code>, …) on your <code class="docutils literal notranslate"><span class="pre">PATH</span></code> as if the
+environment were activated normally. This is the simplest option when you just
+want to run Python scripts.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>module<span class="w"> </span>load<span class="w"> </span>LUMI
+module<span class="w"> </span>load<span class="w"> </span>lumi-container-wrapper
+
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$PWD</span>/fiqci-ems
+conda-containerize<span class="w"> </span>new<span class="w"> </span>--prefix<span class="w"> </span><span class="nv">$PWD</span>/fiqci-ems<span class="w"> </span>env.yml
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">PATH</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/fiqci-ems/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>To add or change packages later, use a post-install script:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda-containerize<span class="w"> </span>update<span class="w"> </span><span class="nv">$HOME</span>/fiqci-ems<span class="w"> </span>--post-install<span class="w"> </span>post.sh
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">post.sh</span></code> contains commands run inside the environment, e.g.
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&lt;package&gt;</span></code>.</p>
+<p>Verify the installation on a compute node via <code class="docutils literal notranslate"><span class="pre">srun</span></code>, from a clone of the
+repository so the <code class="docutils literal notranslate"><span class="pre">tests</span></code> directory is available:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/fiqci/fiqci-ems.git
+<span class="nb">cd</span><span class="w"> </span>fiqci-ems
+srun<span class="w"> </span>--account<span class="w"> </span>project_xxx<span class="w"> </span>--partition<span class="w"> </span>interactive<span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/
+</pre></div>
+</div>
+</section>
+<section id="option-2-build-a-sif-image-with-cotainr">
+<h4>Option 2: Build a SIF image with cotainr<a class="headerlink" href="#option-2-build-a-sif-image-with-cotainr" title="Link to this heading">#</a></h4>
+<p>If you prefer an explicit, portable <code class="docutils literal notranslate"><span class="pre">.sif</span></code> image (for example to share it or
+manage container execution yourself), build it with <code class="docutils literal notranslate"><span class="pre">cotainr</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>module<span class="w"> </span>load<span class="w"> </span>CrayEnv
+module<span class="w"> </span>load<span class="w"> </span>cotainr
+
+cotainr<span class="w"> </span>build<span class="w"> </span>fiqci-ems.sif<span class="w"> </span>--system<span class="o">=</span>lumi-c<span class="w"> </span>--conda-env<span class="o">=</span>env.yml
+</pre></div>
+</div>
+<p>Verify the installation on a compute node via <code class="docutils literal notranslate"><span class="pre">srun</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/fiqci/fiqci-ems.git
+srun<span class="w"> </span>--account<span class="o">=</span>&lt;project&gt;<span class="w"> </span>--partition<span class="o">=</span>interactive<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>singularity<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-B<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">:/mnt&quot;</span><span class="w"> </span>fiqci-ems.sif<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>python3<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>/mnt/fiqci-ems/tests<span class="w"> </span>-p<span class="w"> </span>no:cacheprovider
+</pre></div>
+</div>
+</section>
+</section>
+</section>
 </section>
 
 
@@ -385,6 +506,31 @@ uv<span class="w"> </span>add<span class="w"> </span>fiqci-ems
             </div>
             
             
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifying-the-installation">Verifying the installation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hpc-systems-apptainer-singularity">HPC systems (Apptainer / Singularity)</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#lumi">LUMI</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#option-1-lumi-container-wrapper-recommended">Option 1: LUMI container wrapper (recommended)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#option-2-build-a-sif-image-with-cotainr">Option 2: Build a SIF image with cotainr</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
               
             
           </div>
