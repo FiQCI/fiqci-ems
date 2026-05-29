@@ -485,14 +485,20 @@ class TestAverageAndTrimMethods:
 		assert result["11"] == 1
 
 	def test_trim_result_to_groups(self):
-		"""Test _trim_result_to_groups keeps only first N results."""
+		"""_trim_result_to_groups keeps one representative entry per group, in order.
+
+		The flat result is ``[g0_orig, g0_tw, g1_orig, g1_tw]`` (twirl_group_size=2, 2 groups).
+		The trim must keep the *original* of each group (indices 0 and 2), not the first two flat
+		entries (indices 0 and 1, both belonging to group 0). Each kept entry's header otherwise
+		describes the wrong input circuit, which get_counts() uses to rebuild bitstrings.
+		"""
 		mock_result = Mock()
 		mock_result.to_dict.return_value = {
 			"results": [
-				{"data": {"counts": {"00": 500}}, "shots": 1024, "success": True},
-				{"data": {"counts": {"11": 500}}, "shots": 1024, "success": True},
-				{"data": {"counts": {"01": 500}}, "shots": 1024, "success": True},
-				{"data": {"counts": {"10": 500}}, "shots": 1024, "success": True},
+				{"data": {"counts": {"00": 500}}, "header": {"name": "g0"}, "shots": 1024, "success": True},
+				{"data": {"counts": {"11": 500}}, "header": {"name": "g0_tw"}, "shots": 1024, "success": True},
+				{"data": {"counts": {"01": 500}}, "header": {"name": "g1"}, "shots": 1024, "success": True},
+				{"data": {"counts": {"10": 500}}, "header": {"name": "g1_tw"}, "shots": 1024, "success": True},
 			],
 			"backend_name": "mock",
 			"job_id": "test",
@@ -504,6 +510,40 @@ class TestAverageAndTrimMethods:
 		trimmed = FiQCIBackend._trim_result_to_groups(mock_result, 2)
 		trimmed_dict = trimmed.to_dict()
 		assert len(trimmed_dict["results"]) == 2
+		# Representative entries are the group originals at stride == twirl_group_size (2): indices 0, 2.
+		assert [r["header"]["name"] for r in trimmed_dict["results"]] == ["g0", "g1"]
+		assert [r["data"]["counts"] for r in trimmed_dict["results"]] == [{"00": 500}, {"01": 500}]
+
+	def test_twirled_results_aligned_with_input_order(self):
+		"""End-to-end: get_counts() must stay aligned with input circuit order under twirling.
+
+		Regression for the trimming bug: with differently-structured circuits interleaved, a
+		mis-trim makes circuit i's slot receive another circuit's (wrongly-structured) counts.
+		Uses the no-REM twirl branch so no M3 calibration is needed.
+		"""
+		from qiskit import transpile
+		from iqm.qiskit_iqm import IQMFakeAdonis
+
+		fake = IQMFakeAdonis()
+
+		def mk(nq: int) -> QuantumCircuit:
+			qc = QuantumCircuit(nq, nq)
+			qc.h(0)
+			for i in range(nq - 1):
+				qc.cx(i, i + 1)
+			qc.measure(range(nq), range(nq))
+			return transpile(qc, fake, optimization_level=3)
+
+		labels = [nq for _ in range(4) for nq in (1, 2, 3)]
+		circuits = [mk(nq) for nq in labels]
+
+		fb = FiQCIBackend(fake, mitigation_level=0)
+		fb.rem(enabled=False)
+		fb.pauli_twirl(enabled=True, num_twirls=8)
+
+		counts = fb.run(circuits, shots=512).result().get_counts()
+		got = [len(next(iter(c)).replace(" ", "")) for c in counts]
+		assert got == labels
 
 
 class TestEstimatorPauliTwirl:
