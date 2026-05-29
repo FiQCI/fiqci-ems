@@ -108,6 +108,14 @@ def get_twirled_circuits(
 
 	for circuit in circuits:
 		twirled_circuits.append(circuit)
-		twirled_circuits.extend(pm.run(circuit) for _ in range(num_twirls))
+		for _ in range(num_twirls):
+			twirled = pm.run(circuit)
+			# PassManager.run returns a fresh circuit that drops the input's TranspileLayout.
+			# The IQM backend maps virtual qubits to physical ones via circuit.layout, so without
+			# it the twirled circuit is validated/run against an identity layout and its CZ gates
+			# can land on non-adjacent physical qubits, raising CircuitValidationError. The twirl
+			# passes preserve qubit ordering, so the original layout stays valid; reattach it.
+			twirled._layout = circuit._layout
+			twirled_circuits.append(twirled)
 
 	return twirled_circuits
