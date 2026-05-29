@@ -243,6 +243,49 @@ class TestGetTwirledCircuits:
 		for item in result:
 			assert isinstance(item, QuantumCircuit)
 
+	def test_twirled_circuits_preserve_layout(self, backend):
+		"""Twirled circuits must keep the input's TranspileLayout.
+
+		The PassManager builds fresh circuits that drop ``circuit.layout``. The IQM backend
+		maps virtual to physical qubits via that layout, so without it the twirled circuits get
+		validated/run against an identity layout and their CZ gates can land on non-adjacent
+		physical qubits, raising CircuitValidationError. Regression test for that bug.
+		"""
+		from qiskit import transpile
+
+		fake = backend._backend
+		qc = QuantumCircuit(3)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.cx(1, 2)
+		qc.measure_all()
+		tr = transpile(qc, fake, optimization_level=1)
+		assert tr.layout is not None
+
+		result = get_twirled_circuits([tr], num_twirls=50, backend=fake)
+		for twirled in result[1:]:  # skip original at index 0
+			assert twirled.layout is tr.layout
+
+	def test_twirled_circuits_pass_iqm_validation(self, backend):
+		"""Twirled circuits must validate against the IQM connectivity for many twirls.
+
+		Each twirl is an independent random draw, so a layout-mapping bug surfaces
+		probabilistically and becomes near-certain as num_twirls grows.
+		"""
+		from qiskit import transpile
+		from iqm.qiskit_iqm.iqm_circuit_validation import validate_circuit
+
+		fake = backend._backend
+		qc = QuantumCircuit(3)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.cx(1, 2)
+		qc.measure_all()
+		tr = transpile(qc, fake, optimization_level=1)
+
+		for twirled in get_twirled_circuits([tr], num_twirls=200, backend=fake):
+			validate_circuit(twirled, fake)  # raises CircuitValidationError on illegal locus
+
 
 class TestBackendPauliTwirlSettings:
 	"""Tests for Pauli twirling settings on FiQCIBackend."""
