@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Iterable, Optional, TypedDict
+from typing import Any, Iterable, NamedTuple, Optional, TypedDict
 
 from iqm.iqm_client import STANDARD_DD_STRATEGY
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
@@ -28,6 +28,20 @@ from qiskit.providers import JobV1
 from qiskit.result import Result
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+class _KeyLayout(NamedTuple):
+	"""Structure of result count keys, used to reduce them for M3 and restore them afterwards.
+
+	Attributes:
+		num_clbits: Total number of classical bits (length of a key with spaces removed).
+		measured: Classical bit indices that are actually measured; all others are always zero.
+		space_positions: Indices (in the original spaced key) at which spaces occur.
+	"""
+
+	num_clbits: int
+	measured: frozenset[int]
+	space_positions: tuple[int, ...]
 
 
 class FiQCIBackend:
@@ -396,6 +410,15 @@ class FiQCIBackend:
 			batch = circuits_list[batch_start : batch_start + max_batch_size]
 			batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
 			assert batch_job is not None, "Backend returned None job"
+
+			logger.info(
+				"Submitted batch of %d circuit(s) (indices %d-%d) to backend, got job ID %s",
+				len(batch),
+				batch_start,
+				batch_start + len(batch) - 1,
+				batch_job.job_id(),
+			)
+
 			batch_jobs.append(batch_job)
 
 		job: JobV1 | BatchedJob = batch_jobs[0] if len(batch_jobs) == 1 else BatchedJob(batch_jobs)
@@ -428,6 +451,84 @@ class FiQCIBackend:
 		return self._run_with_m3_mitigation(job, circuits_list, shots, twirl_group_size=twirl_group_size)
 
 	@staticmethod
+	def _key_layout(counts: dict[str, int], mapping: dict[int, int]) -> _KeyLayout:
+		"""Describe the structure of count dictionary keys for M3 correction.
+
+		M3 expects a bitstring with exactly one bit per measured qubit and no spaces. Result
+		keys, however, contain a bit for every classical bit in the circuit, including spaces
+		between classical registers (e.g. ``"001 00"``) and zero-filled bits for classical
+		registers that are never measured. This computes the information needed to strip those
+		extra bits before correction and restore them afterwards.
+
+		Bitstrings are little-endian on the classical bit index: the character at spaceless
+		index ``i`` corresponds to classical bit ``num_clbits - 1 - i`` (Qiskit MSB-left). A
+		classical bit is "measured" iff it is a key of ``mapping`` (from
+		``final_measurement_mapping``); every other bit is always zero in the results.
+
+		Args:
+			counts: Count dictionary whose keys may contain spaces and unmeasured bits.
+			mapping: ``{classical_bit: qubit}`` mapping for the circuit's final measurements.
+
+		Returns:
+			A :class:`_KeyLayout` describing the total bit count, the measured bits, and the
+			space positions of the original keys.
+		"""
+		sample_key = next(iter(counts))
+		space_positions = tuple(i for i, char in enumerate(sample_key) if char == " ")
+		num_clbits = len(sample_key) - len(space_positions)
+		return _KeyLayout(num_clbits=num_clbits, measured=frozenset(mapping), space_positions=space_positions)
+
+	@staticmethod
+	def _reduce_counts(counts: dict[str, int], layout: _KeyLayout) -> dict[str, int]:
+		"""Strip spaces and unmeasured (always-zero) bits from count keys for M3 correction.
+
+		Keys differing only in unmeasured bits collapse to the same reduced key (those bits are
+		always zero), so their values are summed; in practice no collision occurs.
+
+		Args:
+			counts: Count dictionary with full, spaced keys.
+			layout: Layout describing the key structure, from :meth:`_key_layout`.
+
+		Returns:
+			Count dictionary keyed by measured bits only, with no spaces.
+		"""
+		reduced: dict[str, int] = {}
+		for key, value in counts.items():
+			spaceless = key.replace(" ", "")
+			measured_bits = "".join(
+				char for i, char in enumerate(spaceless) if (layout.num_clbits - 1 - i) in layout.measured
+			)
+			reduced[measured_bits] = reduced.get(measured_bits, 0) + value
+		return reduced
+
+	@staticmethod
+	def _expand_counts(counts: dict[str, int], layout: _KeyLayout) -> dict[str, int]:
+		"""Restore unmeasured zero bits and register spaces to reduced count keys.
+
+		Inverse of :meth:`_reduce_counts`: each measured bit is placed back at its original
+		position, unmeasured bits are filled with ``"0"``, and spaces are reinserted.
+
+		Args:
+			counts: Count dictionary keyed by measured bits only (e.g. M3 output).
+			layout: Layout describing the key structure, from :meth:`_key_layout`.
+
+		Returns:
+			Count dictionary with full, spaced keys matching the original structure.
+		"""
+		expanded: dict[str, int] = {}
+		for key, value in counts.items():
+			measured_iter = iter(key)
+			chars = [
+				next(measured_iter) if (layout.num_clbits - 1 - i) in layout.measured else "0"
+				for i in range(layout.num_clbits)
+			]
+			full = "".join(chars)
+			for pos in layout.space_positions:
+				full = full[:pos] + " " + full[pos:]
+			expanded[full] = expanded.get(full, 0) + value
+		return expanded
+
+	@staticmethod
 	def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
 		"""Average multiple count dictionaries.
 
@@ -449,21 +550,32 @@ class FiQCIBackend:
 
 	@staticmethod
 	def _trim_result_to_groups(result: Result, num_groups: int) -> Result:
-		"""Trim a Result to only include the first num_groups experiment results.
+		"""Trim a flat (per-twirl) Result down to one entry per twirl group.
+
+		The flat result list is ``[g0_orig, g0_tw1..g0_twN, g1_orig, g1_tw1.., ...]`` of length
+		``num_groups * twirl_group_size``. We must keep the *representative* entry of each group
+		(its original circuit, at stride ``twirl_group_size``) rather than the first ``num_groups``
+		flat entries: a plain ``[:num_groups]`` slice keeps mostly group 0's twirl copies, so every
+		kept entry carries group 0's header. Since ``Result.get_counts()`` reconstructs each
+		bitstring's structure (creg sizes, memory slots) from the per-entry header, wrong headers
+		yield misaligned, wrongly-structured counts even though ``_create_mitigated_result`` later
+		overwrites ``data["counts"]``. Keeping ``results_list[i * stride]`` makes each kept entry's
+		header match input circuit ``i``.
 
 		Args:
-			result: Original Result object.
-			num_groups: Number of experiment results to keep.
+			result: Original Result object (flat, one entry per submitted twirl circuit).
+			num_groups: Number of twirl groups (== number of input circuits).
 
 		Returns:
-			New Result object with only the first num_groups results.
+			New Result object with one representative entry per group, in input-circuit order.
 		"""
 		from qiskit.result import Result as QiskitResult
 
 		result_data = result.to_dict()
 		results_list = result_data.get("results")
-		if results_list is not None:
-			result_data["results"] = results_list[:num_groups]
+		if results_list is not None and num_groups:
+			stride = len(results_list) // num_groups  # == twirl_group_size
+			result_data["results"] = [results_list[i * stride] for i in range(num_groups)]
 		return QiskitResult.from_dict(result_data)
 
 	def _run_with_m3_mitigation(
@@ -520,12 +632,20 @@ class FiQCIBackend:
 			assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
 			raw_counts_list.append(raw_counts)
 			qubits = qubits_list[idx]
+			assert isinstance(qubits, dict), f"Expected dict mapping for circuit {idx}, got {type(qubits)}"
+
+			# M3 expects a spaceless bitstring with exactly one bit per measured qubit. Result
+			# keys instead carry a bit for every classical bit (with spaces between registers and
+			# zero-filled bits for unmeasured registers), so reduce them to the measured bits
+			# before correction and restore the original structure afterwards.
+			layout = self._key_layout(raw_counts, qubits)
+			counts_for_correction = self._reduce_counts(raw_counts, layout)
 
 			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
-			quasi_dist = self._rem["mitigator"].apply_correction(raw_counts, qubits)
+			quasi_dist = self._rem["mitigator"].apply_correction(counts_for_correction, qubits)
 			mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
 			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
-			mitigated_counts_list.append(mitigated_counts[0])
+			mitigated_counts_list.append(self._expand_counts(mitigated_counts[0], layout))
 
 		# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
 		if twirl_group_size:

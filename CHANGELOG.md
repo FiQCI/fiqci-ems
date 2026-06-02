@@ -1,3 +1,12 @@
+## [0.7.0] - 29.5.2026
+
+## Changed
+- Add support for applying readout error mitigation on circuits with measurements on multiple classical registers
+- Pauli twirling no longer drops the transpiled circuit's `TranspileLayout`; twirled circuits previously lost their layout and could place CZ gates on non-adjacent physical qubits, raising `CircuitValidationError` (more likely with higher `num_twirls`)
+- Fixed result ordering when Pauli twirling is enabled: `result.get_counts()` for a list of circuits is now correctly aligned with the input circuit order (previously a mis-trim could put another circuit's counts in circuit `i`'s slot)
+
+[https://github.com/FiQCI/fiqci-ems/pull/13](https://github.com/FiQCI/fiqci-ems/pull/14)
+
 ## [0.6.1] - 8.5.2026
 
 ## Changed
