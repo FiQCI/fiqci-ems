@@ -305,3 +305,111 @@ class TestIntegration:
 			f"Mitigation should increase correct states: {raw_correct} → {mitigated_correct}"
 		)
 		assert mitigated_correct >= 1950, f"Mitigated should be >=1950 correct counts, got {mitigated_correct}"
+
+class TestKeyLayout:
+	"""Tests for the ``_key_layout`` reduce/expand workflow in ``_run_with_m3_mitigation``.
+
+	Result count keys carry one bit per classical bit, with spaces between classical
+	registers (e.g. ``"0 0"``) and zero-filled bits for unmeasured registers. M3 instead
+	expects a spaceless bitstring with exactly one bit per measured qubit, so a spaced key
+	would fail. ``_key_layout``/``_reduce_counts``/``_expand_counts``
+	strip the spaces and unmeasured bits before correction and restore them afterwards.
+	"""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		"""Create a mock IQM backend."""
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 20
+		return backend
+
+	def test_run_with_m3_mitigation_strips_register_spaces_before_correction(self, mock_backend: Mock) -> None:
+		"""Test that multi-register (spaced) counts are reduced to spaceless keys for M3 and restored after.
+
+		The circuit measures two separate single-bit classical registers, so the result keys
+		look like ``"0 0"``. M3 cannot handle the space, so the workflow must hand it spaceless
+		keys and then re-insert the space into the mitigated output.
+		"""
+		from fiqci.ems.fiqci_backend import FiQCIBackend
+
+		# Two single-bit registers, both measured -> keys carry a space between registers.
+		raw_counts = {"0 0": 400, "1 1": 350, "0 1": 130, "1 0": 120}
+
+		mock_result = Mock()
+		mock_result.get_counts.return_value = raw_counts
+		mock_job = Mock()
+		mock_job.result.return_value = mock_result
+
+		# Spaceless distribution returned by M3 (one bit per measured qubit, no space).
+		mitigated_probs = {"00": 0.45, "11": 0.40, "01": 0.10, "10": 0.05}
+
+		with (
+			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 8, 1: 16}),
+		):
+			mock_mitigator = Mock()
+			mock_quasi_dist = Mock()
+			mock_quasi_dist.nearest_probability_distribution.return_value = mitigated_probs
+			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			# Not None -> skip calibration, exercise only the reduce/expand workflow.
+			mock_mitigator.single_qubit_cals = [None] * 20
+			mock_m3iqm_class.return_value = mock_mitigator
+
+			backend = FiQCIBackend(mock_backend, mitigation_level=1)
+
+			with patch.object(backend, "_create_mitigated_result") as mock_create:
+				backend._run_with_m3_mitigation(mock_job, [Mock()], shots=1000)
+
+		# M3 received spaceless keys (a spaced key like "0 0" would raise M3Error).
+		corrected_counts = mock_mitigator.apply_correction.call_args[0][0]
+		assert all(" " not in key for key in corrected_counts), f"M3 got spaced keys: {corrected_counts}"
+		assert corrected_counts == {"00": 400, "11": 350, "01": 130, "10": 120}
+
+		# The mitigated counts handed to result-building have the register space restored.
+		mitigated_counts_list = mock_create.call_args[0][1]
+		assert set(mitigated_counts_list[0]) == {"0 0", "1 1", "0 1", "1 0"}
+		assert all(" " in key for key in mitigated_counts_list[0])
+
+	def test_run_with_m3_mitigation_restores_unmeasured_zero_bits(self, mock_backend: Mock) -> None:
+		"""Test that unmeasured (always-zero) register bits are stripped for M3 and restored after.
+
+		Here a second single-bit register exists but is never measured, so its bit is always
+		``"0"``. The workflow must drop that bit before correction (M3 only knows about measured
+		qubits) and zero-fill it again, alongside the register space, in the expanded output.
+		"""
+		from fiqci.ems.fiqci_backend import FiQCIBackend
+
+		# clbit 1 is measured (maps to qubit 8); clbit 0 belongs to an unmeasured register (always 0).
+		raw_counts = {"0 0": 600, "1 0": 400}
+
+		mock_result = Mock()
+		mock_result.get_counts.return_value = raw_counts
+		mock_job = Mock()
+		mock_job.result.return_value = mock_result
+
+		mitigated_probs = {"0": 0.55, "1": 0.45}
+
+		with (
+			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={1: 8}),
+		):
+			mock_mitigator = Mock()
+			mock_quasi_dist = Mock()
+			mock_quasi_dist.nearest_probability_distribution.return_value = mitigated_probs
+			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.single_qubit_cals = [None] * 20
+			mock_m3iqm_class.return_value = mock_mitigator
+
+			backend = FiQCIBackend(mock_backend, mitigation_level=1)
+
+			with patch.object(backend, "_create_mitigated_result") as mock_create:
+				backend._run_with_m3_mitigation(mock_job, [Mock()], shots=1000)
+
+		# Only the measured bit reaches M3, with no space and no unmeasured bit.
+		corrected_counts = mock_mitigator.apply_correction.call_args[0][0]
+		assert corrected_counts == {"0": 600, "1": 400}
+
+		# The expanded output restores both the zero-filled unmeasured bit and the space.
+		mitigated_counts_list = mock_create.call_args[0][1]
+		assert set(mitigated_counts_list[0]) == {"0 0", "1 0"}
