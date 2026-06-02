@@ -306,6 +306,7 @@ class TestIntegration:
 		)
 		assert mitigated_correct >= 1950, f"Mitigated should be >=1950 correct counts, got {mitigated_correct}"
 
+
 class TestKeyLayout:
 	"""Tests for the ``_key_layout`` reduce/expand workflow in ``_run_with_m3_mitigation``.
 
