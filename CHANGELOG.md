@@ -1,3 +1,11 @@
+## [0.7.1] - 3.6.2026
+
+## Changed
+- Fix a rare divide by zero in `exponential_extrapolation()` causing `nan` expectation values.
+
+[https://github.com/FiQCI/fiqci-ems/pull/16](https://github.com/FiQCI/fiqci-ems/pull/16)
+
+
 ## [0.7.0] - 29.5.2026
 
 ## Changed
@@ -5,7 +13,7 @@
 - Pauli twirling no longer drops the transpiled circuit's `TranspileLayout`; twirled circuits previously lost their layout and could place CZ gates on non-adjacent physical qubits, raising `CircuitValidationError` (more likely with higher `num_twirls`)
 - Fixed result ordering when Pauli twirling is enabled: `result.get_counts()` for a list of circuits is now correctly aligned with the input circuit order (previously a mis-trim could put another circuit's counts in circuit `i`'s slot)
 
-[https://github.com/FiQCI/fiqci-ems/pull/13](https://github.com/FiQCI/fiqci-ems/pull/14)
+[https://github.com/FiQCI/fiqci-ems/pull/14](https://github.com/FiQCI/fiqci-ems/pull/14)
 
 ## [0.6.1] - 8.5.2026
 
@@ -17,7 +25,7 @@
 ## [0.6.0] - 4.5.2026
 
 ### Added
-- add an optional `max_batch_size` argument to primitives `.run()` methods. 
+- add an optional `max_batch_size` argument to primitives `.run()` methods.
     - `FiQCIBackend` now batches passed circuits into max `max_batch_size` sets before execution
     - By default value is `100`
     - Leads to more efficient use of QPU resources and less wait time in queue for user
@@ -42,7 +50,7 @@
 - Manual configuration using the `pauli_twirl()` method of the primitive
   - `num_twirls`: number of twirled variant to generate per circuit
   - `gates_to_twirl`: gates to be twirled, by default all two qubit gates
-- `transpiler_passes/pauli_twirl.py`: `get_twirled_circuits()` for generating twirled circuits 
+- `transpiler_passes/pauli_twirl.py`: `get_twirled_circuits()` for generating twirled circuits
 
 ### Changed
 - Bugfix: ZNE expectation values in FiQCIEstimator now correctly scoped per observable group
@@ -55,7 +63,7 @@
 - Dynamical decoupling (DD) for `FiQCISampler`, `FiQCIEstimator`, and `FiQCIBackend` as `mitigation_level=2` (REM + DD)
 - Manual configuration using the `.dd()` method of the primitive
     - `gate_sequences`: list of DD sequences to apply
-- `mitigators/dd.py`: `build_dd_options()` for getting options for DD 
+- `mitigators/dd.py`: `build_dd_options()` for getting options for DD
 
 [https://github.com/FiQCI/fiqci-ems/pull/10](https://github.com/FiQCI/fiqci-ems/pull/10)
 
