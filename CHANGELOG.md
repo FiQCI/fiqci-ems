@@ -3,7 +3,7 @@
 ## Changed
 - Fix a rare divide by zero in `exponential_extrapolation()` causing `nan` expectation values.
 
-[https://github.com/FiQCI/fiqci-ems/pull/16](https://github.com/FiQCI/fiqci-ems/pull/15)
+[https://github.com/FiQCI/fiqci-ems/pull/16](https://github.com/FiQCI/fiqci-ems/pull/16)
 
 
 ## [0.7.0] - 29.5.2026
