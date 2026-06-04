@@ -1,3 +1,8 @@
+## [0.7.2] - 4.6.2026
+
+## Changed
+- Fix `max_batch_size` not being passed down from ems primitives to mthree for calibration job execution.
+
 ## [0.7.1] - 3.6.2026
 
 ## Changed
