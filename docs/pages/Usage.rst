@@ -53,8 +53,9 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         # Execute the job
         job = sampler.run(qc_transpiled, shots=2048)
 
-        # Get results
+        # Get results and counts
         result = job.result()
+        counts = result.get_counts()
 
         # Or manually set mitigation options
         sampler.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
@@ -76,7 +77,7 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         from qiskit.quantum_info import SparsePauliOp
 
         # Using mitigation_level
-        estimator = FiQCIEstimator(backend, mitigation_level=1)
+        estimator = FiQCIEstimator(backend, mitigation_level=1, calibration_file="cals.json")
 
         # Define observables
         observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
@@ -85,19 +86,23 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         device_observables = observables.apply_layout(qc_transpiled.layout)
 
         # Execute the job
-        job = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+        estimator_job = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
 
         # Get expectation values
-        evs = job.expectation_values()
+        evs = estimator_job.expectation_values()
 
-        # Access the underlying backend job
-        underlying_job = job.job()
+        # Access the underlying backend job and its attributes
+        underlying_job = estimator_job.job()
+        results = underlying_job.result()
+        counts = results.get_counts()
 
         # Or manually set mitigation options
         estimator.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
         # See applied and available options
         estimator.mitigation_options
+
+      Access raw (pre-mitigation) expectation values via :meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.raw_expectation_values`.
 
       For more information on the estimator interface, see :doc:`FiQCIEstimatorUsage`.
 
@@ -112,13 +117,14 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         from fiqci.ems import FiQCIBackend
 
         # Using mitigation_level
-        backend = FiQCIBackend(backend, mitigation_level=1)
+        backend = FiQCIBackend(backend, mitigation_level=1, calibration_file="cals.json")
 
         # Execute the job
         job = backend.run(circuit, shots=1024)
 
-        # Get the results
+        # Get the results and counts
         result = job.result()
+        counts = result.get_counts()
 
         # Or manually set mitigation options
         backend.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
@@ -129,6 +135,10 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
       Access raw (pre-mitigation) counts via :attr:`~fiqci.ems.FiQCIBackend.raw_counts`.
 
       The mitigation options for :class:`~fiqci.ems.FiQCIBackend` are the same as for :class:`~fiqci.ems.FiQCISampler`. For more information, see :doc:`FiQCISamplerUsage`.
+
+.. hint::
+
+   It is higly recommended to explicitly set the :attr:`calibration_file` option when using FiQCI EMS. This will save readout error mitigation calibration data to a file and avoid running calibration jobs every time you run a quantum job. For a fresh calibration, simply delete the file and it will be re-generated on the next run.
 
 Advanced Usage
 ~~~~~~~~~~~~~~
