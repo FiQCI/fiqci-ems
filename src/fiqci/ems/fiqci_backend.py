@@ -44,6 +44,35 @@ class BatchFailedError(RuntimeError):
 	"""
 
 
+class _UnsubmittedBatch:
+	"""Stand-in for a batch that was not successfully submitted to the backend.
+
+	Submission is not atomic: when a batch is rejected mid-stream, ``run()`` stops submitting and
+	still returns a handle covering every intended batch. The rejected batch and any batches skipped
+	after it are represented by this placeholder so the handle exposes a uniform, index-aligned
+	per-batch view. It reports a terminal status (``ERROR`` for the batch that failed to submit,
+	``CANCELLED`` for batches skipped afterwards), has no backend job id, and raises when its result
+	is requested.
+	"""
+
+	def __init__(self, circuit_range: tuple[int, int], status: JobStatus, error: str | None = None) -> None:
+		self._range = circuit_range
+		self._status = status
+		self._error = error
+
+	def job_id(self) -> None:
+		"""Unsubmitted batches have no backend job id."""
+		return None
+
+	def status(self) -> JobStatus:
+		return self._status
+
+	def result(self, timeout: float | None = None) -> Result:
+		start, end = self._range
+		detail = f": {self._error}" if self._error else ""
+		raise BatchFailedError(f"Batch covering circuits {start}-{end - 1} was not submitted{detail}")
+
+
 class PartialBatch(NamedTuple):
 	"""Snapshot of a single batch within a multi-batch job.
 
@@ -444,12 +473,41 @@ class FiQCIBackend:
 			num_batches,
 			max_batch_size,
 		)
+		# Submission is not atomic: a later batch may be rejected after earlier ones were accepted.
+		# Rather than throwing (which would lose the already-submitted jobs), stop submitting on the
+		# first rejection and still return a handle covering every intended batch. Submitted batches
+		# hold real jobs; the rejected batch and the ones skipped afterwards hold placeholders that
+		# report a terminal ERROR/CANCELLED status. A warning is logged so the failure is visible.
 		batch_jobs: list[JobV1] = []
 		batch_ranges: list[tuple[int, int]] = []
+		submission_failed = False
 		for batch_start in range(0, len(circuits_list), max_batch_size):
 			batch = circuits_list[batch_start : batch_start + max_batch_size]
-			batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
-			assert batch_job is not None, "Backend returned None job"
+			batch_range = (batch_start, batch_start + len(batch))
+
+			if submission_failed:
+				# An earlier batch was rejected; do not submit any further batches.
+				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.CANCELLED))
+				batch_ranges.append(batch_range)
+				continue
+
+			try:
+				batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
+				assert batch_job is not None, "Backend returned None job"
+			except Exception as exc:
+				submission_failed = True
+				logger.warning(
+					"Backend rejected batch at circuit indices %d-%d: %s. Stopping submission; "
+					"returning a job handle for the %d batch(es) submitted so far (remaining batches "
+					"are marked cancelled). Inspect status()/statuses() and partial_results().",
+					batch_start,
+					batch_start + len(batch) - 1,
+					exc,
+					len(batch_jobs),
+				)
+				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.ERROR, error=str(exc)))
+				batch_ranges.append(batch_range)
+				continue
 
 			logger.info(
 				"Submitted batch of %d circuit(s) (indices %d-%d) to backend, got job ID %s",
@@ -460,7 +518,7 @@ class FiQCIBackend:
 			)
 
 			batch_jobs.append(batch_job)
-			batch_ranges.append((batch_start, batch_start + len(batch)))
+			batch_ranges.append(batch_range)
 
 		# No REM: return a lazy handle immediately. With twirling, the averaging is deferred to the
 		# handle's result() via a post-process callback (no blocking here).
