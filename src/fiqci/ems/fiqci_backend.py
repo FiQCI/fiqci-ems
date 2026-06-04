@@ -10,9 +10,11 @@ backend interface without additional code.
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from pathlib import Path
 from typing import Any, NamedTuple, TypedDict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from iqm.iqm_client import STANDARD_DD_STRATEGY
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
@@ -25,10 +27,39 @@ from fiqci.ems.utils import probabilities_to_counts
 
 from qiskit import QuantumCircuit
 from qiskit.circuit import Gate
-from qiskit.providers import JobV1
+from qiskit.providers import JobStatus, JobV1
 from qiskit.result import Result
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+# Job statuses that indicate a batch will not change further.
+_TERMINAL_STATUSES = frozenset({JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED})
+
+
+class BatchFailedError(RuntimeError):
+	"""Raised when one or more batches of a submitted job fail.
+
+	The message identifies the failing batch by its index and the range of original circuit
+	indices it covered, so callers can map the failure back to their input.
+	"""
+
+
+class PartialBatch(NamedTuple):
+	"""Snapshot of a single batch within a multi-batch job.
+
+	Attributes:
+		index: Position of the batch in submission order.
+		circuit_range: ``(start, end_exclusive)`` original circuit indices covered by the batch.
+		status: Current :class:`~qiskit.providers.JobStatus` of the batch job.
+		job_id: Backend job id of the batch.
+		result: The batch's :class:`~qiskit.result.Result` if it has completed, else ``None``.
+	"""
+
+	index: int
+	circuit_range: tuple[int, int]
+	status: JobStatus
+	job_id: str
+	result: Result | None
 
 
 class _KeyLayout(NamedTuple):
@@ -146,8 +177,12 @@ class FiQCIBackend:
 		is ``num_input_circuits * (num_twirls + 1)`` and entries for the same input circuit are
 		contiguous.
 
+		Note:
+			Because post-processing is now lazy, this is populated only after the run's mitigated
+			``result()`` has been retrieved at least once. It returns ``None`` until then.
+
 		Returns:
-			List of raw count dictionaries, or None if no run has been performed yet.
+			List of raw count dictionaries, or None if no run's result has been computed yet.
 		"""
 		return self._raw_counts_cache
 
@@ -337,23 +372,26 @@ class FiQCIBackend:
 		shots: int = 1024,
 		max_batch_size: int = 100,
 		**kwargs: Any,
-	) -> JobV1 | MitigatedJob | BatchedJob:
-		"""Run quantum circuits with error mitigation.
+	) -> MitigatedJob | BatchedJob:
+		"""Submit quantum circuits and return a lazy job handle immediately.
 
-		This method runs the specified quantum circuit(s) on the backend and applies
-		error mitigation based on the configured mitigation level.
+		Circuits are submitted to the backend (in batches), and a handle is returned right away
+		without waiting for results: the per-batch ``job_id()``s and ``status()`` are available
+		immediately, and any configured error mitigation is deferred until the handle's
+		``result()`` is first called.
 
 		Args:
 			circuits: Single quantum circuit or list of circuits to execute.
 			shots: Number of shots. Default is 1024.
 			max_batch_size: Maximum number of circuits per backend job. The (post-twirl) circuit list is
 				flattened and split into batches of this size; the resulting jobs are wrapped so that the
-				returned job's ``result()`` exposes a single combined Result indexed in submission order
+				returned handle's ``result()`` exposes a single combined Result indexed in submission order
 				(default: 100).
 			**kwargs: Additional keyword arguments passed to backend.run().
 
 		Returns:
-			A JobV1 instance (level 0) or MitigatedJob instance (level 1+) with mitigated results.
+			A :class:`BatchedJob` handle (level 0) or a :class:`MitigatedJob` view (level 1+). In
+			both cases mitigation/combination is computed lazily on the first ``result()`` call.
 
 		Raises:
 			ValueError: If circuits is empty or invalid.
@@ -407,6 +445,7 @@ class FiQCIBackend:
 			max_batch_size,
 		)
 		batch_jobs: list[JobV1] = []
+		batch_ranges: list[tuple[int, int]] = []
 		for batch_start in range(0, len(circuits_list), max_batch_size):
 			batch = circuits_list[batch_start : batch_start + max_batch_size]
 			batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
@@ -421,36 +460,52 @@ class FiQCIBackend:
 			)
 
 			batch_jobs.append(batch_job)
+			batch_ranges.append((batch_start, batch_start + len(batch)))
 
-		job: JobV1 | BatchedJob = batch_jobs[0] if len(batch_jobs) == 1 else BatchedJob(batch_jobs)
-
-		# No REM: return raw job (or averaged twirl results)
+		# No REM: return a lazy handle immediately. With twirling, the averaging is deferred to the
+		# handle's result() via a post-process callback (no blocking here).
 		if not self._rem["enabled"]:
 			if twirl_group_size == 0:
-				return job
+				return BatchedJob(batch_jobs, batch_ranges)
 
-			result = job.result()
-			all_counts = result.get_counts()
-			if not isinstance(all_counts, list):
-				all_counts = [all_counts]
-			raw_counts_list: list[dict[str, int]] = list(all_counts)
-			self._raw_counts_cache = raw_counts_list
+			# Snapshot mitigation metadata at submission time so deferred post-processing is not
+			# affected by later changes to the backend's settings.
+			mitigation_level = self._mitigation_level
+			calibration_shots = self._rem["calibration_shots"]
 
-			averaged_counts_list = [
-				self._average_counts(raw_counts_list[i : i + twirl_group_size])
-				for i in range(0, len(raw_counts_list), twirl_group_size)
-			]
+			def _twirl_post(result: Result) -> Result:
+				all_counts = result.get_counts()
+				if not isinstance(all_counts, list):
+					all_counts = [all_counts]
+				raw_counts_list: list[dict[str, int]] = list(all_counts)
+				self._raw_counts_cache = raw_counts_list
 
-			num_groups = len(circuits_list) // twirl_group_size
-			result_to_use = self._trim_result_to_groups(result, num_groups)
-			mitigated_result = self._create_mitigated_result(
-				result_to_use, averaged_counts_list, raw_counts_list, twirl_group_size=twirl_group_size
-			)
-			return MitigatedJob(job, mitigated_result)
+				averaged_counts_list = [
+					self._average_counts(raw_counts_list[i : i + twirl_group_size])
+					for i in range(0, len(raw_counts_list), twirl_group_size)
+				]
 
-		# REM enabled: run with M3 mitigation
+				num_groups = len(circuits_list) // twirl_group_size
+				result_to_use = self._trim_result_to_groups(result, num_groups)
+				return self._create_mitigated_result(
+					result_to_use,
+					averaged_counts_list,
+					raw_counts_list,
+					twirl_group_size=twirl_group_size,
+					mitigation_level=mitigation_level,
+					calibration_shots=calibration_shots,
+				)
+
+			return MitigatedJob(BatchedJob(batch_jobs, batch_ranges, post_process=_twirl_post))
+
+		# REM enabled: run with M3 mitigation (deferred to the handle's result()).
 		return self._run_with_m3_mitigation(
-			job, circuits_list, shots, twirl_group_size=twirl_group_size, max_batch_size=max_batch_size
+			batch_jobs,
+			batch_ranges,
+			circuits_list,
+			shots,
+			twirl_group_size=twirl_group_size,
+			max_batch_size=max_batch_size,
 		)
 
 	@staticmethod
@@ -583,28 +638,37 @@ class FiQCIBackend:
 
 	def _run_with_m3_mitigation(
 		self,
-		job: JobV1 | BatchedJob,
+		batch_jobs: list[JobV1],
+		batch_ranges: list[tuple[int, int]],
 		circuits: list[QuantumCircuit],
 		shots: int,
 		twirl_group_size: int = 0,
 		max_batch_size: int = 100,
 	) -> MitigatedJob:
-		"""Run circuits with M3 readout error mitigation.
+		"""Build a lazy M3-mitigated handle for already-submitted batch jobs.
+
+		Calibration is kicked off eagerly here (``cals_from_system`` is non-blocking — mthree runs
+		it in a background thread) so it proceeds in parallel with the circuit jobs. The blocking
+		result fetch and the per-circuit M3 correction are deferred to a ``post_process`` callback
+		that runs the first time the returned handle's ``result()`` is called.
 
 		Args:
-			job: Already-submitted job from backend.
+			batch_jobs: Per-batch jobs already submitted to the backend, in submission order.
+			batch_ranges: ``(start, end_exclusive)`` circuit index range for each batch.
 			circuits: List of quantum circuits that were executed.
 			shots: Number of measurement shots.
 			twirl_group_size: Size of each twirl group (num_twirls + 1), or 0 if no twirling.
 			max_batch_size: Maximum circuits per calibration job (default: 100).
 
 		Returns:
-			A MitigatedJob instance with mitigated results.
+			A MitigatedJob view whose ``result()`` lazily applies M3 mitigation.
 		"""
 		# Get qubit mappings for each circuit
 		qubits_list = [final_measurement_mapping(circuit) for circuit in circuits]
 
-		# Calibrate M3 mitigator if not already done
+		# Calibrate M3 mitigator if not already done. This is non-blocking (async_cal), so it can
+		# start now and run alongside the circuit jobs; apply_correction (in the callback below)
+		# waits for it to finish if necessary.
 		if self._rem["mitigator"] is not None and self._rem["mitigator"].single_qubit_cals is None:
 			all_qubits: set[int] = set()
 			for qubit_mapping in qubits_list:
@@ -633,46 +697,60 @@ class FiQCIBackend:
 				max_batch_size=max_batch_size,
 			)
 
-		result = job.result()
+		# Snapshot the mitigator and metadata at submission time. The closure runs later (on the
+		# first result() call), so binding these now keeps the deferred correction consistent with
+		# the configuration used at submission, even if the user mutates settings (e.g. disables
+		# REM, which would otherwise clear self._rem["mitigator"]) in the meantime.
+		mitigator = self._rem["mitigator"]
+		assert mitigator is not None, "Mitigator should be initialized for level 1"
+		mitigation_level = self._mitigation_level
+		calibration_shots = self._rem["calibration_shots"]
 
-		# Apply M3 correction to each circuit's results
-		raw_counts_list: list[dict[str, int]] = []
-		mitigated_counts_list: list[dict[str, int]] = []
+		def _m3_post(result: Result) -> Result:
+			# Apply M3 correction to each circuit's results
+			raw_counts_list: list[dict[str, int]] = []
+			mitigated_counts_list: list[dict[str, int]] = []
 
-		for idx in range(len(circuits)):
-			raw_counts = result.get_counts(idx)
-			assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
-			raw_counts_list.append(raw_counts)
-			qubits = qubits_list[idx]
-			assert isinstance(qubits, dict), f"Expected dict mapping for circuit {idx}, got {type(qubits)}"
+			for idx in range(len(circuits)):
+				raw_counts = result.get_counts(idx)
+				assert isinstance(raw_counts, dict), f"Expected dict from get_counts({idx}), got {type(raw_counts)}"
+				raw_counts_list.append(raw_counts)
+				qubits = qubits_list[idx]
+				assert isinstance(qubits, dict), f"Expected dict mapping for circuit {idx}, got {type(qubits)}"
 
-			# M3 expects a spaceless bitstring with exactly one bit per measured qubit. Result
-			# keys instead carry a bit for every classical bit (with spaces between registers and
-			# zero-filled bits for unmeasured registers), so reduce them to the measured bits
-			# before correction and restore the original structure afterwards.
-			layout = self._key_layout(raw_counts, qubits)
-			counts_for_correction = self._reduce_counts(raw_counts, layout)
+				# M3 expects a spaceless bitstring with exactly one bit per measured qubit. Result
+				# keys instead carry a bit for every classical bit (with spaces between registers and
+				# zero-filled bits for unmeasured registers), so reduce them to the measured bits
+				# before correction and restore the original structure afterwards.
+				layout = self._key_layout(raw_counts, qubits)
+				counts_for_correction = self._reduce_counts(raw_counts, layout)
 
-			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
-			quasi_dist = self._rem["mitigator"].apply_correction(counts_for_correction, qubits)
-			mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
-			mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
-			mitigated_counts_list.append(self._expand_counts(mitigated_counts[0], layout))
+				quasi_dist = mitigator.apply_correction(counts_for_correction, qubits)
+				mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
+				mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
+				mitigated_counts_list.append(self._expand_counts(mitigated_counts[0], layout))
 
-		# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
-		if twirl_group_size:
-			averaged_mitigated: list[dict[str, int]] = []
-			for i in range(0, len(mitigated_counts_list), twirl_group_size):
-				averaged_mitigated.append(self._average_counts(mitigated_counts_list[i : i + twirl_group_size]))
-			mitigated_counts_list = averaged_mitigated
-			num_groups = len(circuits) // twirl_group_size
-			result = self._trim_result_to_groups(result, num_groups)
+			result_to_use = result
+			# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
+			if twirl_group_size:
+				averaged_mitigated: list[dict[str, int]] = []
+				for i in range(0, len(mitigated_counts_list), twirl_group_size):
+					averaged_mitigated.append(self._average_counts(mitigated_counts_list[i : i + twirl_group_size]))
+				mitigated_counts_list = averaged_mitigated
+				num_groups = len(circuits) // twirl_group_size
+				result_to_use = self._trim_result_to_groups(result, num_groups)
 
-		self._raw_counts_cache = raw_counts_list
-		mitigated_result = self._create_mitigated_result(
-			result, mitigated_counts_list, raw_counts_list, twirl_group_size=twirl_group_size or 1
-		)
-		return MitigatedJob(job, mitigated_result)
+			self._raw_counts_cache = raw_counts_list
+			return self._create_mitigated_result(
+				result_to_use,
+				mitigated_counts_list,
+				raw_counts_list,
+				twirl_group_size=twirl_group_size or 1,
+				mitigation_level=mitigation_level,
+				calibration_shots=calibration_shots,
+			)
+
+		return MitigatedJob(BatchedJob(batch_jobs, batch_ranges, post_process=_m3_post))
 
 	def _create_mitigated_result(
 		self,
@@ -680,6 +758,8 @@ class FiQCIBackend:
 		mitigated_counts: list[dict[str, int]],
 		raw_counts: list[dict[str, int]],
 		twirl_group_size: int = 1,
+		mitigation_level: int | None = None,
+		calibration_shots: int | None = None,
 	) -> Result:
 		"""Create a new Result object with mitigated counts and metadata.
 
@@ -691,12 +771,22 @@ class FiQCIBackend:
 			twirl_group_size: Number of submitted circuits per group (``num_twirls + 1``), or 1 when
 				twirling is disabled. Used to slice ``raw_counts`` into the per-group entries that get
 				attached to each result header.
+			mitigation_level: Mitigation level to record in the result metadata. Defaults to the
+				backend's current level; callers running deferred post-processing pass the value
+				snapshotted at submission time so the metadata stays consistent.
+			calibration_shots: Calibration shots to record in the result metadata. Defaults to the
+				backend's current setting; snapshotted by deferred callers for the same reason.
 
 		Returns:
 			New Result object with mitigated data and FiQCI EMS metadata. Each header's
 			``fiqci_ems["raw_counts"]`` is a single dict when ``twirl_group_size == 1`` and a list of
 			per-twirl dicts when ``twirl_group_size > 1``.
 		"""
+		if mitigation_level is None:
+			mitigation_level = self._mitigation_level
+		if calibration_shots is None:
+			calibration_shots = self._rem["calibration_shots"]
+
 		# Get original result data
 		results_data = original_result.to_dict()
 
@@ -720,9 +810,9 @@ class FiQCIBackend:
 						raw_for_group = raw_counts[idx]
 
 					results_list[idx]["header"]["fiqci_ems"] = {  # type: ignore[index]
-						"mitigation_level": self._mitigation_level,
-						"mitigation_method": "M3" if self._mitigation_level == 1 else None,
-						"calibration_shots": self._rem["calibration_shots"] if self._mitigation_level == 1 else None,
+						"mitigation_level": mitigation_level,
+						"mitigation_method": "M3" if mitigation_level == 1 else None,
+						"calibration_shots": calibration_shots if mitigation_level == 1 else None,
 						"raw_counts": raw_for_group,
 					}
 
@@ -736,67 +826,214 @@ class FiQCIBackend:
 		return getattr(self._backend, name)
 
 
-class MitigatedJob:
-	"""Wrapper for job results with mitigated data.
-
-	This class wraps the original job and provides access to mitigated results.
-	"""
-
-	def __init__(self, original_job: JobV1 | BatchedJob, mitigated_result: Result) -> None:
-		"""Initialize mitigated job wrapper.
-
-		Args:
-			original_job: Original job from backend (a single ``JobV1`` or a ``BatchedJob`` wrapping
-				multiple per-batch jobs).
-			mitigated_result: Result object with mitigated counts.
-		"""
-		self._original_job = original_job
-		self._mitigated_result = mitigated_result
-
-	def result(self, timeout: float | None = None) -> Result:
-		"""Get the mitigated result.
-
-		Args:
-			timeout: Maximum time to wait for result (unused, job already complete).
-
-		Returns:
-			Result object with mitigated counts.
-		"""
-		return self._mitigated_result
-
-	def __getattr__(self, name: str) -> Any:
-		"""Delegate attribute access to original job object."""
-		return getattr(self._original_job, name)
-
-
 class BatchedJob:
-	"""Wrapper that combines results from multiple backend jobs into a single Result.
+	"""Lazy handle over one or more backend jobs submitted as ordered batches.
 
-	The wrapped jobs were submitted as ordered batches of a larger circuit list. Calling
-	``result()`` waits on each underlying job and concatenates their ``results`` lists in
-	submission order, so ``get_counts(idx)`` on the combined Result corresponds to the
-	original circuit index.
+	A larger circuit list is split into batches that are each submitted to the backend; this
+	wrapper holds the resulting per-batch jobs. It is returned immediately from
+	:meth:`FiQCIBackend.run` (the submission loop does not wait for results), so callers can
+	inspect ``job_ids()`` and poll ``status()``/``done()`` right away.
+
+	Calling :meth:`result` blocks until every batch reaches a terminal state, then concatenates
+	the batches' ``results`` lists in submission order (so ``get_counts(idx)`` on the combined
+	Result corresponds to the original circuit index) and runs the optional ``post_process``
+	callback that applies error mitigation. The combined/post-processed result is computed once
+	and cached. If any batch failed, :meth:`result` raises :class:`BatchFailedError` identifying
+	the batch and the original circuit indices it covered.
 	"""
 
-	def __init__(self, jobs: list[JobV1]) -> None:
+	def __init__(
+		self,
+		jobs: list[JobV1],
+		batch_ranges: list[tuple[int, int]] | None = None,
+		post_process: Callable[[Result], Result] | None = None,
+	) -> None:
+		"""Initialize the handle.
+
+		Args:
+			jobs: Per-batch jobs in submission order. Must be non-empty.
+			batch_ranges: ``(start, end_exclusive)`` original circuit-index range for each batch,
+				used for partial-result reporting and failure messages. If omitted, ranges are
+				reported as best-effort placeholders.
+			post_process: Optional callback mapping the combined raw Result to the final
+				(mitigated) Result. Runs once on the first :meth:`result` call.
+		"""
+		assert jobs, "BatchedJob must wrap at least one job"
 		self._jobs = jobs
+		self._batch_ranges = batch_ranges
+		self._post_process = post_process
 		self._combined_result: Result | None = None
+		self._final_result: Result | None = None
+		self._lock = threading.Lock()
+
+	# -- identity / polling (available immediately, before any results) --
+
+	def job_id(self) -> str:
+		"""Backend job id of the first batch (for single-job back-compat)."""
+		return self._jobs[0].job_id()
+
+	def job_ids(self) -> list[str]:
+		"""Backend job ids of every batch, in submission order."""
+		return [job.job_id() for job in self._jobs]
+
+	def statuses(self) -> list[JobStatus]:
+		"""Current :class:`JobStatus` of each batch, in submission order."""
+		return [job.status() for job in self._jobs]
+
+	def status(self) -> JobStatus:
+		"""Single aggregated status across all batches (see :meth:`_aggregate_status`)."""
+		return self._aggregate_status(self.statuses())
+
+	def done(self) -> bool:
+		"""True once every batch has reached a terminal state (DONE/ERROR/CANCELLED)."""
+		return all(status in _TERMINAL_STATUSES for status in self.statuses())
+
+	def all_succeeded(self) -> bool:
+		"""True once every batch has completed successfully (DONE)."""
+		return all(status == JobStatus.DONE for status in self.statuses())
+
+	@staticmethod
+	def _aggregate_status(statuses: list[JobStatus]) -> JobStatus:
+		"""Collapse per-batch statuses into one by priority.
+
+		A failure anywhere dominates (ERROR, then CANCELLED). Otherwise the job is DONE only when
+		all batches are done; if any batch is still progressing the least-advanced active state is
+		reported (RUNNING > VALIDATING > QUEUED > INITIALIZING).
+		"""
+		if not statuses:
+			return JobStatus.DONE
+		if any(status == JobStatus.ERROR for status in statuses):
+			return JobStatus.ERROR
+		if any(status == JobStatus.CANCELLED for status in statuses):
+			return JobStatus.CANCELLED
+		if all(status == JobStatus.DONE for status in statuses):
+			return JobStatus.DONE
+		for active in (JobStatus.RUNNING, JobStatus.VALIDATING, JobStatus.QUEUED):
+			if any(status == active for status in statuses):
+				return active
+		return JobStatus.INITIALIZING
+
+	def _range(self, index: int) -> tuple[int, int]:
+		"""Original circuit-index range for batch ``index`` (best-effort if unknown)."""
+		if self._batch_ranges is not None and index < len(self._batch_ranges):
+			return self._batch_ranges[index]
+		return (index, index + 1)
+
+	# -- partial results (batch-granular) --
+
+	def partial_results(self) -> list[PartialBatch]:
+		"""Per-batch snapshot, exposing results for batches that have already completed.
+
+		Each entry carries the batch's status and, for completed (DONE) batches, its Result.
+		Batches that are still running or have failed report ``result=None``. Results are exposed
+		at batch granularity only; the globally-indexed combined Result is available from
+		:meth:`result` once all batches are terminal.
+		"""
+		snapshots: list[PartialBatch] = []
+		for index, job in enumerate(self._jobs):
+			status = job.status()
+			result: Result | None = None
+			if status == JobStatus.DONE:
+				try:
+					result = job.result()
+				except Exception:  # pragma: no cover - defensive
+					result = None
+			snapshots.append(
+				PartialBatch(
+					index=index, circuit_range=self._range(index), status=status, job_id=job.job_id(), result=result
+				)
+			)
+		return snapshots
+
+	# -- combined / post-processed result --
 
 	def result(self, timeout: float | None = None) -> Result:
+		"""Return the combined, post-processed result, computed once and cached.
+
+		Blocks until every batch is terminal. Raises :class:`BatchFailedError` if any batch
+		failed, otherwise concatenates batch results in submission order and applies the
+		``post_process`` callback (if any).
+
+		Args:
+			timeout: Best-effort total budget (seconds) shared across all batches.
+		"""
+		if self._final_result is not None:
+			return self._final_result
+		with self._lock:
+			if self._final_result is not None:
+				return self._final_result
+			combined = self._combine(timeout)
+			self._final_result = self._post_process(combined) if self._post_process is not None else combined
+			return self._final_result
+
+	def _combine(self, timeout: float | None) -> Result:
+		"""Wait for all batches and concatenate their results in submission order."""
 		if self._combined_result is not None:
 			return self._combined_result
 
 		from qiskit.result import Result as QiskitResult
 
-		assert self._jobs, "BatchedJob must wrap at least one job"
-		combined_data: dict[str, Any] = self._jobs[0].result().to_dict()
+		deadline = None if timeout is None else time.monotonic() + timeout
+		results: list[Result] = []
+		failures: list[tuple[int, str, str]] = []
+		for index, job in enumerate(self._jobs):
+			remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+			try:
+				result = job.result() if remaining is None else job.result(remaining)
+			except Exception as exc:  # batch failed at the backend
+				failures.append((index, job.job_id(), str(exc)))
+				continue
+			if job.status() in (JobStatus.ERROR, JobStatus.CANCELLED):
+				failures.append((index, job.job_id(), str(job.status())))
+				continue
+			results.append(result)
+
+		if failures:
+			raise BatchFailedError(self._failure_message(failures))
+
+		combined_data: dict[str, Any] = results[0].to_dict()
 		merged_results: list[Any] = list(combined_data.get("results") or [])
-		for job in self._jobs[1:]:
-			merged_results.extend(job.result().to_dict().get("results") or [])
+		for result in results[1:]:
+			merged_results.extend(result.to_dict().get("results") or [])
 		combined_data["results"] = merged_results
 		self._combined_result = QiskitResult.from_dict(combined_data)
 		return self._combined_result
 
+	def _failure_message(self, failures: list[tuple[int, str, str]]) -> str:
+		"""Build a human-readable message naming each failed batch and its circuit range."""
+		parts = []
+		for index, job_id, detail in failures:
+			start, end = self._range(index)
+			parts.append(f"batch {index} (circuits {start}-{end - 1}, job_id={job_id}): {detail}")
+		return f"{len(failures)} of {len(self._jobs)} batch(es) failed: " + "; ".join(parts)
+
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate attribute access to the first underlying job."""
 		return getattr(self._jobs[0], name)
+
+
+class MitigatedJob:
+	"""Lazy view over a :class:`BatchedJob` whose result has error mitigation applied.
+
+	The mitigation work is deferred to the wrapped handle's ``post_process`` callback, so this
+	wrapper simply exposes the handle's polling API and a :meth:`result` that returns the
+	mitigated, combined Result. It exists as a distinct type so callers and tests can detect that
+	mitigation was configured for the run.
+	"""
+
+	def __init__(self, handle: BatchedJob) -> None:
+		"""Initialize the wrapper.
+
+		Args:
+			handle: The submission handle carrying the batch jobs and the mitigation
+				``post_process`` callback.
+		"""
+		self._handle = handle
+
+	def result(self, timeout: float | None = None) -> Result:
+		"""Return the mitigated, combined result (computed once by the underlying handle)."""
+		return self._handle.result(timeout)
+
+	def __getattr__(self, name: str) -> Any:
+		"""Delegate attribute access (status, done, job_ids, partial_results, …) to the handle."""
+		return getattr(self._handle, name)
