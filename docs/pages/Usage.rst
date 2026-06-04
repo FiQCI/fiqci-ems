@@ -48,7 +48,7 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         from fiqci.ems import FiQCISampler
 
         # Using mitigation_level
-        sampler = FiQCISampler(backend, mitigation_level=1)
+        sampler = FiQCISampler(backend, mitigation_level=1, calibration_file="cals.json")
 
         # Execute the job
         job = sampler.run(qc_transpiled, shots=2048)
