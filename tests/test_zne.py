@@ -58,6 +58,73 @@ class TestExponentialExtrapolation:
 		assert result[0] == pytest.approx(0.8, abs=0.01)
 		assert result[1] == pytest.approx(0.5, abs=0.01)
 
+	def test_zero_value_in_data_is_finite(self) -> None:
+		"""A literal 0.0 must not produce log(0) -> -inf -> nan."""
+		scale_factors = [1, 3, 5]
+		expectation_values = [[0.5], [0.3], [0.0]]
+
+		result = exponential_extrapolation(expectation_values, scale_factors)
+
+		assert len(result) == 1
+		assert np.isfinite(result[0])
+
+	def test_sign_flip_near_zero_is_finite(self) -> None:
+		"""Values that flip sign around zero due to noise must stay finite."""
+		scale_factors = [1, 3, 5]
+		expectation_values = [[0.02], [-0.01], [0.015]]
+
+		result = exponential_extrapolation(expectation_values, scale_factors)
+
+		assert len(result) == 1
+		assert np.isfinite(result[0])
+
+	def test_all_zero_column_returns_zero(self) -> None:
+		"""A column with no signal should extrapolate to zero, not nan."""
+		scale_factors = [1, 3, 5]
+		expectation_values = [[0.0], [0.0], [0.0]]
+
+		result = exponential_extrapolation(expectation_values, scale_factors)
+
+		assert result == [0.0]
+
+	def test_real_world_near_zero_observables(self) -> None:
+		"""Regression: noisy near-zero data that previously yielded all-nan output."""
+		scale_factors = [1, 3, 5]
+		expectation_values = [
+			[
+				-0.01568627450980392,
+				-0.0196078431372549,
+				-0.006862745098039216,
+				-0.025490196078431372,
+				-0.03137254901960784,
+				0.7254901960784313,
+				-0.026470588235294117,
+			],
+			[
+				0.03740157480314961,
+				0.02952755905511811,
+				0.05905511811023622,
+				0.06496062992125984,
+				0.06299212598425197,
+				0.46062992125984253,
+				0.07874015748031496,
+			],
+			[
+				0.003937007874015748,
+				0.006889763779527559,
+				0.01968503937007874,
+				0.008858267716535433,
+				0.0,
+				0.26968503937007876,
+				-0.011811023622047244,
+			],
+		]
+
+		result = exponential_extrapolation(expectation_values, scale_factors)
+
+		assert len(result) == 7
+		assert all(np.isfinite(v) for v in result)
+
 	def test_too_few_points_raises_error(self) -> None:
 		"""Test that fewer than 2 expectation values raises ValueError."""
 		with pytest.raises(ValueError, match="At least two expectation values"):

@@ -4,42 +4,55 @@ Extrapolation methods for Zero-Noise Extrapolation.
 
 import numpy as np
 
-from typing import Iterable
 
-
-def exponential_extrapolation(expectation_values: list[list[float]], scale_factors: list[int]) -> list[float]:
+def exponential_extrapolation(
+	expectation_values: list[list[float]], scale_factors: list[int], eps: float = 1e-9
+) -> list[float]:
 	"""
 	Perform exponential extrapolation to estimate the zero-noise value.
 
+	Fits y = sign * exp(b) * exp(a * x) in log-space per observable. Magnitudes are
+	floored relative to each column's largest value before taking the log, so values
+	that are ~0 (or whose sign flips due to noise) can't produce log(0) = -inf or
+	dominate the linear fit.
+
 	Args:
-	    expectation_values: A list of expectation values corresponding to different noise levels.
+	    expectation_values: Expectation values of shape (n_scales, n_obs) or (n_scales,).
+	    scale_factors: Noise scale factors corresponding to different noise levels.
+	    eps: Magnitude floor as a fraction of each column's maximum magnitude.
 
 	Returns:
-	    The extrapolated zero-noise expectation value.
+	    The extrapolated zero-noise expectation value(s).
 	"""
 	if len(expectation_values) < 2:
 		raise ValueError("At least two expectation values are required for exponential extrapolation.")
 
-	x = np.array(scale_factors)  # Noise scale factors
-	y = np.array(expectation_values)
+	x = np.asarray(scale_factors, dtype=float)
+	y = np.asarray(expectation_values, dtype=float)
 
-	negative_index = []
-	for i, val in enumerate(y[0]) if isinstance(y[0], Iterable) else enumerate(y):
-		if val < 0:
-			negative_index.append(i)
+	if y.ndim == 1:
+		y = y[:, None]
 
-	y = np.abs(y)
+	# The sign comes from the lowest-noise (smallest scale) measurement, the most reliable point.
+	ref = y[np.argmin(x), :]
 
-	# Fit an exponential curve to the data points
-	coeffs = np.polyfit(x, np.log(y), 1)
-	a, b = coeffs
+	out = np.empty(y.shape[1])
+	for j in range(y.shape[1]):
+		mag = np.abs(y[:, j])
+		scale = mag.max()
+		if scale <= eps:
+			# Signal is indistinguishable from zero; the exponential model is meaningless,
+			# so report zero rather than fitting noise.
+			out[j] = 0.0
+			continue
+		# Floor magnitudes relative to the column scale to keep log() finite and stop
+		# near-zero points from dominating the linear fit.
+		mag = np.maximum(mag, eps * scale)
+		b = np.polyfit(x, np.log(mag), 1)[1]
+		sign = np.sign(ref[j]) or 1.0
+		out[j] = sign * np.exp(b)
 
-	# Extrapolate to zero noise (x=0)
-	zero_noise_value = np.exp(b)
-
-	zero_noise_value = [-v if i in negative_index else v for i, v in enumerate(zero_noise_value)]
-
-	return [float(v) for v in zero_noise_value]
+	return [float(v) for v in out]
 
 
 def richardson_extrapolation(expectation_values: list[list[float]], scales: list[int]) -> list[float]:
