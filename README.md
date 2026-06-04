@@ -161,6 +161,11 @@ result combination are computed on the first `result()` call. The handle also ex
 `job_ids()` and `partial_results()` (per-batch results for batches that have already completed),
 and `result()` raises `BatchFailedError` identifying the failing batch if any batch fails.
 
+If the backend rejects a circuit during submission, `run()` does not throw: it logs a warning,
+stops submitting, and returns a handle covering every batch. Submitted batches keep their job ids
+and status, the rejected batch reports `ERROR`, and skipped batches report `CANCELLED` (with a
+`None` job id). Inspect the outcome via `statuses()`/`status()`/`partial_results()`.
+
 ### Advanced Usage
 
 It is also possible to manually configure and directly use the M3 mitigator without the wrapper classes above. Consult the docs for how this is done.
