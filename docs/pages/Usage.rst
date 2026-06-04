@@ -138,7 +138,7 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 
 .. hint::
 
-   It is higly recommended to explicitly set the :attr:`calibration_file` option when using FiQCI EMS. This will save readout error mitigation calibration data to a file and avoid running calibration jobs every time you run a quantum job. For a fresh calibration, simply delete the file and it will be re-generated on the next run.
+   It is higly recommended to explicitly set the :attr:`calibration_file` option when using FiQCI EMS. This will save readout error mitigation calibration data to a file and avoid running unnecessary calibration jobs. For a fresh calibration, simply delete the file and it will be re-generated on the next run.
 
 Advanced Usage
 ~~~~~~~~~~~~~~
