@@ -132,9 +132,13 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         # See applied and available options
         backend.mitigation_options
 
-      Access raw (pre-mitigation) counts via :attr:`~fiqci.ems.FiQCIBackend.raw_counts`.
+      Access raw (pre-mitigation) counts via :attr:`~fiqci.ems.FiQCIBackend.raw_counts` (populated only after the run's ``result()`` has been retrieved, since post-processing is lazy).
 
       The mitigation options for :class:`~fiqci.ems.FiQCIBackend` are the same as for :class:`~fiqci.ems.FiQCISampler`. For more information, see :doc:`FiQCISamplerUsage`.
+
+.. note::
+
+   In every interface ``run()`` returns a lazy job handle immediately, without waiting for results. The per-batch ``job_id()`` values and an aggregated ``status()`` are available right away, and error mitigation / result combination (or expectation values) are computed the first time you request them. See the :ref:`sampler <usage-sampler>` and :ref:`estimator <usage-estimator>` "Running Circuits" sections for inspecting batches, partial results, and failure handling.
 
 .. hint::
 

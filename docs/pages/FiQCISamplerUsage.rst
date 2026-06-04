@@ -182,7 +182,23 @@ Running Circuits
 
    job = sampler.run(circuits, shots=1024, max_batch_size=100)
 
-Depending on mitigation level and batch count, ``run`` returns either a Qiskit ``JobV1``, a :class:`~fiqci.ems.fiqci_backend.MitigatedJob`, or a :class:`~fiqci.ems.fiqci_backend.BatchedJob`. In all cases ``job.result()`` exposes a single combined ``Result``.
+``run`` returns **immediately** with a lazy job handle without waiting for results: a :class:`~fiqci.ems.fiqci_backend.BatchedJob` at level 0, or a :class:`~fiqci.ems.fiqci_backend.MitigatedJob` at level 1+. The per-batch ``job_id()`` values and an aggregated ``status()`` are available right away; error mitigation and result combination are computed the first time you call ``job.result()`` (which then exposes a single combined ``Result`` indexed in input order, and caches it).
+
+The handle also lets you inspect a multi-batch run before it finishes:
+
+.. code-block:: python
+
+   job.job_ids()         # backend job id of every batch (None for any unsubmitted batch)
+   job.statuses()        # per-batch JobStatus, in submission order
+   job.status()          # single aggregated status across all batches
+   job.done()            # True once every batch has reached a terminal state
+   job.partial_results() # per-batch results for batches that have already completed
+
+If a batch fails, ``job.result()`` raises :class:`~fiqci.ems.BatchFailedError` identifying the failing batch and the input circuit indices it covered, instead of an opaque error during combination.
+
+.. note::
+
+   Submission is not atomic. If the backend rejects a circuit partway through (e.g. an un-transpiled circuit), ``run`` does **not** raise: it logs a warning, stops submitting further batches, and still returns a handle covering every intended batch. Submitted batches keep their job ids and status, the rejected batch reports ``ERROR``, and the batches skipped afterwards report ``CANCELLED`` (with ``job_id()`` ``None``). Inspect the outcome with ``statuses()``/``status()``/``partial_results()``; ``result()`` then raises :class:`~fiqci.ems.BatchFailedError` because a complete combined result cannot be formed.
 
 
 Examples
