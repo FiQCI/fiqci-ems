@@ -7,7 +7,6 @@ from typing import Any
 
 from fiqci.ems import FiQCIBackend
 from qiskit import QuantumCircuit
-from qiskit.providers import JobV1
 from fiqci.ems.fiqci_backend import BatchedJob, MitigatedJob
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
@@ -49,7 +48,7 @@ class FiQCISampler:
 
 	def _run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, max_batch_size: int = 100, **options
-	) -> JobV1 | MitigatedJob | BatchedJob:
+	) -> MitigatedJob | BatchedJob:
 		num_circuits = len(circuits) if isinstance(circuits, list) else 1
 		logger.info(
 			"FiQCISampler.run: %d input circuit(s), shots=%d, max_batch_size=%d", num_circuits, shots, max_batch_size
@@ -58,7 +57,7 @@ class FiQCISampler:
 
 	def run(
 		self, circuits: QuantumCircuit | list[QuantumCircuit], shots: int = 2048, max_batch_size: int = 100, **options
-	) -> JobV1 | MitigatedJob | BatchedJob:
+	) -> MitigatedJob | BatchedJob:
 		"""
 		Execute the given circuits on the backend and return mitigated measurement counts.
 
@@ -71,7 +70,9 @@ class FiQCISampler:
 			**options: Additional options to pass to the backend's run method.
 
 		Returns:
-			A JobV1, MitigatedJob, or BatchedJob instance containing the results of the execution.
+			A lazy job handle (``BatchedJob`` at level 0, or a ``MitigatedJob`` view at level 1+).
+			It is returned immediately; ``job_ids()``/``status()`` are available right away and the
+			combined/mitigated counts are computed on the first ``result()`` call.
 		"""
 		return self._run(circuits, shots, max_batch_size=max_batch_size, **options)
 
