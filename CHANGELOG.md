@@ -1,4 +1,4 @@
-## [0.8.0]
+## [0.8.0] 5.6.2026
 
 ## Changed
 - `run()` on the backend, sampler, and estimator now returns a lazy job handle immediately instead of blocking until all batches complete and mitigation is applied. Error mitigation, twirl averaging, batch-result combination, and estimator expectation values are computed on the first `result()`/`expectation_values()` call and cached.
