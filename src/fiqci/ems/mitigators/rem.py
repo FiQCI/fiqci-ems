@@ -55,7 +55,7 @@ class M3IQM(M3Mitigation):
 		self.backend = backend
 		if not hasattr(self.backend, "configuration"):
 			self.backend.configuration = lambda: _Config(
-				num_qubits=backend.num_qubits, max_shots=10000, simulator=False, max_experiments=2, max_circuits=100
+				num_qubits=backend.num_qubits, max_shots=10000, simulator=False, max_experiments=100, max_circuits=100
 			)
 
 		super().__init__(self.backend)
@@ -74,6 +74,7 @@ class M3IQM(M3Mitigation):
 		async_cal=True,
 		runtime_mode=None,
 		cal_id=None,
+		max_batch_size=None,
 	):
 		"""Grab calibration data from system.
 
@@ -81,6 +82,7 @@ class M3IQM(M3Mitigation):
 		1. Default to 'balanced' calibration method for IQM
 		2. Support IQM's calibration_set_id parameter
 		3. Use IQM-specific job thread for bit-string handling
+		4. Support configurable calibration batching
 
 		Parameters:
 			qubits (array_like): Qubits over which to correct calibration data. Default is all.
@@ -93,6 +95,7 @@ class M3IQM(M3Mitigation):
 			async_cal (bool): Do calibration async in a separate thread, default is True.
 			runtime_mode: Mode to run jobs in if using IBM system, default=None
 			cal_id (str): Optional calibration set ID for IQM backends.
+			max_batch_size (int): Maximum circuits per calibration job. Default uses backend config.
 
 		Returns:
 			list: List of jobs submitted.
@@ -102,6 +105,10 @@ class M3IQM(M3Mitigation):
 		"""
 		# Store cal_id for use in _grab_additional_cals
 		self._cal_id = cal_id
+
+		# Override max_circuits if max_batch_size specified
+		if max_batch_size is not None:
+			self.system_info["max_circuits"] = max_batch_size
 
 		# Force balanced method for IQM if not specified
 		if method is None:

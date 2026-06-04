@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Iterable, NamedTuple, Optional, TypedDict
+from typing import Any, NamedTuple, TypedDict
+from collections.abc import Iterable
 
 from iqm.iqm_client import STANDARD_DD_STRATEGY
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
@@ -107,7 +108,7 @@ class FiQCIBackend:
 		class PauliTwirlSettings(TypedDict):
 			enabled: bool
 			num_twirls: int
-			gates_to_twirl: Optional[Iterable[Gate]]
+			gates_to_twirl: Iterable[Gate] | None
 
 		self._pauli_twirl: PauliTwirlSettings = {"enabled": False, "num_twirls": 0, "gates_to_twirl": None}
 
@@ -184,7 +185,7 @@ class FiQCIBackend:
 			return total_circuits
 
 	def init_pauli_twirl(
-		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Optional[Iterable[Gate]] = None
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Iterable[Gate] | None = None
 	) -> None:
 		"""
 		Initialize Pauli twirling settings.
@@ -448,7 +449,9 @@ class FiQCIBackend:
 			return MitigatedJob(job, mitigated_result)
 
 		# REM enabled: run with M3 mitigation
-		return self._run_with_m3_mitigation(job, circuits_list, shots, twirl_group_size=twirl_group_size)
+		return self._run_with_m3_mitigation(
+			job, circuits_list, shots, twirl_group_size=twirl_group_size, max_batch_size=max_batch_size
+		)
 
 	@staticmethod
 	def _key_layout(counts: dict[str, int], mapping: dict[int, int]) -> _KeyLayout:
@@ -579,7 +582,12 @@ class FiQCIBackend:
 		return QiskitResult.from_dict(result_data)
 
 	def _run_with_m3_mitigation(
-		self, job: JobV1 | BatchedJob, circuits: list[QuantumCircuit], shots: int, twirl_group_size: int = 0
+		self,
+		job: JobV1 | BatchedJob,
+		circuits: list[QuantumCircuit],
+		shots: int,
+		twirl_group_size: int = 0,
+		max_batch_size: int = 100,
 	) -> MitigatedJob:
 		"""Run circuits with M3 readout error mitigation.
 
@@ -588,6 +596,7 @@ class FiQCIBackend:
 			circuits: List of quantum circuits that were executed.
 			shots: Number of measurement shots.
 			twirl_group_size: Size of each twirl group (num_twirls + 1), or 0 if no twirling.
+			max_batch_size: Maximum circuits per calibration job (default: 100).
 
 		Returns:
 			A MitigatedJob instance with mitigated results.
@@ -618,7 +627,10 @@ class FiQCIBackend:
 
 			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
 			self._rem["mitigator"].cals_from_system(
-				calibration_qubits, shots=self._rem["calibration_shots"], cals_file=self._rem["calibration_file"]
+				calibration_qubits,
+				shots=self._rem["calibration_shots"],
+				cals_file=self._rem["calibration_file"],
+				max_batch_size=max_batch_size,
 			)
 
 		result = job.result()
