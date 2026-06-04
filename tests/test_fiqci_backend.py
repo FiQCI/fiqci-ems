@@ -404,6 +404,75 @@ class TestBackendBatching:
 		assert isinstance(result, BatchedJob)
 		assert mock_backend.run.call_count == 3
 
+	def test_partial_submission_returns_handle_and_stops_submitting(self, mock_backend: Mock) -> None:
+		"""A mid-stream rejection stops submission and returns a handle covering every batch.
+
+		Submitted batches keep their job ids and status; the rejected batch is ERROR and the
+		batches skipped afterwards are CANCELLED. run() does not raise.
+		"""
+		circuits = [QuantumCircuit(2) for _ in range(5)]
+		good_a = _make_result_mock([{"00": 1024}])
+		good_a.job_id.return_value = "job-0"
+		good_a.status.return_value = JobStatus.DONE
+		good_b = _make_result_mock([{"00": 1024}])
+		good_b.job_id.return_value = "job-1"
+		good_b.status.return_value = JobStatus.DONE
+		# Two batches submit, the third is rejected; the 4th/5th must never be attempted.
+		mock_backend.run.side_effect = [good_a, good_b, ValueError("cx not native")]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=1)
+
+		# No further submissions were attempted after the failure (only 3 backend.run calls).
+		assert mock_backend.run.call_count == 3
+		assert isinstance(result, BatchedJob)
+		# Submitted batches keep their ids; unsubmitted ones are None (index-aligned).
+		assert result.job_ids() == ["job-0", "job-1", None, None, None]
+		# Submitted -> DONE, rejected -> ERROR, skipped -> CANCELLED.
+		assert result.statuses() == [
+			JobStatus.DONE,
+			JobStatus.DONE,
+			JobStatus.ERROR,
+			JobStatus.CANCELLED,
+			JobStatus.CANCELLED,
+		]
+		# Aggregated status surfaces the failure; the handle is terminal.
+		assert result.status() == JobStatus.ERROR
+		assert result.done() is True
+
+	def test_partial_submission_partial_results_expose_submitted_batches(self, mock_backend: Mock) -> None:
+		"""partial_results() returns results for the submitted batches and None for the rest."""
+		circuits = [QuantumCircuit(2) for _ in range(3)]
+		good = _make_result_mock([{"00": 1024}])
+		good.job_id.return_value = "job-0"
+		good.status.return_value = JobStatus.DONE
+		mock_backend.run.side_effect = [good, ValueError("rejected")]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=1)
+
+		partials = result.partial_results()
+		assert [p.circuit_range for p in partials] == [(0, 1), (1, 2), (2, 3)]
+		assert [p.status for p in partials] == [JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED]
+		assert partials[0].result is not None
+		assert partials[1].result is None and partials[2].result is None
+		# The full combined result cannot be formed with missing batches.
+		with pytest.raises(BatchFailedError):
+			result.result()
+
+	def test_first_batch_submission_failure_returns_all_placeholder_handle(self, mock_backend: Mock) -> None:
+		"""If the very first batch is rejected, the handle is all placeholders (no real jobs)."""
+		circuits = [QuantumCircuit(2) for _ in range(3)]
+		mock_backend.run.side_effect = ValueError("rejected")
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=1)
+
+		assert mock_backend.run.call_count == 1
+		assert result.job_ids() == [None, None, None]
+		assert result.statuses() == [JobStatus.ERROR, JobStatus.CANCELLED, JobStatus.CANCELLED]
+		assert result.status() == JobStatus.ERROR
+
 	def test_run_passes_correct_circuits_per_batch(self, mock_backend: Mock) -> None:
 		"""Each batch sent to the underlying backend is a contiguous slice of the input list."""
 		circuits = [QuantumCircuit(2) for _ in range(5)]
