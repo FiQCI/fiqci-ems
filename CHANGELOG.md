@@ -1,3 +1,14 @@
+## [0.8.0]
+
+## Changed
+- `run()` on the backend, sampler, and estimator now returns a lazy job handle immediately instead of blocking until all batches complete and mitigation is applied. Error mitigation, twirl averaging, batch-result combination, and estimator expectation values are computed on the first `result()`/`expectation_values()` call and cached.
+- The handle exposes per-batch `job_id()`s immediately, an aggregated `status()`/`done()`, `job_ids()`, and `partial_results()` for batch-granular access while other batches are still running.
+- `result()` now raises `BatchFailedError` naming the failing batch and the original circuit indices it covered when any batch fails, instead of an opaque error during result combination.
+- A single batch is now always wrapped in `BatchedJob` (previously the underlying job was returned as-is) so the polling/partial-result API is uniform.
+- `backend.raw_counts` is now populated only after the run's `result()` has been retrieved (post-processing is lazy).
+- Mitigation settings (ZNE configuration, the M3 mitigator, mitigation level, calibration shots) are snapshotted at submission time, so deferred post-processing stays consistent with the configuration used at `run()` even if settings are changed before results are accessed.
+- Internal: `MitigatedJob(handle)` and `FiQCIEstimatorJob(job, compute_fn, observables)` constructor signatures changed (these classes are not part of the public API).
+
 ## [0.7.2] - 4.6.2026
 
 ## Changed
