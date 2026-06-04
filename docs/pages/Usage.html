@@ -386,13 +386,14 @@ Sampler</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fiqci.ems</span><span class="w"> </span><span class="kn">import</span> <span class="n">FiQCISampler</span>
 
 <span class="c1"># Using mitigation_level</span>
-<span class="n">sampler</span> <span class="o">=</span> <span class="n">FiQCISampler</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">sampler</span> <span class="o">=</span> <span class="n">FiQCISampler</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
 
 <span class="c1"># Execute the job</span>
 <span class="n">job</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
 
-<span class="c1"># Get results</span>
+<span class="c1"># Get results and counts</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get_counts</span><span class="p">()</span>
 
 <span class="c1"># Or manually set mitigation options</span>
 <span class="n">sampler</span><span class="o">.</span><span class="n">rem</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
@@ -412,7 +413,7 @@ Estimator</label><div class="sd-tab-content docutils">
 <span class="kn">from</span><span class="w"> </span><span class="nn">qiskit.quantum_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparsePauliOp</span>
 
 <span class="c1"># Using mitigation_level</span>
-<span class="n">estimator</span> <span class="o">=</span> <span class="n">FiQCIEstimator</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">estimator</span> <span class="o">=</span> <span class="n">FiQCIEstimator</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
 
 <span class="c1"># Define observables</span>
 <span class="n">observables</span> <span class="o">=</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_list</span><span class="p">([(</span><span class="s2">&quot;ZZ&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IX&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
@@ -421,13 +422,15 @@ Estimator</label><div class="sd-tab-content docutils">
 <span class="n">device_observables</span> <span class="o">=</span> <span class="n">observables</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
 
 <span class="c1"># Execute the job</span>
-<span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
+<span class="n">estimator_job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
 
 <span class="c1"># Get expectation values</span>
-<span class="n">evs</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">()</span>
+<span class="n">evs</span> <span class="o">=</span> <span class="n">estimator_job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">()</span>
 
-<span class="c1"># Access the underlying backend job</span>
-<span class="n">underlying_job</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">job</span><span class="p">()</span>
+<span class="c1"># Access the underlying backend job and its attributes</span>
+<span class="n">underlying_job</span> <span class="o">=</span> <span class="n">estimator_job</span><span class="o">.</span><span class="n">job</span><span class="p">()</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">underlying_job</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">get_counts</span><span class="p">()</span>
 
 <span class="c1"># Or manually set mitigation options</span>
 <span class="n">estimator</span><span class="o">.</span><span class="n">rem</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
@@ -436,6 +439,7 @@ Estimator</label><div class="sd-tab-content docutils">
 <span class="n">estimator</span><span class="o">.</span><span class="n">mitigation_options</span>
 </pre></div>
 </div>
+<p>Access raw (pre-mitigation) expectation values via <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.raw_expectation_values" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.raw_expectation_values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">raw_expectation_values()</span></code></a>.</p>
 <p>For more information on the estimator interface, see <a class="reference internal" href="FiQCIEstimatorUsage.html"><span class="doc">FiQCIEstimator</span></a>.</p>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
@@ -446,13 +450,14 @@ Backend</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fiqci.ems</span><span class="w"> </span><span class="kn">import</span> <span class="n">FiQCIBackend</span>
 
 <span class="c1"># Using mitigation_level</span>
-<span class="n">backend</span> <span class="o">=</span> <span class="n">FiQCIBackend</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">backend</span> <span class="o">=</span> <span class="n">FiQCIBackend</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
 
 <span class="c1"># Execute the job</span>
 <span class="n">job</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
 
-<span class="c1"># Get the results</span>
+<span class="c1"># Get the results and counts</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">job</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get_counts</span><span class="p">()</span>
 
 <span class="c1"># Or manually set mitigation options</span>
 <span class="n">backend</span><span class="o">.</span><span class="n">rem</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_shots</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
@@ -464,6 +469,10 @@ Backend</label><div class="sd-tab-content docutils">
 <p>Access raw (pre-mitigation) counts via <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIBackend.raw_counts" title="fiqci.ems.FiQCIBackend.raw_counts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">raw_counts</span></code></a>.</p>
 <p>The mitigation options for <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIBackend" title="fiqci.ems.FiQCIBackend"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIBackend</span></code></a> are the same as for <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler" title="fiqci.ems.FiQCISampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCISampler</span></code></a>. For more information, see <a class="reference internal" href="FiQCISamplerUsage.html"><span class="doc">FiQCISampler</span></a>.</p>
 </div>
+</div>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>It is higly recommended to explicitly set the <code class="xref py py-attr docutils literal notranslate"><span class="pre">calibration_file</span></code> option when using FiQCI EMS. This will save readout error mitigation calibration data to a file and avoid running calibration jobs every time you run a quantum job. For a fresh calibration, simply delete the file and it will be re-generated on the next run.</p>
 </div>
 <section id="advanced-usage">
 <h3>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Link to this heading">#</a></h3>
