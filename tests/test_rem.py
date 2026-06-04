@@ -14,6 +14,23 @@ from qiskit.providers import BackendV2
 from fiqci.ems.mitigators.rem import M3IQM, _balanced_cal_strings
 
 
+def _make_counts_job(counts: dict[str, int]) -> Mock:
+	"""Build a Mock batch job whose result combines into a single-circuit Result with ``counts``."""
+	mock_result = Mock()
+	mock_result.to_dict.return_value = {
+		"results": [{"data": {"counts": counts}, "shots": sum(counts.values()), "success": True, "header": {}}],
+		"backend_name": "mock",
+		"job_id": "test-job-id",
+		"qobj_id": "test-qobj-id",
+		"success": True,
+		"status": "COMPLETED",
+	}
+	mock_job = Mock()
+	mock_job.result.return_value = mock_result
+	mock_job.job_id.return_value = "test-job-id"
+	return mock_job
+
+
 class TestBalancedCalStrings:
 	"""Tests for _balanced_cal_strings function."""
 
@@ -337,10 +354,7 @@ class TestKeyLayout:
 		# Two single-bit registers, both measured -> keys carry a space between registers.
 		raw_counts = {"0 0": 400, "1 1": 350, "0 1": 130, "1 0": 120}
 
-		mock_result = Mock()
-		mock_result.get_counts.return_value = raw_counts
-		mock_job = Mock()
-		mock_job.result.return_value = mock_result
+		mock_job = _make_counts_job(raw_counts)
 
 		# Spaceless distribution returned by M3 (one bit per measured qubit, no space).
 		mitigated_probs = {"00": 0.45, "11": 0.40, "01": 0.10, "10": 0.05}
@@ -360,7 +374,8 @@ class TestKeyLayout:
 			backend = FiQCIBackend(mock_backend, mitigation_level=1)
 
 			with patch.object(backend, "_create_mitigated_result") as mock_create:
-				backend._run_with_m3_mitigation(mock_job, [Mock()], shots=1000)
+				# Mitigation is lazy; result() triggers the deferred M3 correction.
+				backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()], shots=1000).result()
 
 		# M3 received spaceless keys (a spaced key like "0 0" would raise M3Error).
 		corrected_counts = mock_mitigator.apply_correction.call_args[0][0]
@@ -384,10 +399,7 @@ class TestKeyLayout:
 		# clbit 1 is measured (maps to qubit 8); clbit 0 belongs to an unmeasured register (always 0).
 		raw_counts = {"0 0": 600, "1 0": 400}
 
-		mock_result = Mock()
-		mock_result.get_counts.return_value = raw_counts
-		mock_job = Mock()
-		mock_job.result.return_value = mock_result
+		mock_job = _make_counts_job(raw_counts)
 
 		mitigated_probs = {"0": 0.55, "1": 0.45}
 
@@ -405,7 +417,8 @@ class TestKeyLayout:
 			backend = FiQCIBackend(mock_backend, mitigation_level=1)
 
 			with patch.object(backend, "_create_mitigated_result") as mock_create:
-				backend._run_with_m3_mitigation(mock_job, [Mock()], shots=1000)
+				# Mitigation is lazy; result() triggers the deferred M3 correction.
+				backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()], shots=1000).result()
 
 		# Only the measured bit reaches M3, with no space and no unmeasured bit.
 		corrected_counts = mock_mitigator.apply_correction.call_args[0][0]
