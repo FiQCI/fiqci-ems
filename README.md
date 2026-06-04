@@ -2,7 +2,7 @@
 
 FiQCI Error Mitigation Service (EMS) is a Python library for quantum error mitigation as part of the [Finnish Quantum Computing Infrastructure (FiQCI)](https://fiqci.fi). It wraps IQM quantum backends and applies error mitigation transparently, allowing users to run circuits with improved accuracy by specifying a mitigation level.
 
-This python package can be pre-installed on a HPC system or installed by the user. The main goal of the project is to allow users using FiQCI quantum computers to easily add flags to run error mitigated quantum jobs. 
+This python package can be pre-installed on a HPC system or installed by the user. The main goal of the project is to allow users using FiQCI quantum computers to easily add flags to run error mitigated quantum jobs.
 
 ## Mitigation Levels
 
@@ -152,7 +152,14 @@ backend.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 backend.mitigation_options()
 ```
 
-Access raw (pre-mitigation) counts via `backend.raw_counts`.
+Access raw (pre-mitigation) counts via `backend.raw_counts` (populated only after the run's
+`result()` has been retrieved, since post-processing is computed lazily).
+
+`run()` returns a lazy job handle immediately without waiting for results. The per-batch
+`job_id()`s and an aggregated `status()`/`done()` are available right away; error mitigation and
+result combination are computed on the first `result()` call. The handle also exposes
+`job_ids()` and `partial_results()` (per-batch results for batches that have already completed),
+and `result()` raises `BatchFailedError` identifying the failing batch if any batch fails.
 
 ### Advanced Usage
 
@@ -191,7 +198,7 @@ uv run ruff check --fix
 uv run ruff format
 
 # Type check
-uv run pyrefly check 
+uv run pyrefly check
 ```
 
 ## Building docs
