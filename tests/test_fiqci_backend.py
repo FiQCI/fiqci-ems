@@ -455,3 +455,101 @@ class TestBatchedJob:
 		batched = BatchedJob([job_a, job_b])
 
 		assert batched.job_id == "first-job"
+
+
+class TestCalibrationMaxBatchSize:
+	"""Regression tests for max_batch_size parameter passed to calibration."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		"""Create a mock IQM backend."""
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	@pytest.fixture
+	def mock_circuit(self) -> QuantumCircuit:
+		"""Create a simple quantum circuit."""
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure_all()
+		return qc
+
+	def test_run_passes_default_max_batch_size_to_calibration(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""Test that default max_batch_size=100 is passed to calibration."""
+		mock_job = Mock()
+		mock_result = Mock()
+		mock_result.get_counts.return_value = {"00": 500, "11": 500}
+		mock_result.to_dict.return_value = {
+			"results": [{"data": {"counts": {"00": 500, "11": 500}}, "shots": 1024, "success": True}],
+			"backend_name": "mock",
+			"job_id": "test-job-id",
+			"qobj_id": "test-qobj-id",
+			"success": True,
+			"status": "COMPLETED",
+		}
+		mock_job.result.return_value = mock_result
+		mock_backend.run.return_value = mock_job
+
+		with (
+			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+		):
+			mock_mitigator = Mock()
+			mock_quasi_dist = Mock()
+			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
+			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.single_qubit_cals = None
+			mock_m3iqm_class.return_value = mock_mitigator
+
+			mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=1)
+			mitigated_backend.run(mock_circuit, shots=1024)
+
+			# Verify cals_from_system was called with max_batch_size=100 (default)
+			mock_mitigator.cals_from_system.assert_called_once()
+			call_kwargs = mock_mitigator.cals_from_system.call_args[1]
+			assert call_kwargs["max_batch_size"] == 100
+
+	def test_run_passes_custom_max_batch_size_to_calibration(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""Test that custom max_batch_size is passed to calibration."""
+		mock_job = Mock()
+		mock_result = Mock()
+		mock_result.get_counts.return_value = {"00": 500, "11": 500}
+		mock_result.to_dict.return_value = {
+			"results": [{"data": {"counts": {"00": 500, "11": 500}}, "shots": 1024, "success": True}],
+			"backend_name": "mock",
+			"job_id": "test-job-id",
+			"qobj_id": "test-qobj-id",
+			"success": True,
+			"status": "COMPLETED",
+		}
+		mock_job.result.return_value = mock_result
+		mock_backend.run.return_value = mock_job
+
+		with (
+			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+		):
+			mock_mitigator = Mock()
+			mock_quasi_dist = Mock()
+			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
+			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.single_qubit_cals = None
+			mock_m3iqm_class.return_value = mock_mitigator
+
+			mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=1)
+			# Use custom max_batch_size
+			mitigated_backend.run(mock_circuit, shots=1024, max_batch_size=50)
+
+			# Verify cals_from_system was called with max_batch_size=50
+			mock_mitigator.cals_from_system.assert_called_once()
+			call_kwargs = mock_mitigator.cals_from_system.call_args[1]
+			assert call_kwargs["max_batch_size"] == 50
