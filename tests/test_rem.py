@@ -414,3 +414,68 @@ class TestKeyLayout:
 		# The expanded output restores both the zero-filled unmeasured bit and the space.
 		mitigated_counts_list = mock_create.call_args[0][1]
 		assert set(mitigated_counts_list[0]) == {"0 0", "1 0"}
+
+
+class TestCalibrationMaxBatchSize:
+	"""Regression tests for max_batch_size parameter in M3IQM calibration."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		"""Create a mock IQM backend."""
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		config = Mock()
+		config.num_qubits = 5
+		config.max_shots = 10000
+		config.simulator = False
+		config.max_experiments = 100
+		config.max_circuits = 100
+		backend.configuration.return_value = config
+		return backend
+
+	def test_cals_from_system_updates_system_info_with_max_batch_size(self, mock_backend: Mock) -> None:
+		"""Test that M3IQM.cals_from_system updates system_info with max_batch_size."""
+		m3iqm = M3IQM(mock_backend)
+
+		# Mock the parent's cals_from_system to avoid actual backend execution
+		with patch.object(M3IQM.__bases__[0], "cals_from_system", return_value=[]):
+			m3iqm.cals_from_system([0, 1], max_batch_size=25)
+
+		# Verify system_info was updated with custom max_batch_size
+		assert m3iqm.system_info["max_circuits"] == 25
+
+	def test_cals_from_system_preserves_max_circuits_when_no_override(self, mock_backend: Mock) -> None:
+		"""Test that M3IQM preserves original system_info max_circuits when no override provided."""
+		m3iqm = M3IQM(mock_backend)
+		original_max_circuits = m3iqm.system_info["max_circuits"]
+
+		# Mock the parent's cals_from_system
+		with patch.object(M3IQM.__bases__[0], "cals_from_system", return_value=[]):
+			m3iqm.cals_from_system([0, 1])
+
+		# Verify system_info max_circuits was not changed
+		assert m3iqm.system_info["max_circuits"] == original_max_circuits
+
+	def test_cals_from_system_accepts_max_batch_size_parameter(self, mock_backend: Mock) -> None:
+		"""Test that cals_from_system accepts max_batch_size parameter without error."""
+		m3iqm = M3IQM(mock_backend)
+
+		# Should not raise any exceptions
+		with patch.object(M3IQM.__bases__[0], "cals_from_system", return_value=[]):
+			# Test with various max_batch_size values
+			for batch_size in [1, 50, 100, 1000]:
+				m3iqm.cals_from_system([0, 1], max_batch_size=batch_size)
+				assert m3iqm.system_info["max_circuits"] == batch_size
+
+	def test_cals_from_system_max_batch_size_none_uses_default(self, mock_backend: Mock) -> None:
+		"""Test that max_batch_size=None uses default from backend config."""
+		m3iqm = M3IQM(mock_backend)
+		original_max_circuits = m3iqm.system_info["max_circuits"]
+
+		with patch.object(M3IQM.__bases__[0], "cals_from_system", return_value=[]):
+			# Explicitly pass None (should not override)
+			m3iqm.cals_from_system([0, 1], max_batch_size=None)
+
+		# Should remain unchanged
+		assert m3iqm.system_info["max_circuits"] == original_max_circuits
