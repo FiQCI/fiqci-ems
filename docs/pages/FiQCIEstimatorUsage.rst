@@ -184,9 +184,9 @@ Configure Pauli Twirling using the :meth:`~fiqci.ems.FiQCIEstimator.pauli_twirl`
 .. list-table::
    :header-rows: 1
 
-    * - Parameter
-      - Default
-      - Description
+   * - Parameter
+     - Default
+     - Description
    * - ``enabled``
      - ``True``
      - Enable or disable Pauli twirling
