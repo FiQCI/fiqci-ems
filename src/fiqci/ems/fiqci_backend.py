@@ -84,7 +84,7 @@ class PartialBatch(NamedTuple):
 		result: The batch's :class:`~qiskit.result.Result` if it has completed, else ``None``.
 	"""
 
-	index: int
+	index: int  # type: ignore[bad-override]  # NamedTuple field shadows the read-write tuple.index method
 	circuit_range: tuple[int, int]
 	status: JobStatus
 	job_id: str
@@ -487,7 +487,8 @@ class FiQCIBackend:
 
 			if submission_failed:
 				# An earlier batch was rejected; do not submit any further batches.
-				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.CANCELLED))
+				# _UnsubmittedBatch is a duck-typed JobV1 stand-in (no real job_id, result() raises).
+				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.CANCELLED))  # type: ignore[bad-argument-type]
 				batch_ranges.append(batch_range)
 				continue
 
@@ -505,7 +506,7 @@ class FiQCIBackend:
 					exc,
 					len(batch_jobs),
 				)
-				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.ERROR, error=str(exc)))
+				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.ERROR, error=str(exc)))  # type: ignore[bad-argument-type]
 				batch_ranges.append(batch_range)
 				continue
 
@@ -1037,7 +1038,8 @@ class BatchedJob:
 		for index, job in enumerate(self._jobs):
 			remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
 			try:
-				result = job.result() if remaining is None else job.result(remaining)
+				# Concrete IQM jobs accept a timeout; the abstract JobV1.result stub does not declare one.
+				result = job.result() if remaining is None else job.result(remaining)  # type: ignore[bad-argument-count]
 			except Exception as exc:  # batch failed at the backend
 				failures.append((index, job.job_id(), str(exc)))
 				continue
