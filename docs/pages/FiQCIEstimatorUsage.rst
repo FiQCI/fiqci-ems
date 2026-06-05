@@ -228,6 +228,17 @@ Running Circuits
 
 ``run`` returns **immediately** with a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob` handle without waiting for results. Polling the underlying job works right away (``job.status()``, ``job.job_ids()``); the expectation values are computed the first time you call ``expectation_values()`` / ``raw_expectation_values()``, and cached.
 
+The handle also lets you inspect a multi-batch run before it finishes:
+
+.. code-block:: python
+
+   job.job_ids()         # backend job id of every batch (None for any unsubmitted batch)
+   job.statuses()        # per-batch JobStatus, in submission order
+   job.status()          # single aggregated status across all batches
+   job.done()            # True once every batch has reached a terminal state
+   job.partial_results() # per-batch results for batches that have already completed
+
+
 .. note::
 
    As with the sampler, submission is not atomic: if the backend rejects a circuit partway through, ``run`` logs a warning and still returns a handle (rejected/skipped batches report ``ERROR``/``CANCELLED`` — inspect ``job.statuses()``). In that case ``expectation_values()`` and ``result()`` raise :class:`~fiqci.ems.BatchFailedError`, since the values cannot be computed without all circuits.
