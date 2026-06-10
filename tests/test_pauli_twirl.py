@@ -11,7 +11,7 @@ from qiskit.quantum_info import Operator
 from iqm.qiskit_iqm import IQMFakeAphrodite
 
 from fiqci.ems.transpiler_passes.pauli_twirl import PauliTwirl, get_twirled_circuits, _get_twirl_set, _twirl_set_cache
-from fiqci.ems.fiqci_backend import FiQCIBackend, MitigatedJob
+from fiqci.ems.fiqci_backend import BatchedJob, FiQCIBackend, MitigatedJob
 
 
 class TestTwirlSetCache:
@@ -369,7 +369,8 @@ class TestBackendRunWithPauliTwirling:
 		fb = FiQCIBackend(mock_backend, mitigation_level=0)
 		result = fb.run(mock_circuit, shots=1024)
 
-		assert result == mock_job
+		assert isinstance(result, BatchedJob)
+		assert result.job_ids() == [mock_job.job_id()]
 		mock_backend.run.assert_called_once()
 
 	@patch("fiqci.ems.fiqci_backend.get_twirled_circuits")
@@ -442,6 +443,8 @@ class TestBackendRunWithPauliTwirling:
 			result = fb.run(mock_circuit, shots=1024)
 
 			assert isinstance(result, MitigatedJob)
+			# Mitigation is lazy; trigger it.
+			result.result()
 			# M3 correction should be applied to each expanded circuit
 			assert mock_mitigator.apply_correction.call_count == 3
 

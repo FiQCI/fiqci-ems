@@ -127,6 +127,43 @@ class TestFiQCIEstimator:
 		mock_fiqci_backend.run.assert_called_once()
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_setting_change_after_run_does_not_affect_results(
+		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""Settings snapshot: toggling ZNE between run() and value access must not change results.
+
+		ZNE settings are snapshotted at submission, so a run submitted with ZNE off keeps computing
+		plain expectation values even if the user enables ZNE before accessing them (which would
+		otherwise mis-split the counts by scale factors that were never submitted).
+		"""
+
+		def make_backend() -> Mock:
+			backend = Mock()
+			backend.target = _make_target()
+			job = Mock()
+			res = Mock()
+			res.get_counts.return_value = {"00": 500, "11": 500}
+			job.result.return_value = res
+			backend.run.return_value = job
+			return backend
+
+		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+
+		# Reference: ZNE stays off for the whole lifecycle.
+		mock_fiqci_backend_class.return_value = make_backend()
+		reference = FiQCIEstimator(mock_backend).run(mock_circuit, obs)
+		expected = reference.expectation_values()
+
+		# Submit with ZNE off, then enable ZNE before accessing the values.
+		mock_fiqci_backend_class.return_value = make_backend()
+		estimator = FiQCIEstimator(mock_backend)
+		job = estimator.run(mock_circuit, obs)
+		estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method="exponential")
+
+		# Snapshot wins: still the plain (non-ZNE) result, and no crash from mis-split counts.
+		assert job.expectation_values() == expected
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_list_circuits_single_observable(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with list of circuits and a single observable."""
 		mock_fiqci_backend = Mock()
@@ -418,20 +455,26 @@ class TestCalculateExpectationValues:
 		assert exp_vals[0] == pytest.approx(-1.0)
 
 
+def _const_compute(exp_vals, raw=None):
+	"""Build a compute_fn returning fixed (expectation_values, raw_expectation_values)."""
+	raw = exp_vals if raw is None else raw
+	return lambda: (exp_vals, raw)
+
+
 class TestFiQCIEstimatorJob:
-	"""Tests for FiQCIEstimatorJob class."""
+	"""Tests for FiQCIEstimatorJob class (lazy expectation-value computation)."""
 
 	def test_expectation_values_returns_all(self) -> None:
 		"""Test that expectation_values() returns all values when no index given."""
 		exp_vals = [[0.5, 0.3], [0.1, -0.2]]
-		collection = FiQCIEstimatorJob([Mock()], exp_vals, Mock(), exp_vals)
+		collection = FiQCIEstimatorJob(Mock(), _const_compute(exp_vals), Mock())
 
 		assert collection.expectation_values() == exp_vals
 
 	def test_expectation_values_by_index(self) -> None:
 		"""Test that expectation_values(index) returns values for specific circuit."""
 		exp_vals = [[0.5, 0.3], [0.1, -0.2]]
-		collection = FiQCIEstimatorJob([Mock()], exp_vals, Mock(), exp_vals)
+		collection = FiQCIEstimatorJob(Mock(), _const_compute(exp_vals), Mock())
 
 		assert collection.expectation_values(0) == [0.5, 0.3]
 		assert collection.expectation_values(1) == [0.1, -0.2]
@@ -439,14 +482,48 @@ class TestFiQCIEstimatorJob:
 	def test_observables_returns_all(self) -> None:
 		"""Test that observables() returns all observables when no index given."""
 		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
-		collection = FiQCIEstimatorJob([Mock()], [[0.5]], obs, [[0.5]])
+		collection = FiQCIEstimatorJob(Mock(), _const_compute([[0.5]]), obs)
 
 		assert collection.observables() is obs
 
 	def test_observables_by_index(self) -> None:
 		"""Test that observables(index) returns specific observable."""
 		obs_list = [SparsePauliOp.from_list([("ZZ", 1.0)]), SparsePauliOp.from_list([("XX", 1.0)])]
-		collection = FiQCIEstimatorJob([Mock()], [[0.5], [0.3]], obs_list, [[0.5], [0.3]])
+		collection = FiQCIEstimatorJob(Mock(), _const_compute([[0.5], [0.3]]), obs_list)
 
 		assert collection.observables(0) == obs_list[0]
 		assert collection.observables(1) == obs_list[1]
+
+	def test_computation_is_lazy_and_cached(self) -> None:
+		"""compute_fn runs only on first value access, and exactly once."""
+		calls: list[int] = []
+
+		def compute():
+			calls.append(1)
+			return [[0.5]], [[0.5]]
+
+		collection = FiQCIEstimatorJob(Mock(), compute, Mock())
+		# Not computed just by constructing.
+		assert calls == []
+
+		collection.expectation_values()
+		collection.expectation_values()
+		collection.raw_expectation_values()
+		assert len(calls) == 1
+
+	def test_polling_delegates_to_underlying_job(self) -> None:
+		"""status()/job_ids() delegate to the underlying job without computing values."""
+		job = Mock()
+		job.status.return_value = "RUNNING"
+		job.job_ids.return_value = ["x", "y"]
+		calls: list[int] = []
+
+		def compute():
+			calls.append(1)
+			return [[0.5]], [[0.5]]
+
+		collection = FiQCIEstimatorJob(job, compute, Mock())
+
+		assert collection.status() == "RUNNING"
+		assert collection.job_ids() == ["x", "y"]
+		assert calls == []

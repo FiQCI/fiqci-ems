@@ -4,8 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 from qiskit import QuantumCircuit
+from qiskit.providers import JobStatus
 
-from fiqci.ems.fiqci_backend import BatchedJob, FiQCIBackend, MitigatedJob
+from fiqci.ems.fiqci_backend import BatchFailedError, BatchedJob, FiQCIBackend, MitigatedJob
 
 
 class TestFiQCIBackend:
@@ -52,15 +53,18 @@ class TestFiQCIBackend:
 		assert mitigated_backend._rem["mitigator"] is None
 
 	def test_run_with_level_0_passes_through(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
-		"""Test that level 0 passes through to backend without mitigation."""
-		mock_job = Mock()
+		"""Test that level 0 wraps the backend job in a lazy BatchedJob without mitigation."""
+		mock_job = _make_result_mock([{"00": 1024}])
 		mock_backend.run.return_value = mock_job
 
 		mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=0)
 		result = mitigated_backend.run(mock_circuit, shots=1024)
 
-		assert result == mock_job
+		assert isinstance(result, BatchedJob)
+		assert result.job_ids() == [mock_job.job_id()]
 		mock_backend.run.assert_called_once()
+		# run() must not block on results.
+		mock_job.result.assert_not_called()
 
 	def test_run_with_level_1_applies_mitigation(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
 		"""Test that level 1 applies M3 mitigation."""
@@ -94,12 +98,51 @@ class TestFiQCIBackend:
 			mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=1, calibration_shots=1000)
 			result = mitigated_backend.run(mock_circuit, shots=1024)
 
-			# Verify calibration was called
+			# Calibration is kicked off eagerly in run() so it runs in parallel with the jobs.
 			mock_mitigator.cals_from_system.assert_called_once()
-			# Verify mitigation was applied
-			mock_mitigator.apply_correction.assert_called_once()
 			# Verify result is MitigatedJob
 			assert isinstance(result, MitigatedJob)
+			# Mitigation is lazy: not applied until result() is requested.
+			mock_mitigator.apply_correction.assert_not_called()
+
+			result.result()
+			# Now mitigation has been applied.
+			mock_mitigator.apply_correction.assert_called_once()
+
+	def test_disabling_rem_after_run_does_not_break_deferred_mitigation(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""Settings snapshot: disabling REM between run() and result() must not break post-processing.
+
+		``rem(enabled=False)`` clears ``self._rem["mitigator"]``; because the mitigator is snapshotted
+		at submission time, the deferred M3 correction still runs against the originally-configured
+		mitigator instead of raising.
+		"""
+		mock_job = _make_result_mock([{"00": 500, "11": 500}])
+		mock_backend.run.return_value = mock_job
+
+		with (
+			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+		):
+			mock_mitigator = Mock()
+			mock_quasi_dist = Mock()
+			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
+			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.single_qubit_cals = None
+			mock_m3iqm_class.return_value = mock_mitigator
+
+			mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=1)
+			result = mitigated_backend.run(mock_circuit, shots=1024)
+
+			# User disables REM after submission (clears the mitigator on the backend).
+			mitigated_backend.rem(enabled=False)
+			assert mitigated_backend._rem["mitigator"] is None
+
+			# Deferred correction still runs against the snapshotted mitigator, without raising.
+			result.result()
+			mock_mitigator.apply_correction.assert_called_once()
 
 	def test_run_with_circuit_list(self, mock_backend: Mock) -> None:
 		"""Test running with list of circuits."""
@@ -262,37 +305,38 @@ class TestREMSettings:
 
 
 class TestMitigatedJob:
-	"""Tests for MitigatedJob class."""
+	"""Tests for MitigatedJob class (a lazy view over the BatchedJob handle)."""
 
-	def test_result_returns_mitigated_result(self) -> None:
-		"""Test that result() returns the mitigated result."""
-		mock_original_job = Mock()
+	def test_result_delegates_to_handle(self) -> None:
+		"""Test that result() returns the handle's (mitigated) result."""
+		mock_handle = Mock()
 		mock_mitigated_result = Mock()
+		mock_handle.result.return_value = mock_mitigated_result
 
-		mitigated_job = MitigatedJob(mock_original_job, mock_mitigated_result)
+		mitigated_job = MitigatedJob(mock_handle)
 
-		assert mitigated_job.result() == mock_mitigated_result
+		assert mitigated_job.result() is mock_mitigated_result
 
-	def test_getattr_delegates_to_original_job(self) -> None:
-		"""Test that attribute access is delegated to original job."""
-		mock_original_job = Mock()
-		mock_original_job.job_id = "test-job-123"
+	def test_getattr_delegates_to_handle(self) -> None:
+		"""Test that attribute/polling access is delegated to the handle."""
+		mock_handle = Mock()
+		mock_handle.job_ids.return_value = ["test-job-123"]
+
+		mitigated_job = MitigatedJob(mock_handle)
+
+		assert mitigated_job.job_ids() == ["test-job-123"]
+
+	def test_result_passes_timeout_to_handle(self) -> None:
+		"""Test that result() forwards the timeout parameter to the handle."""
+		mock_handle = Mock()
 		mock_mitigated_result = Mock()
+		mock_handle.result.return_value = mock_mitigated_result
 
-		mitigated_job = MitigatedJob(mock_original_job, mock_mitigated_result)
+		mitigated_job = MitigatedJob(mock_handle)
 
-		assert mitigated_job.job_id == "test-job-123"
-
-	def test_result_ignores_timeout_parameter(self) -> None:
-		"""Test that result() accepts but ignores timeout parameter."""
-		mock_original_job = Mock()
-		mock_mitigated_result = Mock()
-
-		mitigated_job = MitigatedJob(mock_original_job, mock_mitigated_result)
-
-		# Should not raise error
 		result = mitigated_job.result(timeout=10.0)
-		assert result == mock_mitigated_result
+		assert result is mock_mitigated_result
+		mock_handle.result.assert_called_once_with(10.0)
 
 
 def _make_result_mock(counts_per_circuit: list[dict[str, int]]) -> Mock:
@@ -325,8 +369,12 @@ class TestBackendBatching:
 		backend.num_qubits = 5
 		return backend
 
-	def test_run_single_batch_returns_underlying_job(self, mock_backend: Mock) -> None:
-		"""Input <= max_batch_size: backend.run is called once and the underlying job is returned as-is."""
+	def test_run_single_batch_is_wrapped_in_batched_job(self, mock_backend: Mock) -> None:
+		"""Input <= max_batch_size: backend.run is called once and the job is wrapped in a BatchedJob.
+
+		Even a single batch is wrapped so the polling/partial-result API is uniform; the wrapper's
+		combined result round-trips the underlying counts.
+		"""
 		circuits = [QuantumCircuit(2) for _ in range(3)]
 		mock_job = _make_result_mock([{"00": 1024}] * 3)
 		mock_backend.run.return_value = mock_job
@@ -334,9 +382,12 @@ class TestBackendBatching:
 		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
 		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=10)
 
-		assert result is mock_job
+		assert isinstance(result, BatchedJob)
 		assert mock_backend.run.call_count == 1
-		assert not isinstance(result, BatchedJob)
+		assert result.job_ids() == [mock_job.job_id()]
+		# Lazy: results not fetched until result() is called.
+		mock_job.result.assert_not_called()
+		assert result.result().get_counts(0) == {"00": 1024}
 
 	def test_run_multiple_batches_returns_batched_job(self, mock_backend: Mock) -> None:
 		"""Input > max_batch_size: input is split and a BatchedJob wraps the per-batch jobs."""
@@ -352,6 +403,75 @@ class TestBackendBatching:
 
 		assert isinstance(result, BatchedJob)
 		assert mock_backend.run.call_count == 3
+
+	def test_partial_submission_returns_handle_and_stops_submitting(self, mock_backend: Mock) -> None:
+		"""A mid-stream rejection stops submission and returns a handle covering every batch.
+
+		Submitted batches keep their job ids and status; the rejected batch is ERROR and the
+		batches skipped afterwards are CANCELLED. run() does not raise.
+		"""
+		circuits = [QuantumCircuit(2) for _ in range(5)]
+		good_a = _make_result_mock([{"00": 1024}])
+		good_a.job_id.return_value = "job-0"
+		good_a.status.return_value = JobStatus.DONE
+		good_b = _make_result_mock([{"00": 1024}])
+		good_b.job_id.return_value = "job-1"
+		good_b.status.return_value = JobStatus.DONE
+		# Two batches submit, the third is rejected; the 4th/5th must never be attempted.
+		mock_backend.run.side_effect = [good_a, good_b, ValueError("cx not native")]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=1)
+
+		# No further submissions were attempted after the failure (only 3 backend.run calls).
+		assert mock_backend.run.call_count == 3
+		assert isinstance(result, BatchedJob)
+		# Submitted batches keep their ids; unsubmitted ones are None (index-aligned).
+		assert result.job_ids() == ["job-0", "job-1", None, None, None]
+		# Submitted -> DONE, rejected -> ERROR, skipped -> CANCELLED.
+		assert result.statuses() == [
+			JobStatus.DONE,
+			JobStatus.DONE,
+			JobStatus.ERROR,
+			JobStatus.CANCELLED,
+			JobStatus.CANCELLED,
+		]
+		# Aggregated status surfaces the failure; the handle is terminal.
+		assert result.status() == JobStatus.ERROR
+		assert result.done() is True
+
+	def test_partial_submission_partial_results_expose_submitted_batches(self, mock_backend: Mock) -> None:
+		"""partial_results() returns results for the submitted batches and None for the rest."""
+		circuits = [QuantumCircuit(2) for _ in range(3)]
+		good = _make_result_mock([{"00": 1024}])
+		good.job_id.return_value = "job-0"
+		good.status.return_value = JobStatus.DONE
+		mock_backend.run.side_effect = [good, ValueError("rejected")]
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=1)
+
+		partials = result.partial_results()
+		assert [p.circuit_range for p in partials] == [(0, 1), (1, 2), (2, 3)]
+		assert [p.status for p in partials] == [JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED]
+		assert partials[0].result is not None
+		assert partials[1].result is None and partials[2].result is None
+		# The full combined result cannot be formed with missing batches.
+		with pytest.raises(BatchFailedError):
+			result.result()
+
+	def test_first_batch_submission_failure_returns_all_placeholder_handle(self, mock_backend: Mock) -> None:
+		"""If the very first batch is rejected, the handle is all placeholders (no real jobs)."""
+		circuits = [QuantumCircuit(2) for _ in range(3)]
+		mock_backend.run.side_effect = ValueError("rejected")
+
+		fiqci_backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		result = fiqci_backend.run(circuits, shots=1024, max_batch_size=1)
+
+		assert mock_backend.run.call_count == 1
+		assert result.job_ids() == [None, None, None]
+		assert result.statuses() == [JobStatus.ERROR, JobStatus.CANCELLED, JobStatus.CANCELLED]
+		assert result.status() == JobStatus.ERROR
 
 	def test_run_passes_correct_circuits_per_batch(self, mock_backend: Mock) -> None:
 		"""Each batch sent to the underlying backend is a contiguous slice of the input list."""
@@ -446,15 +566,27 @@ class TestBatchedJob:
 		assert job_b.result.call_count == 1
 
 	def test_getattr_delegates_to_first_job(self) -> None:
-		"""Attribute access on a BatchedJob delegates to the first underlying job."""
+		"""Attribute access (for names not defined on BatchedJob) delegates to the first job."""
 		job_a = Mock()
-		job_a.job_id = "first-job"
+		job_a.custom_attribute = "first-job"
 		job_b = Mock()
-		job_b.job_id = "second-job"
+		job_b.custom_attribute = "second-job"
 
 		batched = BatchedJob([job_a, job_b])
 
-		assert batched.job_id == "first-job"
+		assert batched.custom_attribute == "first-job"
+
+	def test_job_id_and_job_ids(self) -> None:
+		"""job_id() returns the first job's id; job_ids() returns all in submission order."""
+		job_a = Mock()
+		job_a.job_id.return_value = "first-job"
+		job_b = Mock()
+		job_b.job_id.return_value = "second-job"
+
+		batched = BatchedJob([job_a, job_b])
+
+		assert batched.job_id() == "first-job"
+		assert batched.job_ids() == ["first-job", "second-job"]
 
 
 class TestCalibrationMaxBatchSize:
@@ -553,3 +685,108 @@ class TestCalibrationMaxBatchSize:
 			mock_mitigator.cals_from_system.assert_called_once()
 			call_kwargs = mock_mitigator.cals_from_system.call_args[1]
 			assert call_kwargs["max_batch_size"] == 50
+
+
+def _make_job_with_status(status: JobStatus, counts: list[dict[str, int]] | None = None, job_id: str = "job") -> Mock:
+	"""Build a Mock batch job with an explicit status and (optionally) a usable result."""
+	job = _make_result_mock(counts) if counts is not None else Mock()
+	job.status.return_value = status
+	job.job_id.return_value = job_id
+	return job
+
+
+class TestBatchedJobStatus:
+	"""Tests for aggregated status, polling, and partial results on the lazy handle."""
+
+	@pytest.mark.parametrize(
+		"statuses, expected",
+		[
+			([JobStatus.DONE, JobStatus.DONE], JobStatus.DONE),
+			([JobStatus.DONE, JobStatus.RUNNING], JobStatus.RUNNING),
+			([JobStatus.QUEUED, JobStatus.RUNNING], JobStatus.RUNNING),
+			([JobStatus.QUEUED, JobStatus.INITIALIZING], JobStatus.QUEUED),
+			([JobStatus.DONE, JobStatus.ERROR], JobStatus.ERROR),
+			([JobStatus.ERROR, JobStatus.CANCELLED], JobStatus.ERROR),
+			([JobStatus.DONE, JobStatus.CANCELLED], JobStatus.CANCELLED),
+			([JobStatus.VALIDATING, JobStatus.QUEUED], JobStatus.VALIDATING),
+		],
+	)
+	def test_aggregate_status_priority(self, statuses: list[JobStatus], expected: JobStatus) -> None:
+		"""ERROR/CANCELLED dominate; otherwise DONE only if all done, else least-advanced active."""
+		assert BatchedJob._aggregate_status(statuses) == expected
+
+	def test_status_and_done_poll_live(self) -> None:
+		"""status()/done() reflect the live per-batch statuses without fetching results."""
+		job_a = _make_job_with_status(JobStatus.DONE, job_id="a")
+		job_b = _make_job_with_status(JobStatus.RUNNING, job_id="b")
+
+		batched = BatchedJob([job_a, job_b], [(0, 1), (1, 2)])
+
+		assert batched.status() == JobStatus.RUNNING
+		assert batched.done() is False
+		# Polling must not block on results.
+		job_a.result.assert_not_called()
+		job_b.result.assert_not_called()
+
+		job_b.status.return_value = JobStatus.DONE
+		assert batched.status() == JobStatus.DONE
+		assert batched.done() is True
+
+	def test_job_ids_available_without_results(self) -> None:
+		"""All batch job ids are available immediately, before any result is fetched."""
+		job_a = _make_job_with_status(JobStatus.RUNNING, job_id="aaa")
+		job_b = _make_job_with_status(JobStatus.QUEUED, job_id="bbb")
+
+		batched = BatchedJob([job_a, job_b], [(0, 2), (2, 3)])
+
+		assert batched.job_ids() == ["aaa", "bbb"]
+		job_a.result.assert_not_called()
+		job_b.result.assert_not_called()
+
+	def test_partial_results_exposes_completed_batches_only(self) -> None:
+		"""partial_results() returns results for DONE batches and None for in-flight ones."""
+		done_job = _make_job_with_status(JobStatus.DONE, counts=[{"00": 10}], job_id="done")
+		running_job = _make_job_with_status(JobStatus.RUNNING, job_id="running")
+
+		batched = BatchedJob([done_job, running_job], [(0, 1), (1, 2)])
+		partials = batched.partial_results()
+
+		assert [p.index for p in partials] == [0, 1]
+		assert partials[0].circuit_range == (0, 1)
+		assert partials[0].status == JobStatus.DONE
+		assert partials[0].result is not None
+		assert partials[1].circuit_range == (1, 2)
+		assert partials[1].status == JobStatus.RUNNING
+		assert partials[1].result is None
+
+	def test_result_raises_batch_failed_error_naming_batch_and_range(self) -> None:
+		"""A failed batch makes result() raise BatchFailedError identifying the batch and circuits."""
+		good_job = _make_job_with_status(JobStatus.DONE, counts=[{"00": 10}, {"11": 5}], job_id="good")
+		bad_job = _make_job_with_status(JobStatus.ERROR, job_id="bad-123")
+
+		batched = BatchedJob([good_job, bad_job], [(0, 2), (2, 4)])
+
+		with pytest.raises(BatchFailedError) as exc_info:
+			batched.result()
+
+		message = str(exc_info.value)
+		assert "batch 1" in message
+		assert "circuits 2-3" in message
+		assert "bad-123" in message
+
+	def test_result_runs_post_process_once_and_caches(self) -> None:
+		"""result() applies post_process to the combined result exactly once, then caches."""
+		job = _make_job_with_status(JobStatus.DONE, counts=[{"00": 4}], job_id="j")
+		calls: list[int] = []
+
+		def post(result):
+			calls.append(1)
+			return result
+
+		batched = BatchedJob([job], [(0, 1)], post_process=post)
+		first = batched.result()
+		second = batched.result()
+
+		assert first is second
+		assert len(calls) == 1
+		assert job.result.call_count == 1
