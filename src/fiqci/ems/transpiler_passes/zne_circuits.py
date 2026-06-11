@@ -1,5 +1,6 @@
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.circuit import QuantumCircuit, QuantumRegister
+from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler import PassManager
 
@@ -51,8 +52,11 @@ class ZNECircuits(TransformationPass):
 					register = QuantumRegister(2)
 					mini_dag.add_qreg(register)
 
-					for _ in range(self.scale_factor):
-						mini_dag.apply_operation_back(node.op, [register[0], register[1]])
+					for ind in range(self.scale_factor):
+						if ind % 2 == 0:
+							mini_dag.apply_operation_back(node.op, [register[0], register[1]])
+						else:
+							mini_dag.apply_operation_back(node.op.inverse(), [register[0], register[1]])
 
 					cloned_dag.substitute_node_with_dag(node, mini_dag)
 
@@ -60,17 +64,14 @@ class ZNECircuits(TransformationPass):
 			original_dag = deepcopy(cloned_dag)
 			original_no_meas = deepcopy(cloned_dag)
 			original_no_meas.remove_all_ops_named("measure")
-			cloned_reversed_dag = deepcopy(cloned_dag)
-			cloned_reversed_dag = cloned_reversed_dag.reverse_ops()
-			reversed_no_meas = deepcopy(cloned_reversed_dag)
-			reversed_no_meas.remove_all_ops_named("measure")
+			adjoint_dag = circuit_to_dag(dag_to_circuit(original_no_meas).inverse())
 
 			cloned_dag.remove_all_ops_named("measure")
 
 			for i in range(self.scale_factor - 1):
 				is_last = i == self.scale_factor - 2
 				if i % 2 == 0:
-					cloned_dag.compose(cloned_reversed_dag if is_last else reversed_no_meas)
+					cloned_dag.compose(adjoint_dag)
 				else:
 					cloned_dag.compose(original_dag if is_last else original_no_meas)
 
