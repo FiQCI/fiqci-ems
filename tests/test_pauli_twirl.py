@@ -286,6 +286,31 @@ class TestGetTwirledCircuits:
 		for twirled in get_twirled_circuits([tr], num_twirls=200, backend=fake):
 			validate_circuit(twirled, fake)  # raises CircuitValidationError on illegal locus
 
+	def test_basis_gates_does_not_crash_on_non_str_names(self):
+		"""get_twirled_circuits must not crash when a backend target entry has no .name attribute.
+
+		AerSimulator (and some other backends) include entries where i[0] is a class object
+		without a .name attribute; the old code raised AttributeError on those entries.
+		"""
+		class InstructionWithName:
+			name = "cx"
+
+		class InstructionWithNoName:
+			pass  # no .name — triggers AttributeError without the getattr guard
+
+		mock_backend = Mock()
+		mock_backend.name = "MockBackend"
+		mock_backend.num_qubits = 5
+		mock_backend.target.instructions = [
+			(InstructionWithName,),
+			(InstructionWithNoName,),
+		]
+
+		try:
+			get_twirled_circuits([QuantumCircuit(2)], num_twirls=1, backend=mock_backend)
+		except AttributeError as e:
+			pytest.fail(f"get_twirled_circuits raised AttributeError on missing .name: {e}")
+
 
 class TestBackendPauliTwirlSettings:
 	"""Tests for Pauli twirling settings on FiQCIBackend."""
