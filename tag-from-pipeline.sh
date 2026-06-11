@@ -6,7 +6,7 @@ function version_gt() {
 
 function get_version_in_changelog() {
     # Look for version pattern like ## [0.0.1] - 30.04.2025
-    version_line=$(grep -m 1 "## \[.*\]" CHANGELOG.md)
+    version_line=$(grep "## \[.*\]" CHANGELOG.md | grep -v "\[WIP\]" | head -1)
 
     if [[ -z "$version_line" ]]; then
         printf "\033[0;31mChangelog file is incorrect, could not find a line matching '## [x.x.x]' format.\033[0m"
