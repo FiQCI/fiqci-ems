@@ -409,9 +409,10 @@ class TestGetZNECircuits:
 
 		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
 			_get_zne_circuits([qc], scale_factors=[-1, 3, 5])  # -1 is negative
-		
+
 		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
 			_get_zne_circuits([qc], scale_factors=[1, 3, 0.2])  # 0.2 is not an integer
+
 
 class TestEstimatorZNESettings:
 	"""Tests for ZNE settings on FiQCIEstimator."""
