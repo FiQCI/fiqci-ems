@@ -13,7 +13,25 @@ on:
       - "CHANGELOG.md"
 
 jobs:
+  check_wip:
+    runs-on: ubuntu-latest
+    outputs:
+      is_wip: ${{ steps.wip.outputs.is_wip }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect WIP changelog entry
+        id: wip
+        run: |
+          if grep -qE "^## \[WIP\]" CHANGELOG.md; then
+            echo "is_wip=true" >> "$GITHUB_OUTPUT"
+            echo "Top changelog entry is [WIP], skipping release jobs."
+          else
+            echo "is_wip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   check_version:
+    needs: check_wip
+    if: needs.check_wip.outputs.is_wip == 'false'
     runs-on: ubuntu-latest
 
     steps:

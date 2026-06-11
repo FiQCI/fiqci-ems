@@ -98,6 +98,10 @@ def _get_zne_circuits(
 	zne_circuits = []
 	if scale_factors is None:
 		scale_factors = [1, 3, 5]
+
+	if not all(isinstance(s, int) and s > 0 and s % 2 == 1 for s in scale_factors):
+		raise ValueError("Scale factors must be positive odd integers.")
+
 	for scale in scale_factors:
 		for circuit in circuits:
 			pm = PassManager(ZNECircuits(fold_gates=fold_gates, scale_factor=scale, folding_method=folding_method))

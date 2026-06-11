@@ -391,11 +391,7 @@ class FiQCIEstimator:
 			fold_gates = None
 		if len(scale_factors) < 2:
 			raise ValueError("At least two scale factors are required for extrapolation.")
-		if (
-			isinstance(scale_factors, list)
-			and any(s <= 0 for s in scale_factors)
-			and any(s % 2 == 0 for s in scale_factors)
-		):
+		if not all(isinstance(s, int) and s > 0 and s % 2 == 1 for s in scale_factors):
 			raise ValueError("Scale factors must be positive odd integers.")
 		if fold_gates is not None and not isinstance(fold_gates, list):
 			raise ValueError("fold_gates must be a list of gate names or None.")
