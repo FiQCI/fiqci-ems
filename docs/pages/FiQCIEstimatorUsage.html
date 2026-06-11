@@ -554,6 +554,29 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">pauli_twirl</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_twirls</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">gates_to_twirl</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># None twirls all two-qubit gates</span>
 </pre></div>
 </div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td><p>Enable or disable Pauli twirling</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">num_twirls</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
+<td><p>Number of twirled variant circuits to generate for each original circuit</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gates_to_twirl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>List of two-qubit gates to twirl. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, twirls all two-qubit gates.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
 </section>
 <section id="inspecting-options">
@@ -577,10 +600,23 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span> <span class="n">max_batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">run</span></code> returns <strong>immediately</strong> with a <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimatorJob</span></code></a> handle without waiting for results. Polling the underlying job works right away (<code class="docutils literal notranslate"><span class="pre">job.status()</span></code>, <code class="docutils literal notranslate"><span class="pre">job.job_ids()</span></code>); the expectation values are computed the first time you call <code class="docutils literal notranslate"><span class="pre">expectation_values()</span></code> / <code class="docutils literal notranslate"><span class="pre">raw_expectation_values()</span></code>, and cached.</p>
+<p>The handle also lets you inspect a multi-batch run before it finishes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span><span class="o">.</span><span class="n">job_ids</span><span class="p">()</span>         <span class="c1"># backend job id of every batch (None for any unsubmitted batch)</span>
+<span class="n">job</span><span class="o">.</span><span class="n">statuses</span><span class="p">()</span>        <span class="c1"># per-batch JobStatus, in submission order</span>
+<span class="n">job</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>          <span class="c1"># single aggregated status across all batches</span>
+<span class="n">job</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>            <span class="c1"># True once every batch has reached a terminal state</span>
+<span class="n">job</span><span class="o">.</span><span class="n">partial_results</span><span class="p">()</span> <span class="c1"># per-batch results for batches that have already completed</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As with the sampler, submission is not atomic: if the backend rejects a circuit partway through, <code class="docutils literal notranslate"><span class="pre">run</span></code> logs a warning and still returns a handle (rejected/skipped batches report <code class="docutils literal notranslate"><span class="pre">ERROR</span></code>/<code class="docutils literal notranslate"><span class="pre">CANCELLED</span></code> — inspect <code class="docutils literal notranslate"><span class="pre">job.statuses()</span></code>). In that case <code class="docutils literal notranslate"><span class="pre">expectation_values()</span></code> and <code class="docutils literal notranslate"><span class="pre">result()</span></code> raise <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.BatchFailedError" title="fiqci.ems.BatchFailedError"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchFailedError</span></code></a>, since the values cannot be computed without all circuits.</p>
+</div>
 </section>
 <section id="results">
 <h2>Results<a class="headerlink" href="#results" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.run" title="fiqci.ems.FiQCIEstimator.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> returns a <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimatorJob</span></code></a> that wraps the single backend job produced by the run. It exposes the following methods:</p>
+<p><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.run" title="fiqci.ems.FiQCIEstimator.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> returns a <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimatorJob</span></code></a> that wraps the single backend job produced by the run. Expectation values are computed lazily on first access and cached. It exposes the following methods:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Method</p></th>

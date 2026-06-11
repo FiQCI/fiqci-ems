@@ -11,4 +11,11 @@ fiqci.ems.fiqci\_backend
       BatchedJob
       FiQCIBackend
       MitigatedJob
+      PartialBatch
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+   
+      BatchFailedError
    

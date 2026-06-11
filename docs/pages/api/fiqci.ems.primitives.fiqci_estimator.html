@@ -377,8 +377,8 @@
 <tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code></a>(backend[, mitigation_level, ...])</p></td>
 <td><p>FiQCIEstimator wraps a backend with built-in error mitigation (readout error mitigation via M3, zero-noise extrapolation) and computes expectation values of observables directly from circuits, eliminating the need for manual post-processing of measurement counts.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FiQCIEstimatorJob</span></code></a>(mitigated_job, ...)</p></td>
-<td><p>Wrapper around the single backend job that produced an estimator's results.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FiQCIEstimatorJob</span></code></a>(job, compute_fn, observables)</p></td>
+<td><p>Lazy wrapper around the backend job that produced an estimator's results.</p></td>
 </tr>
 </tbody>
 </table>
@@ -496,24 +496,25 @@ See build_dd_options for details on each field.</p></li>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">FiQCIEstimatorJob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mitigated_job</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expectation_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observables</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_expectation_values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">FiQCIEstimatorJob</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observables</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Wrapper around the single backend job that produced an estimator’s results.</p>
+<p>Lazy wrapper around the backend job that produced an estimator’s results.</p>
 <p>The estimator flattens all per-pair measurement-basis circuits into one backend call, so there
 is exactly one underlying job (which may itself batch internally — see <code class="docutils literal notranslate"><span class="pre">BatchedJob</span></code>). This
-class exposes that job alongside the per-pair expectation values, raw expectation values
-(pre-extrapolation when ZNE is enabled), and observables.</p>
+class is returned immediately from <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.run" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FiQCIEstimator.run()</span></code></a>; the expectation-value
+computation is deferred until <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">expectation_values()</span></code></a> / <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.raw_expectation_values" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.raw_expectation_values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">raw_expectation_values()</span></code></a> is
+first called (it fetches the underlying results and computes once, then caches). Polling the
+underlying job (<code class="docutils literal notranslate"><span class="pre">status</span></code>/<code class="docutils literal notranslate"><span class="pre">done</span></code>/<code class="docutils literal notranslate"><span class="pre">job_ids</span></code>) works before the values are computed.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mitigated_job</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expectation_values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observables</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_expectation_values</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Initialize the FiQCIEstimatorJob with mitigated results.</p>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compute_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observables</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.__init__" title="Link to this definition">#</a></dt>
+<dd><p>Initialize the estimator job.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>mitigated_job</strong> – The single job that produced the results (JobV1, MitigatedJob, or BatchedJob).</p></li>
-<li><p><strong>expectation_values</strong> – Per-pair list of mitigated expectation values.</p></li>
+<li><p><strong>job</strong> – The underlying job that produced the results (BatchedJob or MitigatedJob).</p></li>
+<li><p><strong>compute_fn</strong> – Deferred callable returning <code class="docutils literal notranslate"><span class="pre">(expectation_values,</span> <span class="pre">raw_expectation_values)</span></code>.</p></li>
 <li><p><strong>observables</strong> – Observable(s) for which expectation values were calculated.</p></li>
-<li><p><strong>raw_expectation_values</strong> – Per-pair raw (unmitigated, pre-extrapolation) expectation values.</p></li>
 </ul>
 </dd>
 </dl>
@@ -522,7 +523,7 @@ class exposes that job alongside the per-pair expectation values, raw expectatio
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.result">
 <span class="sig-name descname"><span class="pre">result</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.result" title="Link to this definition">#</a></dt>
-<dd><p>Get the underlying combined result for this estimator run.</p>
+<dd><p>Get the underlying combined result for this estimator run (blocks until ready).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -534,13 +535,13 @@ class exposes that job alongside the per-pair expectation values, raw expectatio
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.raw_expectation_values">
 <span class="sig-name descname"><span class="pre">raw_expectation_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.raw_expectation_values" title="Link to this definition">#</a></dt>
-<dd><p>Get the raw (unmitigated) expectation values before extrapolation.</p>
+<dd><p>Get the raw (unmitigated) expectation values before extrapolation (computes lazily).</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values">
 <span class="sig-name descname"><span class="pre">expectation_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values" title="Link to this definition">#</a></dt>
-<dd><p>Get the calculated expectation values.</p>
+<dd><p>Get the calculated expectation values (computes lazily on first access).</p>
 </dd></dl>
 
 <dl class="py method">

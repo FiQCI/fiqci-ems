@@ -480,7 +480,7 @@
 <li><dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">strategy</span></code>: Strategy for applying the sequence. One of:</dt><dd><ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;asap&quot;</span></code>: Apply the sequence as soon as possible whenever the idle period exceeds the threshold.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;alap&quot;</span></code>: Apply the sequence _as late as <a href="#id1"><span class="problematic" id="id2">possible_</span></a> whenever the idle period exceeds the threshold.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;alap&quot;</span></code>: Apply the sequence <em>as late as possible</em> whenever the idle period exceeds the threshold.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;center&quot;</span></code>: Apply the sequence centered within idle periods exceeding the threshold.</p></li>
 </ul>
 </dd>
@@ -501,6 +501,29 @@
 <p>Configure Pauli Twirling using the <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.pauli_twirl" title="fiqci.ems.FiQCISampler.pauli_twirl"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pauli_twirl()</span></code></a> method:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler</span><span class="o">.</span><span class="n">pauli_twirl</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_twirls</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">gates_to_twirl</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="c1"># None twirls all two-qubit gates</span>
 </pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
+<td><p>Enable or disable Pauli twirling</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">num_twirls</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
+<td><p>Number of twirled variant circuits to generate for each original circuit</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gates_to_twirl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>List of two-qubit gates to twirl. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, twirls all two-qubit gates.</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </section>
 </section>
@@ -525,7 +548,20 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">circuits</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">max_batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Depending on mitigation level and batch count, <code class="docutils literal notranslate"><span class="pre">run</span></code> returns either a Qiskit <code class="docutils literal notranslate"><span class="pre">JobV1</span></code>, a <a class="reference internal" href="api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob" title="fiqci.ems.fiqci_backend.MitigatedJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">MitigatedJob</span></code></a>, or a <a class="reference internal" href="api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.BatchedJob" title="fiqci.ems.fiqci_backend.BatchedJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchedJob</span></code></a>. In all cases <code class="docutils literal notranslate"><span class="pre">job.result()</span></code> exposes a single combined <code class="docutils literal notranslate"><span class="pre">Result</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">run</span></code> returns <strong>immediately</strong> with a lazy job handle without waiting for results: a <a class="reference internal" href="api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.BatchedJob" title="fiqci.ems.fiqci_backend.BatchedJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchedJob</span></code></a> at level 0, or a <a class="reference internal" href="api/fiqci.ems.fiqci_backend.html#fiqci.ems.fiqci_backend.MitigatedJob" title="fiqci.ems.fiqci_backend.MitigatedJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">MitigatedJob</span></code></a> at level 1+. The per-batch <code class="docutils literal notranslate"><span class="pre">job_id()</span></code> values and an aggregated <code class="docutils literal notranslate"><span class="pre">status()</span></code> are available right away; error mitigation and result combination are computed the first time you call <code class="docutils literal notranslate"><span class="pre">job.result()</span></code> (which then exposes a single combined <code class="docutils literal notranslate"><span class="pre">Result</span></code> indexed in input order, and caches it).</p>
+<p>The handle also lets you inspect a multi-batch run before it finishes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span><span class="o">.</span><span class="n">job_ids</span><span class="p">()</span>         <span class="c1"># backend job id of every batch (None for any unsubmitted batch)</span>
+<span class="n">job</span><span class="o">.</span><span class="n">statuses</span><span class="p">()</span>        <span class="c1"># per-batch JobStatus, in submission order</span>
+<span class="n">job</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>          <span class="c1"># single aggregated status across all batches</span>
+<span class="n">job</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>            <span class="c1"># True once every batch has reached a terminal state</span>
+<span class="n">job</span><span class="o">.</span><span class="n">partial_results</span><span class="p">()</span> <span class="c1"># per-batch results for batches that have already completed</span>
+</pre></div>
+</div>
+<p>If a batch fails, <code class="docutils literal notranslate"><span class="pre">job.result()</span></code> raises <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.BatchFailedError" title="fiqci.ems.BatchFailedError"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchFailedError</span></code></a> identifying the failing batch and the input circuit indices it covered, instead of an opaque error during combination.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Submission is not atomic. If the backend rejects a circuit partway through (e.g. an un-transpiled circuit), <code class="docutils literal notranslate"><span class="pre">run</span></code> does <strong>not</strong> raise: it logs a warning, stops submitting further batches, and still returns a handle covering every intended batch. Submitted batches keep their job ids and status, the rejected batch reports <code class="docutils literal notranslate"><span class="pre">ERROR</span></code>, and the batches skipped afterwards report <code class="docutils literal notranslate"><span class="pre">CANCELLED</span></code> (with <code class="docutils literal notranslate"><span class="pre">job_id()</span></code> <code class="docutils literal notranslate"><span class="pre">None</span></code>). Inspect the outcome with <code class="docutils literal notranslate"><span class="pre">statuses()</span></code>/<code class="docutils literal notranslate"><span class="pre">status()</span></code>/<code class="docutils literal notranslate"><span class="pre">partial_results()</span></code>; <code class="docutils literal notranslate"><span class="pre">result()</span></code> then raises <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.BatchFailedError" title="fiqci.ems.BatchFailedError"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchFailedError</span></code></a> because a complete combined result cannot be formed.</p>
+</div>
 </section>
 <section id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h2>
