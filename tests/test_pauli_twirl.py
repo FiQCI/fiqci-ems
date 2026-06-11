@@ -292,6 +292,7 @@ class TestGetTwirledCircuits:
 		AerSimulator (and some other backends) include entries where i[0] is a class object
 		without a .name attribute; the old code raised AttributeError on those entries.
 		"""
+
 		class InstructionWithName:
 			name = "cx"
 
@@ -301,10 +302,7 @@ class TestGetTwirledCircuits:
 		mock_backend = Mock()
 		mock_backend.name = "MockBackend"
 		mock_backend.num_qubits = 5
-		mock_backend.target.instructions = [
-			(InstructionWithName,),
-			(InstructionWithNoName,),
-		]
+		mock_backend.target.instructions = [(InstructionWithName,), (InstructionWithNoName,)]
 
 		try:
 			get_twirled_circuits([QuantumCircuit(2)], num_twirls=1, backend=mock_backend)

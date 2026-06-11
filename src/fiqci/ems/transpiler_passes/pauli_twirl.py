@@ -1,5 +1,3 @@
-from tkinter.font import names
-
 from qiskit import QuantumCircuit
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.circuit import QuantumRegister, Gate, StandardEquivalenceLibrary
