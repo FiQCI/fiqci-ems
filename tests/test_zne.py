@@ -337,7 +337,6 @@ class TestZNECircuitsPass:
 		cx_count = sum(1 for inst in result.data if inst.operation.name == "cx")
 		assert cx_count == 9  # 3 original * 3 scale
 
-
 	def test_local_folding_preserves_semantics_for_non_self_inverse_gate(self) -> None:
 		"""Local folding G G† G must equal G for non-self-inverse gates (e.g. CRX)."""
 		from qiskit.quantum_info import Operator
