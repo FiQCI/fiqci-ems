@@ -4,7 +4,9 @@ A class that runs quantum circuits and calculates expectation values of observab
 
 from __future__ import annotations
 import logging
+import threading
 import warnings
+from collections.abc import Callable
 from typing import Any, TypedDict, cast
 
 from qiskit import QuantumCircuit, transpile
@@ -180,9 +182,6 @@ class FiQCIEstimator:
 				self._mitigation_level,
 			)
 
-		expectation_values = []
-		all_zne_expvs = []
-
 		flat_circuits: list[QuantumCircuit] = []
 		pair_lengths: list[int] = []
 		pair_measurement_settings: list[list[dict[int, str]]] = []
@@ -190,7 +189,6 @@ class FiQCIEstimator:
 
 		for i, obs_circ_groups in enumerate(obs_circuits):
 			obs_circs_list = [group[0] for group in obs_circ_groups]
-			zne_expvs = []
 
 			measurement_settings = _combine_pauli_ops(
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
@@ -224,59 +222,76 @@ class FiQCIEstimator:
 				max_batch_size,
 			)
 
-		# Backend handles batching internally and returns a single result-shaped job (JobV1, MitigatedJob, or BatchedJob).
+		# Backend returns a lazy handle immediately (it does not wait for results). The expectation
+		# values are computed on first access via the deferred closure below.
 		job = self.backend.run(flat_circuits, shots=shots, max_batch_size=max_batch_size, **options)
-		all_counts = job.result().get_counts()
-		if not isinstance(all_counts, list):
-			all_counts = [all_counts]
 
-		offset = 0
-		for i, length in enumerate(pair_lengths):
-			counts = all_counts[offset : offset + length]
-			offset += length
+		# Snapshot ZNE settings at submission time so the deferred computation stays consistent with
+		# the circuits that were actually submitted, even if the user mutates settings via zne()
+		# before accessing the results.
+		zne_enabled = self._zne["enabled"]
+		zne_scale_factors = self._zne["scale_factors"]
+		zne_extrapolation_method = self._zne["extrapolation_method"]
+		zne_extrapolation_degree = self._zne["extrapolation_degree"]
 
-			measurement_settings = pair_measurement_settings[i]
-			zne_expvs = []
+		def _compute() -> tuple[list, list]:
+			"""Fetch results and compute per-pair (and ZNE-extrapolated) expectation values.
 
-			if self._zne["enabled"]:
-				split_counts = []
-				num_circs_per_zne = len(measurement_settings)
-				for j in range(0, len(counts), num_circs_per_zne):
-					split_counts.append(counts[j : j + num_circs_per_zne])
+			Returns ``(expectation_values, raw_expectation_values)`` where the second element holds
+			the pre-extrapolation ZNE values when ZNE is enabled, otherwise the same values.
+			"""
+			all_counts = job.result().get_counts()
+			if not isinstance(all_counts, list):
+				all_counts = [all_counts]
 
-				for c in split_counts:
+			expectation_values: list = []
+			all_zne_expvs: list = []
+			offset = 0
+			for i, length in enumerate(pair_lengths):
+				counts = all_counts[offset : offset + length]
+				offset += length
+
+				measurement_settings = pair_measurement_settings[i]
+				zne_expvs = []
+
+				if zne_enabled:
+					split_counts = []
+					num_circs_per_zne = len(measurement_settings)
+					for j in range(0, len(counts), num_circs_per_zne):
+						split_counts.append(counts[j : j + num_circs_per_zne])
+
+					for c in split_counts:
+						expvs = self._calculate_expectation_values(
+							c,
+							observables if isinstance(observables, SparsePauliOp) else observables[i],
+							measurement_settings,
+						)
+						zne_expvs.append(expvs)
+
+					if zne_extrapolation_method == "exponential":
+						expvs = exponential_extrapolation(zne_expvs, zne_scale_factors)
+					elif zne_extrapolation_method == "richardson":
+						expvs = richardson_extrapolation(zne_expvs, zne_scale_factors)
+					elif zne_extrapolation_method == "polynomial":
+						expvs = polynomial_extrapolation(zne_expvs, zne_scale_factors, degree=zne_extrapolation_degree)
+					elif zne_extrapolation_method == "linear":
+						expvs = polynomial_extrapolation(zne_expvs, zne_scale_factors, degree=1)
+				else:
 					expvs = self._calculate_expectation_values(
-						c,
+						counts,
 						observables if isinstance(observables, SparsePauliOp) else observables[i],
 						measurement_settings,
 					)
-					zne_expvs.append(expvs)
 
-				if self._zne["extrapolation_method"] == "exponential":
-					expvs = exponential_extrapolation(zne_expvs, self._zne["scale_factors"])
-				elif self._zne["extrapolation_method"] == "richardson":
-					expvs = richardson_extrapolation(zne_expvs, self._zne["scale_factors"])
-				elif self._zne["extrapolation_method"] == "polynomial":
-					expvs = polynomial_extrapolation(
-						zne_expvs, self._zne["scale_factors"], degree=self._zne["extrapolation_degree"]
-					)
-				elif self._zne["extrapolation_method"] == "linear":
-					expvs = polynomial_extrapolation(zne_expvs, self._zne["scale_factors"], degree=1)
-			else:
-				expvs = self._calculate_expectation_values(
-					counts,
-					observables if isinstance(observables, SparsePauliOp) else observables[i],
-					measurement_settings,
-				)
+				expectation_values.append(expvs)
+				if zne_enabled and len(zne_expvs) > 0:
+					all_zne_expvs.append(zne_expvs)
 
-			expectation_values.append(expvs)
-			if self._zne["enabled"] and len(zne_expvs) > 0:
-				all_zne_expvs.append(zne_expvs)
+			if zne_enabled and len(all_zne_expvs) > 0:
+				return expectation_values, all_zne_expvs
+			return expectation_values, expectation_values
 
-		if self._zne["enabled"] and len(all_zne_expvs) > 0:
-			return FiQCIEstimatorJob(job, expectation_values, observables, all_zne_expvs)
-		else:
-			return FiQCIEstimatorJob(job, expectation_values, observables, expectation_values)
+		return FiQCIEstimatorJob(job, _compute, observables)
 
 	def run(
 		self,
@@ -410,30 +425,44 @@ class FiQCIEstimator:
 
 
 class FiQCIEstimatorJob:
-	"""Wrapper around the single backend job that produced an estimator's results.
+	"""Lazy wrapper around the backend job that produced an estimator's results.
 
 	The estimator flattens all per-pair measurement-basis circuits into one backend call, so there
 	is exactly one underlying job (which may itself batch internally — see ``BatchedJob``). This
-	class exposes that job alongside the per-pair expectation values, raw expectation values
-	(pre-extrapolation when ZNE is enabled), and observables.
+	class is returned immediately from :meth:`FiQCIEstimator.run`; the expectation-value
+	computation is deferred until :meth:`expectation_values` / :meth:`raw_expectation_values` is
+	first called (it fetches the underlying results and computes once, then caches). Polling the
+	underlying job (``status``/``done``/``job_ids``) works before the values are computed.
 	"""
 
-	def __init__(self, mitigated_job, expectation_values, observables, raw_expectation_values) -> None:
-		"""Initialize the FiQCIEstimatorJob with mitigated results.
+	def __init__(self, job, compute_fn: Callable[[], tuple[list, list]], observables) -> None:
+		"""Initialize the estimator job.
 
 		Args:
-		    mitigated_job: The single job that produced the results (JobV1, MitigatedJob, or BatchedJob).
-		    expectation_values: Per-pair list of mitigated expectation values.
+		    job: The underlying job that produced the results (BatchedJob or MitigatedJob).
+		    compute_fn: Deferred callable returning ``(expectation_values, raw_expectation_values)``.
 		    observables: Observable(s) for which expectation values were calculated.
-		    raw_expectation_values: Per-pair raw (unmitigated, pre-extrapolation) expectation values.
 		"""
-		self.mitigated_job = mitigated_job
-		self._expectation_values = expectation_values
-		self._raw_expectation_values = raw_expectation_values
+		self.mitigated_job = job
+		self._compute_fn = compute_fn
 		self._observables = observables
+		self._expectation_values: list | None = None
+		self._raw_expectation_values: list | None = None
+		self._computed = False
+		self._lock = threading.Lock()
+
+	def _ensure_computed(self) -> None:
+		"""Run the deferred computation once (blocking on results), caching the outcome."""
+		if self._computed:
+			return
+		with self._lock:
+			if self._computed:
+				return
+			self._expectation_values, self._raw_expectation_values = self._compute_fn()
+			self._computed = True
 
 	def result(self):
-		"""Get the underlying combined result for this estimator run."""
+		"""Get the underlying combined result for this estimator run (blocks until ready)."""
 		return self.mitigated_job.result()
 
 	def job(self):
@@ -441,13 +470,17 @@ class FiQCIEstimatorJob:
 		return self.mitigated_job
 
 	def raw_expectation_values(self, index: int | None = None) -> list[float]:
-		"""Get the raw (unmitigated) expectation values before extrapolation."""
+		"""Get the raw (unmitigated) expectation values before extrapolation (computes lazily)."""
+		self._ensure_computed()
+		assert self._raw_expectation_values is not None
 		if index is not None:
 			return self._raw_expectation_values[index]
 		return self._raw_expectation_values
 
 	def expectation_values(self, index: int | None = None) -> list[float]:
-		"""Get the calculated expectation values."""
+		"""Get the calculated expectation values (computes lazily on first access)."""
+		self._ensure_computed()
+		assert self._expectation_values is not None
 		if index is not None:
 			return self._expectation_values[index]
 		return self._expectation_values
@@ -457,3 +490,7 @@ class FiQCIEstimatorJob:
 		if index is not None:
 			return self._observables[index]
 		return self._observables
+
+	def __getattr__(self, name: str) -> Any:
+		"""Delegate polling/attribute access (status, done, job_ids, …) to the underlying job."""
+		return getattr(self.mitigated_job, name)
