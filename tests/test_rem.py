@@ -360,8 +360,8 @@ class TestKeyLayout:
 		mitigated_probs = {"00": 0.45, "11": 0.40, "01": 0.10, "10": 0.05}
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 8, 1: 16}),
+			patch("fiqci.ems.backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.final_measurement_mapping", return_value={0: 8, 1: 16}),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
@@ -404,8 +404,8 @@ class TestKeyLayout:
 		mitigated_probs = {"0": 0.55, "1": 0.45}
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={1: 8}),
+			patch("fiqci.ems.backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.final_measurement_mapping", return_value={1: 8}),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()

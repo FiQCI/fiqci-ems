@@ -71,7 +71,7 @@ class TestFiQCIBackendDD:
 	@pytest.fixture
 	def backend_level2(self, mock_backend: Mock) -> FiQCIBackend:
 		"""Create a FiQCIBackend with mitigation level 2 (REM + DD)."""
-		with patch("fiqci.ems.fiqci_backend.M3IQM"):
+		with patch("fiqci.ems.backend.M3IQM"):
 			return FiQCIBackend(mock_backend, mitigation_level=2)
 
 	def test_dd_disabled_by_default_level0(self, backend_level0: FiQCIBackend) -> None:
@@ -253,9 +253,9 @@ class TestDDRunIntegration:
 		mock_backend.run.return_value = mock_job
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+			patch("fiqci.ems.backend.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
