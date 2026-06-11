@@ -2,6 +2,7 @@
 
 ## Changed
 - fix zero noise extrapolation accepting invalid scale factors
+- fix pauli twirling crash on non IQM backends
 
 ## [0.8.0] 5.6.2026
 
