@@ -1,3 +1,5 @@
+from tkinter.font import names
+
 from qiskit import QuantumCircuit
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.circuit import QuantumRegister, Gate, StandardEquivalenceLibrary
@@ -95,7 +97,8 @@ def get_twirled_circuits(
 	twirled_circuits = []
 
 	if backend is not None:
-		basis_gates = list({i[0].name for i in backend.target.instructions if isinstance(i[0].name, str)})
+		names = {getattr(i[0], "name", None) for i in backend.target.instructions}
+		basis_gates = [n for n in names if isinstance(n, str)]
 		pm = PassManager(
 			[
 				PauliTwirl(gates_to_twirl=gates_to_twirl),
