@@ -401,7 +401,7 @@ class FiQCIEstimator:
 			raise ValueError("fold_gates must be a list of gate names or None.")
 		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "polynomial":
 			raise ValueError("Extrapolation degree must be at least 1 for polynomial extrapolation.")
-		if extrapolation_method not in ("polynomial") and extrapolation_degree is not None:
+		if extrapolation_method not in ["polynomial"] and extrapolation_degree is not None:
 			warnings.warn(
 				"Extrapolation degree is only applicable for polynomial extrapolation and will be ignored for other methods."
 			)
@@ -414,7 +414,7 @@ class FiQCIEstimator:
 		self._zne["fold_gates"] = fold_gates
 		self._zne["scale_factors"] = scale_factors
 		self._zne["extrapolation_method"] = extrapolation_method
-		if extrapolation_method in ("polynomial", "linear"):
+		if extrapolation_method in ["polynomial"] and extrapolation_degree is not None:
 			self._zne["extrapolation_degree"] = extrapolation_degree
 		else:
 			self._zne["extrapolation_degree"] = None
