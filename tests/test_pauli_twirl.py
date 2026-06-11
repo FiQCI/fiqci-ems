@@ -11,8 +11,8 @@ from qiskit.quantum_info import Operator
 from iqm.qiskit_iqm import IQMFakeAphrodite
 
 from fiqci.ems.transpiler_passes.pauli_twirl import PauliTwirl, get_twirled_circuits, _get_twirl_set, _twirl_set_cache
-from fiqci.ems.fiqci_backend import BatchedJob, FiQCIBackend, MitigatedJob
-from fiqci.ems.counts import _average_counts, _trim_result_to_groups
+from fiqci.ems.backend import BatchedJob, FiQCIBackend, MitigatedJob
+from fiqci.ems.backend.counts import _average_counts, _trim_result_to_groups
 
 
 class TestTwirlSetCache:
@@ -305,7 +305,7 @@ class TestBackendPauliTwirlSettings:
 
 	def test_pauli_twirl_enabled_at_level_3(self, mock_backend):
 		"""Test that Pauli twirling is enabled for mitigation level 3."""
-		with patch("fiqci.ems.backend.M3IQM"):
+		with patch("fiqci.ems.backend.core.M3IQM"):
 			fb = FiQCIBackend(mock_backend, mitigation_level=3)
 		assert fb._pauli_twirl["enabled"] is True
 		assert fb._pauli_twirl["num_twirls"] == 10  # default
@@ -374,7 +374,7 @@ class TestBackendRunWithPauliTwirling:
 		assert result.job_ids() == [mock_job.job_id()]
 		mock_backend.run.assert_called_once()
 
-	@patch("fiqci.ems.backend.get_twirled_circuits")
+	@patch("fiqci.ems.backend.core.get_twirled_circuits")
 	def test_run_with_twirling_expands_circuits(self, mock_get_twirled, mock_backend, mock_circuit):
 		"""Test that twirling expands the circuit list before running."""
 		num_twirls = 3
@@ -404,7 +404,7 @@ class TestBackendRunWithPauliTwirling:
 		# Result should be MitigatedJob since twirling requires post-processing
 		assert isinstance(result, MitigatedJob)
 
-	@patch("fiqci.ems.backend.get_twirled_circuits")
+	@patch("fiqci.ems.backend.core.get_twirled_circuits")
 	def test_run_with_twirling_and_rem(self, mock_get_twirled, mock_backend, mock_circuit):
 		"""Test that twirling works together with REM."""
 		num_twirls = 2
@@ -428,9 +428,9 @@ class TestBackendRunWithPauliTwirling:
 		mock_backend.run.return_value = mock_job
 
 		with (
-			patch("fiqci.ems.backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()

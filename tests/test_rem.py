@@ -349,7 +349,7 @@ class TestKeyLayout:
 		look like ``"0 0"``. M3 cannot handle the space, so the workflow must hand it spaceless
 		keys and then re-insert the space into the mitigated output.
 		"""
-		from fiqci.ems.fiqci_backend import FiQCIBackend
+		from fiqci.ems.backend import FiQCIBackend
 
 		# Two single-bit registers, both measured -> keys carry a space between registers.
 		raw_counts = {"0 0": 400, "1 1": 350, "0 1": 130, "1 0": 120}
@@ -360,8 +360,8 @@ class TestKeyLayout:
 		mitigated_probs = {"00": 0.45, "11": 0.40, "01": 0.10, "10": 0.05}
 
 		with (
-			patch("fiqci.ems.backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.backend.final_measurement_mapping", return_value={0: 8, 1: 16}),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={0: 8, 1: 16}),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
@@ -394,7 +394,7 @@ class TestKeyLayout:
 		``"0"``. The workflow must drop that bit before correction (M3 only knows about measured
 		qubits) and zero-fill it again, alongside the register space, in the expanded output.
 		"""
-		from fiqci.ems.fiqci_backend import FiQCIBackend
+		from fiqci.ems.backend import FiQCIBackend
 
 		# clbit 1 is measured (maps to qubit 8); clbit 0 belongs to an unmeasured register (always 0).
 		raw_counts = {"0 0": 600, "1 0": 400}
@@ -404,8 +404,8 @@ class TestKeyLayout:
 		mitigated_probs = {"0": 0.55, "1": 0.45}
 
 		with (
-			patch("fiqci.ems.backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.backend.final_measurement_mapping", return_value={1: 8}),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={1: 8}),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
