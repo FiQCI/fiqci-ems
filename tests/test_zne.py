@@ -432,6 +432,20 @@ class TestGetZNECircuits:
 		assert cx_count == 3
 		assert cz_count == 1
 
+	def test_invalid_scale_factors_raises_error(self) -> None:
+		"""Test that invalid scale factors raise ValueError."""
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+
+		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
+			_get_zne_circuits([qc], scale_factors=[1, 2, 3])  # 2 is even
+
+		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
+			_get_zne_circuits([qc], scale_factors=[-1, 3, 5])  # -1 is negative
+
+		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
+			_get_zne_circuits([qc], scale_factors=[1, 3, 0.2])  # 0.2 is not an integer
+
 
 class TestEstimatorZNESettings:
 	"""Tests for ZNE settings on FiQCIEstimator."""
