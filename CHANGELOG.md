@@ -2,6 +2,7 @@
 
 ## Changed
 - fix zero noise extrapolation accepting invalid scale factors
+- fix handling of `extrapolation_degree` when manually setting ZNE options using `.zne()`
 - fix pauli twirling crash on non IQM backends
 - fix folding of non self inverse gates when using zne
 

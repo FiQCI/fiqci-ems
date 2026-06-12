@@ -594,3 +594,14 @@ class TestEstimatorZNESettings:
 		estimator.zne(enabled=True, extrapolation_method=method)
 
 		assert estimator._zne["extrapolation_method"] == method
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_extraplation_degree_only_for_polynomial(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Test that extrapolation_degree is only set for polynomial method."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, extrapolation_method="linear", extrapolation_degree=3)
+
+		assert estimator._zne["extrapolation_method"] == "linear"
+		assert estimator._zne["extrapolation_degree"] is None
