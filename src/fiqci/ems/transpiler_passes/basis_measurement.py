@@ -144,43 +144,12 @@ def _combine_pauli_ops(op: SparsePauliOp) -> list[dict[int, str]]:  # noqa: C901
 	                        maps qubit indices to Pauli basis measurements.
 	"""
 
-	pauli_strings = [label[::-1] for label in op.paulis.to_labels()]
-
-	combined_settings = []
-	used = [False] * len(pauli_strings)
-
-	for i, pauli_string in enumerate(pauli_strings):
-		if used[i]:
-			continue
-
-		# Start a new combined setting with the current Pauli string
-		combined = {}
-		for qubit_index, pauli in enumerate(pauli_string):
-			if pauli != "I":
-				combined[qubit_index] = pauli
-
-		used[i] = True
-
-		# Try to combine with remaining Pauli strings
-		for j in range(i + 1, len(pauli_strings)):
-			if used[j]:
-				continue
-
-			# Check if pauli_strings[j] can be combined with current combined setting
-			can_combine = True
-			for qubit_index, pauli in enumerate(pauli_strings[j]):
-				if pauli != "I":
-					if qubit_index in combined and combined[qubit_index] != pauli:
-						can_combine = False
-						break
-
-			# If compatible, add to combined setting
-			if can_combine:
-				for qubit_index, pauli in enumerate(pauli_strings[j]):
-					if pauli != "I":
-						combined[qubit_index] = pauli
-				used[j] = True
-
-		combined_settings.append(combined)
-
-	return combined_settings
+	result_ops = []
+	for group_ops in op.paulis.group_qubit_wise_commuting():
+		combined: dict[int, str] = {}
+		for pauli in group_ops:
+			for qubit_index, basis in enumerate(pauli.to_label()[::-1]):
+				if basis != "I":
+					combined[qubit_index] = basis
+		result_ops.append(dict(sorted(combined.items())))
+	return result_ops
