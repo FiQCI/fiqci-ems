@@ -1,4 +1,4 @@
-## [WIP] [0.8.1] 11.6.2026
+## [0.8.1] 12.6.2026
 
 ## Changed
 - fix zero noise extrapolation accepting invalid scale factors
