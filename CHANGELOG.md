@@ -2,6 +2,7 @@
 
 ## Changed
 - fix zero noise extrapolation accepting invalid scale factors
+- fix folding of non self inverse gates when using zne
 
 ## [0.8.0] 5.6.2026
 
