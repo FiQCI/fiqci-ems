@@ -4,6 +4,7 @@ A class that runs quantum circuits and calculates expectation values of observab
 
 from __future__ import annotations
 import logging
+import math
 import threading
 import warnings
 from collections.abc import Callable
@@ -234,11 +235,13 @@ class FiQCIEstimator:
 		zne_extrapolation_method = self._zne["extrapolation_method"]
 		zne_extrapolation_degree = self._zne["extrapolation_degree"]
 
-		def _compute() -> tuple[list, list]:
+		def _compute() -> tuple[list, list, list]:
 			"""Fetch results and compute per-pair (and ZNE-extrapolated) expectation values.
 
-			Returns ``(expectation_values, raw_expectation_values)`` where the second element holds
-			the pre-extrapolation ZNE values when ZNE is enabled, otherwise the same values.
+			Returns ``(expectation_values, raw_expectation_values, standard_errors)`` where the
+			second element holds the pre-extrapolation ZNE values when ZNE is enabled (otherwise the
+			same values), and the third holds the per-pair standard-error dicts (see
+			:meth:`FiQCIEstimatorJob.standard_errors`).
 			"""
 			all_counts = job.result().get_counts()
 			if not isinstance(all_counts, list):
@@ -246,11 +249,13 @@ class FiQCIEstimator:
 
 			expectation_values: list = []
 			all_zne_expvs: list = []
+			standard_errors: list = []
 			offset = 0
 			for i, length in enumerate(pair_lengths):
 				counts = all_counts[offset : offset + length]
 				offset += length
 
+				obs = observables if isinstance(observables, SparsePauliOp) else observables[i]
 				measurement_settings = pair_measurement_settings[i]
 				zne_expvs = []
 
@@ -260,36 +265,50 @@ class FiQCIEstimator:
 					for j in range(0, len(counts), num_circs_per_zne):
 						split_counts.append(counts[j : j + num_circs_per_zne])
 
+					per_scale_sigmas = []
 					for c in split_counts:
-						expvs = self._calculate_expectation_values(
-							c,
-							observables if isinstance(observables, SparsePauliOp) else observables[i],
-							measurement_settings,
-						)
-						zne_expvs.append(expvs)
+						zne_expvs.append(self._calculate_expectation_values(c, obs, measurement_settings))
+						per_scale_sigmas.append(self._calculate_shot_errors(c, obs, measurement_settings))
 
 					if zne_extrapolation_method == "exponential":
-						expvs = exponential_extrapolation(zne_expvs, zne_scale_factors)
+						expvs, ext_err = exponential_extrapolation(
+							zne_expvs, zne_scale_factors, sigmas=per_scale_sigmas
+						)
 					elif zne_extrapolation_method == "richardson":
-						expvs = richardson_extrapolation(zne_expvs, zne_scale_factors)
+						expvs, ext_err = richardson_extrapolation(zne_expvs, zne_scale_factors, sigmas=per_scale_sigmas)
 					elif zne_extrapolation_method == "polynomial":
-						expvs = polynomial_extrapolation(zne_expvs, zne_scale_factors, degree=zne_extrapolation_degree)
+						expvs, ext_err = polynomial_extrapolation(
+							zne_expvs, zne_scale_factors, degree=zne_extrapolation_degree, sigmas=per_scale_sigmas
+						)
 					elif zne_extrapolation_method == "linear":
-						expvs = polynomial_extrapolation(zne_expvs, zne_scale_factors, degree=1)
-				else:
-					expvs = self._calculate_expectation_values(
-						counts,
-						observables if isinstance(observables, SparsePauliOp) else observables[i],
-						measurement_settings,
+						expvs, ext_err = polynomial_extrapolation(
+							zne_expvs, zne_scale_factors, degree=1, sigmas=per_scale_sigmas
+						)
+					else:
+						raise ValueError(f"Unsupported extrapolation method: {zne_extrapolation_method}")
+
+					# Report the raw shot error at the unfolded (scale 1) point when available.
+					scale_1_idx = (
+						zne_scale_factors.index(1)
+						if 1 in zne_scale_factors
+						else zne_scale_factors.index(min(zne_scale_factors))
 					)
+					shot_err = per_scale_sigmas[scale_1_idx]
+					standard_errors.append(
+						{"shot_error": shot_err, "zne_extrapolation_error": ext_err, "total": ext_err}
+					)
+				else:
+					expvs = self._calculate_expectation_values(counts, obs, measurement_settings)
+					shot_err = self._calculate_shot_errors(counts, obs, measurement_settings)
+					standard_errors.append({"shot_error": shot_err, "zne_extrapolation_error": None, "total": shot_err})
 
 				expectation_values.append(expvs)
 				if zne_enabled and len(zne_expvs) > 0:
 					all_zne_expvs.append(zne_expvs)
 
 			if zne_enabled and len(all_zne_expvs) > 0:
-				return expectation_values, all_zne_expvs
-			return expectation_values, expectation_values
+				return expectation_values, all_zne_expvs, standard_errors
+			return expectation_values, expectation_values, standard_errors
 
 		return FiQCIEstimatorJob(job, _compute, observables)
 
@@ -345,6 +364,42 @@ class FiQCIEstimator:
 			else:
 				expectation_values.append(0)  # No measurement setting covers this observable
 		return expectation_values
+
+	def _calculate_shot_errors(
+		self,
+		counts: dict[str, int] | list[dict[str, int]],
+		obs: SparsePauliOp,
+		measurement_settings: list[dict[int, str]],
+	) -> list[float]:
+		"""Per-Pauli-term shot-noise standard error, mirroring ``_calculate_expectation_values``.
+
+		Each ⟨P⟩ is the sample mean of a ±1 random variable over ``N`` shots, so its standard error
+		is ``sqrt((1 - ⟨P⟩²) / N)``. Uncovered terms (no measurement setting) report 0.0.
+		"""
+		if not isinstance(counts, list):
+			counts = [counts]
+		shot_errors = []
+		for pauli in obs.paulis:
+			pauli = cast(Pauli, pauli)
+			obs_info = _get_observable_circuit_index(pauli, measurement_settings)
+			if obs_info["circuit_index"] is not None:
+				circuit_counts = counts[obs_info["circuit_index"]]
+				total = sum(circuit_counts.values())
+				if total == 0:
+					shot_errors.append(0.0)
+					continue
+				exp_val = 0
+				for bitstring, count in circuit_counts.items():
+					parity = 1
+					for idx in obs_info["obs_indices"]:
+						if bitstring[idx] == "1":
+							parity *= -1
+					exp_val += parity * count
+				exp_val /= total
+				shot_errors.append(math.sqrt(max(0.0, 1.0 - exp_val**2) / total))
+			else:
+				shot_errors.append(0.0)  # No measurement setting covers this observable
+		return shot_errors
 
 	def rem(self, enabled: bool, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
@@ -431,12 +486,13 @@ class FiQCIEstimatorJob:
 	underlying job (``status``/``done``/``job_ids``) works before the values are computed.
 	"""
 
-	def __init__(self, job, compute_fn: Callable[[], tuple[list, list]], observables) -> None:
+	def __init__(self, job, compute_fn: Callable[[], tuple[list, list, list]], observables) -> None:
 		"""Initialize the estimator job.
 
 		Args:
 		    job: The underlying job that produced the results (BatchedJob or MitigatedJob).
-		    compute_fn: Deferred callable returning ``(expectation_values, raw_expectation_values)``.
+		    compute_fn: Deferred callable returning
+		        ``(expectation_values, raw_expectation_values, standard_errors)``.
 		    observables: Observable(s) for which expectation values were calculated.
 		"""
 		self.mitigated_job = job
@@ -444,6 +500,7 @@ class FiQCIEstimatorJob:
 		self._observables = observables
 		self._expectation_values: list | None = None
 		self._raw_expectation_values: list | None = None
+		self._standard_errors: list | None = None
 		self._computed = False
 		self._lock = threading.Lock()
 
@@ -454,7 +511,7 @@ class FiQCIEstimatorJob:
 		with self._lock:
 			if self._computed:
 				return
-			self._expectation_values, self._raw_expectation_values = self._compute_fn()
+			self._expectation_values, self._raw_expectation_values, self._standard_errors = self._compute_fn()
 			self._computed = True
 
 	def result(self):
@@ -486,6 +543,29 @@ class FiQCIEstimatorJob:
 		if index is not None:
 			return self._observables[index]
 		return self._observables
+
+	def standard_errors(self, index: int | None = None) -> list[dict] | dict:
+		"""Standard errors of the expectation values (computes lazily on first access).
+
+		Mirrors the shape of :meth:`expectation_values`: one entry per circuit/observable pair, each
+		a dict of per-Pauli-term standard errors with keys:
+
+		- ``"shot_error"``: statistical SE of the raw measurement, ``sqrt((1 - ⟨P⟩²) / N)`` per term.
+		  When ZNE is enabled this is taken at the unfolded (scale 1) point.
+		- ``"zne_extrapolation_error"``: SE of the extrapolated value, the per-scale shot errors
+		  propagated through the (linear) extrapolator; ``None`` when ZNE is disabled.
+		- ``"total"``: SE of the value :meth:`expectation_values` actually returns — ``"shot_error"``
+		  when ZNE is off, ``"zne_extrapolation_error"`` when ZNE is on. Not a quadrature sum, since
+		  the extrapolation error already incorporates the shot noise.
+
+		Args:
+		    index: If given, return the dict for that pair; otherwise the list of all pairs.
+		"""
+		self._ensure_computed()
+		assert self._standard_errors is not None
+		if index is not None:
+			return self._standard_errors[index]
+		return self._standard_errors
 
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate polling/attribute access (status, done, job_ids, …) to the underlying job."""
