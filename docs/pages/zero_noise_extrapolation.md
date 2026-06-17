@@ -74,6 +74,25 @@ estimator.zne(
 | `extrapolation_method` | `str` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, or `"linear"`. |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
 
+## Extrapolation Uncertainty
+
+Each extrapolator here is a fixed *linear* map from the per-scale measurements to the zero-noise estimate, $E(0) = \sum_i a_i\, E(\lambda_i)$, where the coefficients $a_i$ depend only on the scale factors and the method. The shot noise of each measured point therefore propagates analytically to the extrapolated value:
+
+$$\mathrm{Var}\big(E(0)\big) = \sum_i a_i^2\, \sigma_i^2 .$$
+
+This standard error is available through {meth}`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors` as the `zne_extrapolation_error` key:
+
+```python
+estimator.zne(enabled=True, extrapolation_method="linear")
+job = estimator.run(qc, observables=obs, shots=2048)
+
+job.standard_errors(0)["zne_extrapolation_error"]  # propagated SE of the zero-noise estimate
+```
+
+Because extrapolation evaluates the fit *outside* the measured range (at $\lambda = 0$), the coefficients $a_i$ are large and alternate in sign, so the extrapolation error is typically **larger** than the raw shot error, the price ZNE pays in variance for reducing bias. Only this statistical (shot-propagated) error is reported. The systematic *model* error from choosing a particular extrapolation shape is not quantified.
+
+See {doc}`FiQCIEstimator standard errors <FiQCIEstimatorUsage>` for the full set of error keys.
+
 ## Examples
 
 - [Zero Noise Extrapolation Example](../notebooks/zero_noise_extrapolation_example) — runnable notebook demonstrating ZNE with default and custom settings.
