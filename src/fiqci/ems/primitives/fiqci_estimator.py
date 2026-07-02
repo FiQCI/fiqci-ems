@@ -9,6 +9,7 @@ import warnings
 from collections.abc import Callable
 from typing import Any, TypedDict, cast
 
+import numpy as np
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import SparsePauliOp, Pauli
 from fiqci.ems import FiQCIBackend
@@ -18,7 +19,7 @@ from fiqci.ems.transpiler_passes.basis_measurement import (
 	_combine_pauli_ops,
 )
 from fiqci.ems.utils import _remove_idle_wires
-from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
+from fiqci.ems.transpiler_passes.zne_circuits import _achieved_scale_factors, _get_zne_circuits
 from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
@@ -187,6 +188,10 @@ class FiQCIEstimator:
 		flat_circuits: list[QuantumCircuit] = []
 		pair_lengths: list[int] = []
 		pair_measurement_settings: list[list[dict[int, str]]] = []
+		# Scale factors actually realised per pair. Folding can only approximate the requested values, so
+		# extrapolation uses these achieved x-values. They depend only on each circuit's foldable-gate
+		# count (not the random seed), and equal the requested values exactly for odd integers.
+		pair_scale_factors: list[list[float]] = []
 		num_base_circuits = 0  # measurement-basis circuits before ZNE scale-factor expansion
 
 		for i, obs_circ_groups in enumerate(obs_circuits):
@@ -199,6 +204,16 @@ class FiQCIEstimator:
 			num_base_circuits += len(obs_circs_list)
 
 			if self._zne["enabled"]:
+				# All measurement-basis subcircuits in a pair share the same foldable-gate count (basis
+				# rotations are single-qubit), so one achieved-scale list applies to the whole pair.
+				pair_scale_factors.append(
+					_achieved_scale_factors(
+						obs_circs_list[0],
+						self._zne["scale_factors"],
+						self._zne["folding_method"],
+						self._zne["fold_gates"],
+					)
+				)
 				obs_circs_list = _get_zne_circuits(
 					obs_circs_list,
 					self._zne["fold_gates"],
@@ -209,6 +224,24 @@ class FiQCIEstimator:
 
 			pair_lengths.append(len(obs_circs_list))
 			flat_circuits.extend(obs_circs_list)
+
+		if self._zne["enabled"] and pair_scale_factors:
+			# Reflect the achieved scale factors back into the stored settings so `mitigator_options`
+			# shows what was actually used. When circuits have differing foldable-gate counts the achieved
+			# scales vary per circuit and can't be collapsed to one setting, so leave it unchanged.
+			uniform = all(np.allclose(sf, pair_scale_factors[0]) for sf in pair_scale_factors)
+			if uniform and not np.allclose(pair_scale_factors[0], self._zne["scale_factors"]):
+				achieved = [float(s) for s in pair_scale_factors[0]]
+				warnings.warn(
+					f"Requested ZNE scale factors {self._zne['scale_factors']} are not all exactly reachable "
+					f"by folding; updating scale_factors to the achieved values {achieved} (extrapolation uses these)."
+				)
+				self._zne["scale_factors"] = achieved
+			elif not uniform:
+				warnings.warn(
+					"Achieved ZNE scale factors vary across the submitted circuits (differing foldable-gate "
+					"counts); extrapolation uses each circuit's own achieved scales and scale_factors is left unchanged."
+				)
 
 		if self._zne["enabled"]:
 			logger.info(
@@ -236,7 +269,7 @@ class FiQCIEstimator:
 		# the circuits that were actually submitted, even if the user mutates settings via zne()
 		# before accessing the results.
 		zne_enabled = self._zne["enabled"]
-		zne_scale_factors = self._zne["scale_factors"]
+		zne_scale_factors_per_pair = pair_scale_factors
 		zne_extrapolation_method = self._zne["extrapolation_method"]
 		zne_extrapolation_degree = self._zne["extrapolation_degree"]
 
@@ -274,14 +307,15 @@ class FiQCIEstimator:
 						)
 						zne_expvs.append(expvs)
 
+					scales = zne_scale_factors_per_pair[i]
 					if zne_extrapolation_method == "exponential":
-						expvs = exponential_extrapolation(zne_expvs, zne_scale_factors)
+						expvs = exponential_extrapolation(zne_expvs, scales)
 					elif zne_extrapolation_method == "richardson":
-						expvs = richardson_extrapolation(zne_expvs, zne_scale_factors)
+						expvs = richardson_extrapolation(zne_expvs, scales)
 					elif zne_extrapolation_method == "polynomial":
-						expvs = polynomial_extrapolation(zne_expvs, zne_scale_factors, degree=zne_extrapolation_degree)
+						expvs = polynomial_extrapolation(zne_expvs, scales, degree=zne_extrapolation_degree)
 					elif zne_extrapolation_method == "linear":
-						expvs = polynomial_extrapolation(zne_expvs, zne_scale_factors, degree=1)
+						expvs = polynomial_extrapolation(zne_expvs, scales, degree=1)
 				else:
 					expvs = self._calculate_expectation_values(
 						counts,

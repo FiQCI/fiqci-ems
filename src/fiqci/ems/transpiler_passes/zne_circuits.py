@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 from qiskit.dagcircuit import DAGCircuit
 from qiskit.circuit import QuantumCircuit, QuantumRegister
@@ -23,11 +21,49 @@ def _num_folds(num_gates: int, scale_factor: float) -> int:
 	return round((scale_factor - 1.0) * num_gates / 2.0)
 
 
-def _achieved_scale_factor(num_gates: int, scale_factor: float) -> float:
-	"""Effective noise scaling actually realised when targeting ``scale_factor`` (see ``_num_folds``)."""
+def _achieved_scale_factor(num_gates: int, scale_factor: float, folding_method: str = "local") -> float:
+	"""Effective noise scaling actually realised when targeting ``scale_factor``.
+
+	Because folding is discrete, the requested scale factor can only be approximated. This returns the
+	scaling the folding actually produces so callers (e.g. the estimator) can extrapolate against the
+	real x-values rather than the requested ones. For local folding this is ``(N + 2·num_folds)/N``;
+	for global folding it is ``1 + 2·num_global_folds + 2·num_to_fold/N`` (see ``ZNECircuits.run``).
+	"""
 	if num_gates == 0:
 		return 1.0
+	if folding_method == "global":
+		num_global_folds = int((scale_factor - 1) // 2)
+		frac = (scale_factor - 1) / 2 - num_global_folds
+		num_to_fold = round(frac * num_gates)
+		return 1 + 2 * num_global_folds + 2 * num_to_fold / num_gates
 	return (num_gates + 2 * _num_folds(num_gates, scale_factor)) / num_gates
+
+
+def _count_foldable_gates(
+	circuit: QuantumCircuit, folding_method: str = "local", fold_gates: Optional[Iterable[str]] = None
+) -> int:
+	"""Number of gates the folding will act on: all non-barrier gates (global) or foldable 2-qubit gates (local)."""
+	if folding_method == "global":
+		return sum(1 for instr in circuit.data if instr.operation.name not in ("measure", "barrier"))
+	fold_set = set(fold_gates) if fold_gates is not None else None
+	return sum(
+		1
+		for instr in circuit.data
+		if len(instr.qubits) == 2
+		and instr.operation.name != "barrier"
+		and (fold_set is None or instr.operation.name in fold_set)
+	)
+
+
+def _achieved_scale_factors(
+	circuit: QuantumCircuit,
+	scale_factors: Iterable[float],
+	folding_method: str = "local",
+	fold_gates: Optional[Iterable[str]] = None,
+) -> list[float]:
+	"""Scale factors actually realised for ``circuit`` when targeting each of ``scale_factors``."""
+	num_gates = _count_foldable_gates(circuit, folding_method, fold_gates)
+	return [_achieved_scale_factor(num_gates, s, folding_method) for s in scale_factors]
 
 
 class ZNECircuits(TransformationPass):
@@ -193,25 +229,6 @@ def _get_zne_circuits(
 
 	for scale in scale_factors:
 		for circuit in circuits:
-			# Warn when the discretisation of folding can't reach the requested scale (small circuits).
-			num_gates = (
-				sum(1 for instr in circuit.data if instr.operation.name not in ("measure", "barrier"))
-				if folding_method == "global"
-				else sum(
-					1
-					for instr in circuit.data
-					if len(instr.qubits) == 2
-					and instr.operation.name != "barrier"
-					and (fold_gates is None or instr.operation.name in set(fold_gates))
-				)
-			)
-			achieved = _achieved_scale_factor(num_gates, scale)
-			if abs(achieved - scale) > 0.1:
-				warnings.warn(
-					f"Requested scale factor {scale} could only be approximated as {achieved:.3f} for a "
-					f"circuit with {num_gates} foldable gate(s); extrapolation still uses the requested value."
-				)
-
 			pm = PassManager(
 				ZNECircuits(fold_gates=fold_gates, scale_factor=scale, folding_method=folding_method, seed=rng)
 			)
