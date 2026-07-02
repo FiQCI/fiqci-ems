@@ -52,18 +52,20 @@ class FiQCIEstimator:
 		class ZNESettings(TypedDict):
 			enabled: bool
 			fold_gates: list | None
-			scale_factors: list[int]
+			scale_factors: list[float]
 			folding_method: str
 			extrapolation_method: str
 			extrapolation_degree: int | None
+			seed: int | None
 
 		self._zne: ZNESettings = {
 			"enabled": mitigation_level == 3,
 			"fold_gates": None,  # if None, fold all gates. Otherwise, should be a list of gate names to fold (e.g. ["cx", "cz"])
-			"scale_factors": [1, 3, 5],  # odd integers
+			"scale_factors": [1, 3, 5],  # any real numbers >= 1
 			"folding_method": "local",  # global or local folding
 			"extrapolation_method": "exponential",  # exponential, richardson, linear, polynomial
 			"extrapolation_degree": None,  # int only for polynomial, None defaults to min(n_scales - 1, 2), where n_scales is the number of scale factors
+			"seed": None,  # seed for random gate sampling when approximating non-odd-integer scale factors
 		}
 
 		if self._mitigation_level in [0, 1, 2]:
@@ -198,7 +200,11 @@ class FiQCIEstimator:
 
 			if self._zne["enabled"]:
 				obs_circs_list = _get_zne_circuits(
-					obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"], self._zne["folding_method"]
+					obs_circs_list,
+					self._zne["fold_gates"],
+					self._zne["scale_factors"],
+					self._zne["folding_method"],
+					self._zne["seed"],
 				)
 
 			pair_lengths.append(len(obs_circs_list))
@@ -374,14 +380,19 @@ class FiQCIEstimator:
 		self,
 		enabled: bool,
 		fold_gates: list | None = None,
-		scale_factors: list[int] = [1, 3, 5],
+		scale_factors: list[float] = [1, 3, 5],
 		folding_method: str = "local",
 		extrapolation_method: str = "exponential",
 		extrapolation_degree: int | None = None,
+		seed: int | None = None,
 	):
-		# TODO: Support any real >= 1 scale factor
 		# TODO: More extrapolation methods, allow user-defined extrapolation functions
-		"""Configure zero-noise extrapolation settings."""
+		"""Configure zero-noise extrapolation settings.
+
+		Scale factors may be any real numbers >= 1. Non-odd-integer values (even integers, fractions)
+		are approximated by partially folding a randomly-sampled subset of gates; ``seed`` makes that
+		sampling reproducible. Extrapolation uses the requested scale factors as the x-axis.
+		"""
 		if extrapolation_method not in ["exponential", "richardson", "polynomial", "linear"]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
 		if folding_method not in ["local", "global"]:
@@ -391,8 +402,8 @@ class FiQCIEstimator:
 			fold_gates = None
 		if len(scale_factors) < 2:
 			raise ValueError("At least two scale factors are required for extrapolation.")
-		if not all(isinstance(s, int) and s > 0 and s % 2 == 1 for s in scale_factors):
-			raise ValueError("Scale factors must be positive odd integers.")
+		if not all(isinstance(s, (int, float)) and not isinstance(s, bool) and s >= 1 for s in scale_factors):
+			raise ValueError("Scale factors must be real numbers >= 1.")
 		if fold_gates is not None and not isinstance(fold_gates, list):
 			raise ValueError("fold_gates must be a list of gate names or None.")
 		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "polynomial":
@@ -409,6 +420,8 @@ class FiQCIEstimator:
 		self._zne["enabled"] = enabled
 		self._zne["fold_gates"] = fold_gates
 		self._zne["scale_factors"] = scale_factors
+		self._zne["folding_method"] = folding_method
+		self._zne["seed"] = seed
 		self._zne["extrapolation_method"] = extrapolation_method
 		if extrapolation_method in ["polynomial"] and extrapolation_degree is not None:
 			self._zne["extrapolation_degree"] = extrapolation_degree
