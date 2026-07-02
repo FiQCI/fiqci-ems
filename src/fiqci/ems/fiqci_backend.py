@@ -706,7 +706,7 @@ class FiQCIBackend:
 	) -> MitigatedJob:
 		"""Build a lazy M3-mitigated handle for already-submitted batch jobs.
 
-		Calibration is kicked off eagerly here (``cals_from_system`` is non-blocking — mthree runs
+		Calibration is kicked off eagerly here (``cals_from_system`` is non-blocking and mthree runs
 		it in a background thread) so it proceeds in parallel with the circuit jobs. The blocking
 		result fetch and the per-circuit M3 correction are deferred to a ``post_process`` callback
 		that runs the first time the returned handle's ``result()`` is called.
