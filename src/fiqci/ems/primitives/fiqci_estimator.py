@@ -67,7 +67,7 @@ class FiQCIEstimator:
 			fold_gates: list | None
 			scale_factors: list[float] | list[list[float]]
 			folding_method: str
-			extrapolation_method: str
+			extrapolation_method: str | Callable[..., list[float]]
 			extrapolation_degree: int | None
 			seed: int | None
 
@@ -335,7 +335,9 @@ class FiQCIEstimator:
 						zne_expvs.append(expvs)
 
 					scales = zne_scale_factors_per_pair[i]
-					if zne_extrapolation_method == "exponential":
+					if callable(zne_extrapolation_method):
+						expvs = list(zne_extrapolation_method(zne_expvs, scales))
+					elif zne_extrapolation_method == "exponential":
 						expvs = exponential_extrapolation(zne_expvs, scales)
 					elif zne_extrapolation_method == "richardson":
 						expvs = richardson_extrapolation(zne_expvs, scales)
@@ -443,11 +445,10 @@ class FiQCIEstimator:
 		fold_gates: list | None = None,
 		scale_factors: list[float] | list[list[float]] = [1, 3, 5],
 		folding_method: str = "local",
-		extrapolation_method: str = "exponential",
+		extrapolation_method: str | Callable[..., list[float]] = "exponential",
 		extrapolation_degree: int | None = None,
 		seed: int | None = None,
 	):
-		# TODO: More extrapolation methods, allow user-defined extrapolation functions
 		"""Configure zero-noise extrapolation settings.
 
 		Scale factors may be any real numbers >= 1. Non-odd-integer values (even integers, fractions)
@@ -455,10 +456,22 @@ class FiQCIEstimator:
 		sampling reproducible. Extrapolation uses the achieved scale factors as the x-axis.
 
 		``scale_factors`` may be either a single flat list applied to every submitted circuit, or a list
-		of lists (one per submitted circuit) so each circuit uses its own scale factors — the number of
+		of lists (one per submitted circuit) so each circuit uses its own scale factors. The number of
 		lists must then match the number of circuit/observable pairs passed to :meth:`run`.
+
+		``extrapolation_method`` may be one of the built-in strings (``"exponential"``, ``"richardson"``,
+		``"polynomial"``, ``"linear"``) or a user-defined callable. The callable is invoked once per
+		circuit/observable pair as ``fn(expectation_values, scale_factors)``, where ``expectation_values``
+		is a list (one entry per scale factor) of per-observable expectation-value lists and
+		``scale_factors`` is the list of achieved scale factors; it must return a list of floats (the
+		zero-noise estimate per observable). ``extrapolation_degree`` is ignored for callables.
 		"""
-		if extrapolation_method not in ["exponential", "richardson", "polynomial", "linear"]:
+		if not callable(extrapolation_method) and extrapolation_method not in [
+			"exponential",
+			"richardson",
+			"polynomial",
+			"linear",
+		]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
 		if folding_method not in ["local", "global"]:
 			raise ValueError(f"Unsupported folding method: {folding_method}")
@@ -506,7 +519,7 @@ class FiQCIEstimatorJob:
 	"""Lazy wrapper around the backend job that produced an estimator's results.
 
 	The estimator flattens all per-pair measurement-basis circuits into one backend call, so there
-	is exactly one underlying job (which may itself batch internally — see ``BatchedJob``). This
+	is exactly one underlying job (which may itself batch internally. See ``BatchedJob``). This
 	class is returned immediately from :meth:`FiQCIEstimator.run`; the expectation-value
 	computation is deferred until :meth:`expectation_values` / :meth:`raw_expectation_values` is
 	first called (it fetches the underlying results and computes once, then caches). Polling the
@@ -529,7 +542,7 @@ class FiQCIEstimatorJob:
 		    observables: Observable(s) for which expectation values were calculated.
 		    requested_scale_factors: ZNE scale factors requested for each circuit/observable pair (empty
 		        when ZNE is disabled).
-		    achieved_scale_factors: ZNE scale factors actually realised by folding for each pair — the
+		    achieved_scale_factors: ZNE scale factors actually realised by folding for each pair. The
 		        x-axis used for extrapolation (empty when ZNE is disabled).
 		"""
 		self.mitigated_job = job
