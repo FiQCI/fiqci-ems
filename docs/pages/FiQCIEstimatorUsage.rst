@@ -115,7 +115,7 @@ Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
      - Gate names to fold (e.g. ``["cx", "cz"]``). If ``None``, folds all gates.
    * - ``scale_factors``
      - ``[1, 3, 5]``
-     - List of positive odd integers for noise scaling. At least 2 required.
+     - List of real numbers >= 1 for noise scaling. At least 2 required. Odd integers fold exactly; other values are approximated by partial/random folding.
    * - ``folding_method``
      - ``"local"``
      - ``"local"`` (per-gate folding) or ``"global"`` (whole-circuit folding). When ``"global"``, ``fold_gates`` is ignored.
@@ -125,6 +125,9 @@ Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
    * - ``extrapolation_degree``
      - ``None``
      - Polynomial degree (only for ``"polynomial"`` method). Defaults to ``min(n_scales - 1, 2)``.
+   * - ``seed``
+     - ``None``
+     - Seed for the random gate sampling used to approximate non-odd-integer scale factors.
 
 .. _fiqci-estimator-dd:
 

@@ -10,6 +10,8 @@ The core idea is:
 2. **Amplify the noise** by creating scaled versions of the circuit (e.g., at scale factors 1, 3, 5).
 3. **Extrapolate** the measured expectation values to the zero-noise point using a fitted model.
 
+Scale factors may be **any real number ≥ 1** (e.g. `[1, 1.5, 2, 3]`), not just odd integers — see [Arbitrary scale factors](#arbitrary-scale-factors) below.
+
 Because noise grows predictably with circuit depth, measuring at multiple noise levels reveals the trend, and extrapolation removes the noise contribution.
 
 ## Circuit Folding Methods
@@ -23,6 +25,16 @@ FiQCI EMS supports two methods for amplifying noise by increasing the effective 
 - **Global folding**: Global folding appends the entire circuit and its inverse in alternating sequence. For a circuit $C$ with scale factor 3, the result is $C C^\dagger C$, and for scale factor 5: $C C^\dagger C C^\dagger C$.
     - This uniformly amplifies noise across all gates.
     - The `fold_gates` parameter is not applicable and will be ignored if set.
+
+(arbitrary-scale-factors)=
+### Arbitrary scale factors
+
+Odd integers are the only scale factors reachable by *fully* folding every gate. Any other real value ≥ 1 (even integers, fractions) is **approximated** by partial folding:
+
+- **Local**: every foldable gate is folded a base number of times, then a randomly-sampled subset is folded once more so the average folding matches the requested scale factor as closely as possible.
+- **Global**: the circuit is fully folded for the integer part, then a suffix of the circuit is partially folded for the fractional remainder.
+
+Because folding is discrete, small circuits may not reach the requested scale factor exactly — a warning is emitted when the achievable scale deviates noticeably. Extrapolation always uses the **requested** scale factors as the x-axis. Pass a `seed` to make the random gate sampling reproducible.
 
 ## Extrapolation Methods
 
@@ -69,10 +81,11 @@ estimator.zne(
 |-----------|------|---------|-------------|
 | `enabled` | `bool` | — | Enable or disable ZNE. |
 | `fold_gates` | `list[str] \| None` | `None` | Gate names to fold (local folding only). `None` folds all two-qubit gates. |
-| `scale_factors` | `list[int]` | `[1, 3, 5]` | Positive odd integers specifying the noise scale levels. At least two are required. |
+| `scale_factors` | `list[float]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. |
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
 | `extrapolation_method` | `str` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, or `"linear"`. |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
+| `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
 
 ## Examples
 
