@@ -604,8 +604,8 @@ class TestEstimatorZNESettings:
 		assert estimator._zne["seed"] == 7
 		assert estimator.mitigator_options["zne"]["seed"] == 7
 
-	def test_zne_run_updates_scale_factors_to_achieved(self) -> None:
-		"""After run(), scale_factors reflect the values folding actually achieved (with a warning)."""
+	def test_zne_job_exposes_achieved_scale_factors(self) -> None:
+		"""Unreachable scales warn at run and are exposed on the job; estimator config is untouched."""
 		from qiskit.quantum_info import SparsePauliOp
 		from qiskit_aer import AerSimulator
 
@@ -618,12 +618,15 @@ class TestEstimatorZNESettings:
 		for _ in range(3):  # 3 foldable CX gates -> scale 2 rounds to (3 + 2*2)/3 = 7/3
 			qc.cx(0, 1)
 
-		with pytest.warns(UserWarning, match="updating scale_factors to the achieved values"):
-			estimator.run(qc, SparsePauliOp(["ZZ"]), shots=1024)
+		with pytest.warns(UserWarning, match="Access them via the job's achieved_scale_factors"):
+			job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=1024)
 
-		assert estimator._zne["scale_factors"] == pytest.approx([1.0, 7 / 3])
-		# The stored (achieved) values are surfaced through mitigator_options for user inspection.
-		assert estimator.mitigator_options["zne"]["scale_factors"] == pytest.approx([1.0, 7 / 3])
+		# The estimator's user-defined config is never mutated.
+		assert estimator._zne["scale_factors"] == [1, 2]
+		# Requested and achieved are per-pair (always a list of lists) and live on the job.
+		assert np.allclose(job.requested_scale_factors(), [[1.0, 2.0]])
+		assert np.allclose(job.achieved_scale_factors(), [[1.0, 7 / 3]])
+		assert np.allclose(job.achieved_scale_factors(0), [1.0, 7 / 3])
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zne_scale_factor_below_one_raises(self, mock_fiqci_backend_class: Mock) -> None:
@@ -634,6 +637,101 @@ class TestEstimatorZNESettings:
 
 		with pytest.raises(ValueError, match="Scale factors must be real numbers >= 1"):
 			estimator.zne(enabled=True, scale_factors=[0.5, 1.5])
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_nested_scale_factors_stored(self, mock_fiqci_backend_class: Mock) -> None:
+		"""A list of per-circuit scale-factor lists is accepted and stored."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[[1, 3, 5], [1, 2, 4]])
+
+		assert estimator._zne["scale_factors"] == [[1, 3, 5], [1, 2, 4]]
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_nested_scale_factors_invalid_sublist_raises(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Each per-circuit list must itself have at least two real numbers >= 1."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+
+		with pytest.raises(ValueError, match="Each per-circuit scale factor list"):
+			estimator.zne(enabled=True, scale_factors=[[1, 3], [0.5, 2]])  # 0.5 < 1
+
+		with pytest.raises(ValueError, match="Each per-circuit scale factor list"):
+			estimator.zne(enabled=True, scale_factors=[[1, 3], [3]])  # sublist too short
+
+	def test_zne_nested_scale_factors_length_mismatch_raises(self) -> None:
+		"""Number of per-circuit lists must match the number of submitted circuits."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[[1, 3], [1, 3]], seed=0)
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+
+		with pytest.raises(ValueError, match="Per-circuit scale_factors has 2 entr"):
+			estimator.run([qc], SparsePauliOp(["ZZ"]), shots=256)  # only 1 circuit
+
+	def test_zne_nested_scale_factors_per_circuit_run(self) -> None:
+		"""Each circuit folds with and extrapolates against its own scale factors."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[[1, 3, 5], [1, 3]], folding_method="local", seed=0)
+
+		qc0 = QuantumCircuit(2)
+		qc0.h(0)
+		qc0.cx(0, 1)
+		qc1 = QuantumCircuit(2)
+		qc1.h(0)
+		qc1.cx(0, 1)
+
+		job = estimator.run([qc0, qc1], SparsePauliOp(["ZZ"]), shots=1024)
+		vals = job.expectation_values()
+
+		# Two circuit/observable pairs, each with a single ZZ expectation value.
+		assert len(vals) == 2
+		# Config is never mutated; each pair reports its own requested/achieved scales on the job
+		# (per-pair lists differ in length, so compare pair by pair).
+		assert estimator._zne["scale_factors"] == [[1, 3, 5], [1, 3]]
+		assert np.allclose(job.requested_scale_factors(0), [1, 3, 5])
+		assert np.allclose(job.requested_scale_factors(1), [1, 3])
+		# Odd integers are reachable exactly, so achieved equals requested per pair.
+		assert np.allclose(job.achieved_scale_factors(0), [1, 3, 5])
+		assert np.allclose(job.achieved_scale_factors(1), [1, 3])
+
+	def test_zne_flat_request_reports_per_circuit_achieved(self) -> None:
+		"""A flat request yields per-circuit achieved scales on the job when circuits differ in size."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[1, 2], folding_method="local", seed=0)
+
+		# Different foldable-gate counts -> different achieved scale for the requested 2.
+		qc_small = QuantumCircuit(2)
+		qc_small.cx(0, 1)  # N=1: scale 2 -> achieved 1.0 (round(0.5)=0 folds)
+		qc_big = QuantumCircuit(2)
+		for _ in range(3):
+			qc_big.cx(0, 1)  # N=3: scale 2 -> achieved 7/3
+
+		with pytest.warns(UserWarning, match="not all exactly reachable"):
+			job = estimator.run([qc_small, qc_big], SparsePauliOp(["ZZ"]), shots=512)
+
+		# Config unchanged; both pairs share the flat request but report their own achieved scales.
+		assert estimator._zne["scale_factors"] == [1, 2]
+		assert np.allclose(job.requested_scale_factors(), [[1.0, 2.0], [1.0, 2.0]])
+		assert np.allclose(job.achieved_scale_factors(), [[1.0, 1.0], [1.0, 7 / 3]])
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zne_invalid_extrapolation_method_raises_error(self, mock_fiqci_backend_class: Mock) -> None:
