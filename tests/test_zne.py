@@ -837,6 +837,51 @@ class TestEstimatorZNESettings:
 		assert estimator._zne["extrapolation_method"] == method
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_accepts_user_defined_extrapolation_callable(self, mock_fiqci_backend_class: Mock) -> None:
+		"""A user-defined callable is accepted and stored verbatim as the extrapolation method."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		def my_extrapolation(expectation_values, scales):
+			return [0.0 for _ in expectation_values[0]]
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, extrapolation_method=my_extrapolation)
+
+		assert estimator._zne["extrapolation_method"] is my_extrapolation
+
+	def test_zne_user_defined_extrapolation_used_in_run(self) -> None:
+		"""The user-defined callable is invoked with (expectation_values, scales) and its result used."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		calls: list[tuple] = []
+
+		def my_extrapolation(expectation_values, scales):
+			calls.append((expectation_values, scales))
+			# Return a sentinel value per observable so we can assert it flowed through.
+			return [42.0 for _ in expectation_values[0]]
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=[1, 3], folding_method="local", seed=0, extrapolation_method=my_extrapolation
+		)
+
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+
+		job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=512)
+		vals = job.expectation_values()
+
+		assert vals == [[42.0]]
+		# Callable was invoked once for the single pair with the achieved scale factors.
+		assert len(calls) == 1
+		_, scales = calls[0]
+		assert np.allclose(scales, job.achieved_scale_factors(0))
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zne_extraplation_degree_only_for_polynomial(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test that extrapolation_degree is only set for polynomial method."""
 		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
