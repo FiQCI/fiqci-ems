@@ -34,7 +34,7 @@ Odd integers are the only scale factors reachable by *fully* folding every gate.
 - **Local**: every foldable gate is folded a base number of times, then a randomly-sampled subset is folded once more so the average folding matches the requested scale factor as closely as possible.
 - **Global**: the circuit is fully folded for the integer part, then a suffix of the circuit is partially folded for the fractional remainder.
 
-Because folding is discrete, small circuits may not reach the requested scale factor exactly — a warning is emitted when the achievable scale deviates noticeably. Extrapolation always uses the **requested** scale factors as the x-axis. Pass a `seed` to make the random gate sampling reproducible.
+Because folding is discrete, small circuits may not reach the requested scale factor exactly. Extrapolation always uses the **achieved** scale factors as the x-axis (they depend only on each circuit's foldable-gate count, not the random seed, and equal the requested values exactly for odd integers). When the achieved values differ from what you requested, the estimator overwrites its stored `scale_factors` with the achieved ones and emits a warning, so inspecting `mitigator_options` shows the values that were actually used. Pass a `seed` to make the random gate sampling reproducible.
 
 ## Extrapolation Methods
 
