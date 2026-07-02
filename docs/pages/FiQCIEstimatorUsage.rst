@@ -115,7 +115,7 @@ Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
      - Gate names to fold (e.g. ``["cx", "cz"]``). If ``None``, folds all gates.
    * - ``scale_factors``
      - ``[1, 3, 5]``
-     - List of real numbers >= 1 for noise scaling. At least 2 required. Odd integers fold exactly; other values are approximated by partial/random folding.
+     - List of real numbers >= 1 for noise scaling. At least 2 required. Odd integers fold exactly; other values are approximated by partial/random folding. May be a list of lists (one per submitted circuit) to use different scale factors per circuit.
    * - ``folding_method``
      - ``"local"``
      - ``"local"`` (per-gate folding) or ``"global"`` (whole-circuit folding). When ``"global"``, ``fold_gates`` is ignored.
@@ -266,6 +266,10 @@ Results
      - Combined ``Result`` from the backend job
    * - ``observables(index=None)``
      - Observables used in the computation
+   * - ``requested_scale_factors(index=None)``
+     - ZNE scale factors requested for the run, one list per circuit/observable pair
+   * - ``achieved_scale_factors(index=None)``
+     - ZNE scale factors folding actually realised (the extrapolation x-axis), same shape
 
 Examples
 --------

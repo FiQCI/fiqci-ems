@@ -34,7 +34,28 @@ Odd integers are the only scale factors reachable by *fully* folding every gate.
 - **Local**: every foldable gate is folded a base number of times, then a randomly-sampled subset is folded once more so the average folding matches the requested scale factor as closely as possible.
 - **Global**: the circuit is fully folded for the integer part, then a suffix of the circuit is partially folded for the fractional remainder.
 
-Because folding is discrete, small circuits may not reach the requested scale factor exactly. Extrapolation always uses the **achieved** scale factors as the x-axis (they depend only on each circuit's foldable-gate count, not the random seed, and equal the requested values exactly for odd integers). When the achieved values differ from what you requested, the estimator overwrites its stored `scale_factors` with the achieved ones and emits a warning, so inspecting `mitigator_options` shows the values that were actually used. Pass a `seed` to make the random gate sampling reproducible.
+Because folding is discrete, small circuits may not reach the requested scale factor exactly. Extrapolation always uses the **achieved** scale factors as the x-axis (they depend only on each circuit's foldable-gate count, not the random seed, and equal the requested values exactly for odd integers). Your `scale_factors` configuration is never modified; instead, when any requested value can't be reached exactly the estimator warns at `run` and attaches both the requested and achieved values to the returned job:
+
+```python
+job = estimator.run(circuits, observables=observables)
+job.requested_scale_factors()   # what you asked for, one list per circuit/observable pair
+job.achieved_scale_factors()    # what folding realised (the extrapolation x-axis), same shape
+```
+
+Both accessors return a list of lists (one inner list per circuit/observable pair) and take an optional pair index. Pass a `seed` to make the random gate sampling reproducible.
+
+### Per-circuit scale factors
+
+`scale_factors` can be either a single flat list applied to every circuit, or a **list of lists** — one list per submitted circuit — so each circuit uses its own scale factors. The number of lists must match the number of circuit/observable pairs passed to `run`:
+
+```python
+estimator.zne(
+    enabled=True,
+    # circuit 0 uses [1, 3, 5]; circuit 1 uses [1, 2, 4]
+    scale_factors=[[1, 3, 5], [1, 2, 4]],
+)
+job = estimator.run([circuit0, circuit1], observables=[obs0, obs1])
+```
 
 ## Extrapolation Methods
 
@@ -81,7 +102,7 @@ estimator.zne(
 |-----------|------|---------|-------------|
 | `enabled` | `bool` | — | Enable or disable ZNE. |
 | `fold_gates` | `list[str] \| None` | `None` | Gate names to fold (local folding only). `None` folds all two-qubit gates. |
-| `scale_factors` | `list[float]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. |
+| `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
 | `extrapolation_method` | `str` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, or `"linear"`. |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
