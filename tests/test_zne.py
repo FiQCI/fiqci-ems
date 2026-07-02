@@ -604,6 +604,27 @@ class TestEstimatorZNESettings:
 		assert estimator._zne["seed"] == 7
 		assert estimator.mitigator_options["zne"]["seed"] == 7
 
+	def test_zne_run_updates_scale_factors_to_achieved(self) -> None:
+		"""After run(), scale_factors reflect the values folding actually achieved (with a warning)."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[1, 2], folding_method="local", seed=0)
+
+		qc = QuantumCircuit(2)
+		for _ in range(3):  # 3 foldable CX gates -> scale 2 rounds to (3 + 2*2)/3 = 7/3
+			qc.cx(0, 1)
+
+		with pytest.warns(UserWarning, match="updating scale_factors to the achieved values"):
+			estimator.run(qc, SparsePauliOp(["ZZ"]), shots=1024)
+
+		assert estimator._zne["scale_factors"] == pytest.approx([1.0, 7 / 3])
+		# The stored (achieved) values are surfaced through mitigator_options for user inspection.
+		assert estimator.mitigator_options["zne"]["scale_factors"] == pytest.approx([1.0, 7 / 3])
+
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zne_scale_factor_below_one_raises(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Scale factors below 1 are rejected."""
