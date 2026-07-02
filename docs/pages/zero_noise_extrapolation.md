@@ -10,7 +10,7 @@ The core idea is:
 2. **Amplify the noise** by creating scaled versions of the circuit (e.g., at scale factors 1, 3, 5).
 3. **Extrapolate** the measured expectation values to the zero-noise point using a fitted model.
 
-Scale factors may be **any real number ≥ 1** (e.g. `[1, 1.5, 2, 3]`), not just odd integers — see [Arbitrary scale factors](#arbitrary-scale-factors) below.
+Scale factors may be **any real number ≥ 1** (e.g. `[1, 1.5, 2, 3]`), not just odd integers. See [Arbitrary scale factors](#arbitrary-scale-factors) below.
 
 Because noise grows predictably with circuit depth, measuring at multiple noise levels reveals the trend, and extrapolation removes the noise contribution.
 
@@ -46,7 +46,7 @@ Both accessors return a list of lists (one inner list per circuit/observable pai
 
 ### Per-circuit scale factors
 
-`scale_factors` can be either a single flat list applied to every circuit, or a **list of lists** — one list per submitted circuit — so each circuit uses its own scale factors. The number of lists must match the number of circuit/observable pairs passed to `run`:
+`scale_factors` can be either a single flat list applied to every circuit, or a **list of lists**, one list per submitted circuit, so each circuit uses its own scale factors. The number of lists must match the number of circuit/observable pairs passed to `run`:
 
 ```python
 estimator.zne(
@@ -68,6 +68,27 @@ After running circuits at each scale factor, the expectation values are extrapol
 - **Polynomial**: Fits a polynomial of a given degree to the data. The degree defaults to `min(n_scales - 1, 2)` and can be set with the `extrapolation_degree` parameter.
 
 - **Linear**: A special case of polynomial extrapolation with degree 1. Fits a straight line through the data points.
+
+### Custom extrapolation functions
+
+Instead of one of the built-in strings, `extrapolation_method` accepts a **user-defined callable**. It is invoked once per circuit/observable pair as `fn(expectation_values, scale_factors)` and must return a list of floats (the zero-noise estimate per observable):
+
+- `expectation_values`: a list with one entry per scale factor; each entry is itself the list of per-observable expectation values measured at that scale (shape `(n_scales, n_obs)`, the same layout the built-in functions receive).
+- `scale_factors`: the list of **achieved** scale factors for that pair (the extrapolation x-axis).
+
+```python
+import numpy as np
+
+def my_linear_fit(expectation_values, scale_factors):
+    y = np.asarray(expectation_values, dtype=float)  # (n_scales, n_obs)
+    x = np.asarray(scale_factors, dtype=float)
+    # Fit a line per observable and evaluate at x = 0.
+    return [float(np.polyval(np.polyfit(x, y[:, j], 1), 0.0)) for j in range(y.shape[1])]
+
+estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method=my_linear_fit)
+```
+
+`extrapolation_degree` is ignored when a callable is supplied.
 
 ## Usage
 
@@ -100,17 +121,17 @@ estimator.zne(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `enabled` | `bool` | — | Enable or disable ZNE. |
+| `enabled` | `bool` | - | Enable or disable ZNE. |
 | `fold_gates` | `list[str] \| None` | `None` | Gate names to fold (local folding only). `None` folds all two-qubit gates. |
 | `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
-| `extrapolation_method` | `str` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, or `"linear"`. |
+| `extrapolation_method` | `str \| Callable` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, `"linear"`, or a custom callable `fn(expectation_values, scale_factors) -> list[float]` (see [Custom extrapolation functions](#custom-extrapolation-functions)). |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
 | `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
 
 ## Examples
 
-- [Zero Noise Extrapolation Example](../notebooks/zero_noise_extrapolation_example) — runnable notebook demonstrating ZNE with default and custom settings.
+- [Zero Noise Extrapolation Example](../notebooks/zero_noise_extrapolation_example). Runnable notebook demonstrating ZNE with default and custom settings.
 
 ## References
 

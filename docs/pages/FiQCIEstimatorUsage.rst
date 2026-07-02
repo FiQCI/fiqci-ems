@@ -121,7 +121,7 @@ Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
      - ``"local"`` (per-gate folding) or ``"global"`` (whole-circuit folding). When ``"global"``, ``fold_gates`` is ignored.
    * - ``extrapolation_method``
      - ``"exponential"``
-     - Extrapolation fit method. One of: ``"exponential"``, ``"richardson"``, ``"polynomial"``, ``"linear"``.
+     - Extrapolation fit method. One of: ``"exponential"``, ``"richardson"``, ``"polynomial"``, ``"linear"``, or a user-defined callable invoked as ``fn(expectation_values, scale_factors)`` (returning a list of floats). ``expectation_values`` has shape ``(n_scales, n_obs)`` and ``scale_factors`` is the achieved scale-factor list for the pair.
    * - ``extrapolation_degree``
      - ``None``
      - Polynomial degree (only for ``"polynomial"`` method). Defaults to ``min(n_scales - 1, 2)``.
@@ -244,7 +244,7 @@ The handle also lets you inspect a multi-batch run before it finishes:
 
 .. note::
 
-   As with the sampler, submission is not atomic: if the backend rejects a circuit partway through, ``run`` logs a warning and still returns a handle (rejected/skipped batches report ``ERROR``/``CANCELLED`` — inspect ``job.statuses()``). In that case ``expectation_values()`` and ``result()`` raise :class:`~fiqci.ems.BatchFailedError`, since the values cannot be computed without all circuits.
+   As with the sampler, submission is not atomic. If the backend rejects a circuit partway through, ``run`` logs a warning and still returns a handle (rejected/skipped batches report ``ERROR``/``CANCELLED``. To inspect use ``job.statuses()``). In that case ``expectation_values()`` and ``result()`` raise :class:`~fiqci.ems.BatchFailedError`, since the values cannot be computed without all circuits.
 
 Results
 -------
