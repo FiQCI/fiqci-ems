@@ -391,17 +391,13 @@ class FiQCIEstimator:
 			fold_gates = None
 		if len(scale_factors) < 2:
 			raise ValueError("At least two scale factors are required for extrapolation.")
-		if (
-			isinstance(scale_factors, list)
-			and any(s <= 0 for s in scale_factors)
-			and any(s % 2 == 0 for s in scale_factors)
-		):
+		if not all(isinstance(s, int) and s > 0 and s % 2 == 1 for s in scale_factors):
 			raise ValueError("Scale factors must be positive odd integers.")
 		if fold_gates is not None and not isinstance(fold_gates, list):
 			raise ValueError("fold_gates must be a list of gate names or None.")
 		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "polynomial":
 			raise ValueError("Extrapolation degree must be at least 1 for polynomial extrapolation.")
-		if extrapolation_method not in ("polynomial") and extrapolation_degree is not None:
+		if extrapolation_method not in ["polynomial"] and extrapolation_degree is not None:
 			warnings.warn(
 				"Extrapolation degree is only applicable for polynomial extrapolation and will be ignored for other methods."
 			)
@@ -414,7 +410,7 @@ class FiQCIEstimator:
 		self._zne["fold_gates"] = fold_gates
 		self._zne["scale_factors"] = scale_factors
 		self._zne["extrapolation_method"] = extrapolation_method
-		if extrapolation_method in ("polynomial", "linear"):
+		if extrapolation_method in ["polynomial"] and extrapolation_degree is not None:
 			self._zne["extrapolation_degree"] = extrapolation_degree
 		else:
 			self._zne["extrapolation_degree"] = None
