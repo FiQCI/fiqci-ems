@@ -337,6 +337,38 @@ class TestZNECircuitsPass:
 		cx_count = sum(1 for inst in result.data if inst.operation.name == "cx")
 		assert cx_count == 9  # 3 original * 3 scale
 
+	def test_local_folding_preserves_semantics_for_non_self_inverse_gate(self) -> None:
+		"""Local folding G G† G must equal G for non-self-inverse gates (e.g. CRX)."""
+		from qiskit.quantum_info import Operator
+
+		qc = QuantumCircuit(2)
+		qc.crx(0.5, 0, 1)
+
+		pm = PassManager(ZNECircuits(scale_factor=3, folding_method="local"))
+		folded = pm.run(qc)
+
+		assert np.allclose(Operator(qc).data, Operator(folded).data, atol=1e-10)
+
+	def test_global_folding_preserves_semantics_for_non_self_inverse_gate(self) -> None:
+		"""Global folding C C† C must equal C for non-self-inverse gates (e.g. CRX)."""
+		from qiskit.quantum_info import Operator
+
+		qc = QuantumCircuit(2, 2)
+		qc.crx(0.5, 0, 1)
+		qc.measure([0, 1], [0, 1])
+
+		pm = PassManager(ZNECircuits(scale_factor=3, folding_method="global"))
+		folded = pm.run(qc)
+
+		qc_nm = QuantumCircuit(2)
+		qc_nm.crx(0.5, 0, 1)
+		folded_nm = QuantumCircuit(2)
+		for inst in folded.data:
+			if inst.operation.name not in ("measure", "barrier"):
+				folded_nm.append(inst.operation, inst.qubits)
+
+		assert np.allclose(Operator(qc_nm).data, Operator(folded_nm).data, atol=1e-10)
+
 
 class TestGetZNECircuits:
 	"""Tests for _get_zne_circuits helper function."""
@@ -562,3 +594,14 @@ class TestEstimatorZNESettings:
 		estimator.zne(enabled=True, extrapolation_method=method)
 
 		assert estimator._zne["extrapolation_method"] == method
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_extraplation_degree_only_for_polynomial(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Test that extrapolation_degree is only set for polynomial method."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, extrapolation_method="linear", extrapolation_degree=3)
+
+		assert estimator._zne["extrapolation_method"] == "linear"
+		assert estimator._zne["extrapolation_degree"] is None

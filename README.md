@@ -93,7 +93,7 @@ result = job.result()
 sampler.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
 # See applied and available options
-sampler.mitigation_options()
+sampler.mitigation_options
 ```
 
 ### FiQCIEstimator - expectation values
@@ -126,7 +126,7 @@ jobs = job_collection.jobs()
 estimator.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
 # See applied and available options
-estimator.mitigation_options()
+estimator.mitigation_options
 ```
 
 ### FiQCIBackend - drop-in backend replacement
@@ -149,7 +149,7 @@ result = job.result()
 backend.rem(enabled=True, calibration_shots=2000, calibration_file="cals.json")
 
 # See applied and available options
-backend.mitigation_options()
+backend.mitigation_options
 ```
 
 Access raw (pre-mitigation) counts via `backend.raw_counts` (populated only after the run's
