@@ -1,3 +1,8 @@
+## [WIP] [1.0.0] 3.7.2026
+
+## Changed
+- added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
+
 ## [0.8.1] 12.6.2026
 
 ## Changed
