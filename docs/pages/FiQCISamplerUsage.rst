@@ -193,6 +193,9 @@ The handle also lets you inspect a multi-batch run before it finishes:
    job.status()          # single aggregated status across all batches
    job.done()            # True once every batch has reached a terminal state
    job.partial_results() # per-batch results for batches that have already completed
+   job.mitigator_options # frozen snapshot of the mitigation settings this run used
+
+Unlike :attr:`~fiqci.ems.FiQCISampler.mitigator_options` on the sampler (which reflects the *current*, mutable settings), the handle's ``mitigator_options`` is a snapshot frozen at submission. It reports the ``mitigation_level``, ``rem``, ``dd`` and ``pauli_twirl`` settings this run actually used, and never changes even if you reconfigure the sampler afterwards. (The live M3 mitigator object is omitted from the ``rem`` entry.)
 
 If a batch fails, ``job.result()`` raises :class:`~fiqci.ems.BatchFailedError` identifying the failing batch and the input circuit indices it covered, instead of an opaque error during combination.
 
