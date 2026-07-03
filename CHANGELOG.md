@@ -1,3 +1,9 @@
+## [WIP] [1.0.0] 3.7.2026
+
+## Changed
+- migrate `combine_pauli_ops` to use Qiskit's `Paulilist.group_qubit_wise_commuting`
+- `get_obs_subcircuits` now directly takes observables as an argument and handles calling `get_measurement_settings` inside the function
+
 ## [0.8.1] 12.6.2026
 
 ## Changed
