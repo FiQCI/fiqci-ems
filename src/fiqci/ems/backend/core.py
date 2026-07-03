@@ -23,7 +23,13 @@ from fiqci.ems.mitigators.dd import DDGateSequenceEntry, build_dd_options
 from fiqci.ems.transpiler_passes.pauli_twirl import get_twirled_circuits
 from fiqci.ems.utils import probabilities_to_counts
 from fiqci.ems.backend.jobs import MitigatedJob, BatchedJob, _UnsubmittedBatch
-from fiqci.ems.backend.counts import _key_layout, _reduce_counts, _expand_counts, _average_counts, _trim_result_to_groups
+from fiqci.ems.backend.counts import (
+	_key_layout,
+	_reduce_counts,
+	_expand_counts,
+	_average_counts,
+	_trim_result_to_groups,
+)
 
 from qiskit import QuantumCircuit
 from qiskit.circuit import Gate
@@ -31,6 +37,7 @@ from qiskit.providers import JobStatus, JobV1
 from qiskit.result import Result
 
 logger: logging.Logger = logging.getLogger(__name__)
+
 
 class FiQCIBackend:
 	"""FiQCI backend wrapper that applies error mitigation automatically.

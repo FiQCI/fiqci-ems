@@ -67,7 +67,8 @@ class PartialBatch(NamedTuple):
 	status: JobStatus
 	job_id: str
 	result: Result | None
-	
+
+
 class BatchedJob:
 	"""Lazy handle over one or more backend jobs submitted as ordered batches.
 
