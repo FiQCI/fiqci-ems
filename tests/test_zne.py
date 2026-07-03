@@ -628,6 +628,37 @@ class TestEstimatorZNESettings:
 		assert np.allclose(job.achieved_scale_factors(), [[1.0, 7 / 3]])
 		assert np.allclose(job.achieved_scale_factors(0), [1.0, 7 / 3])
 
+	def test_zne_job_mitigator_options_snapshot(self) -> None:
+		"""The estimator job reports a frozen snapshot merging ZNE config with the backend stack."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=[1, 3], folding_method="global", extrapolation_method="richardson", seed=7
+		)
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+		job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=1024)
+
+		options = job.mitigator_options
+		# ZNE settings the run used.
+		assert options["zne"]["enabled"] is True
+		assert options["zne"]["folding_method"] == "global"
+		assert options["zne"]["extrapolation_method"] == "richardson"
+		assert options["zne"]["seed"] == 7
+		# Merged with the underlying backend job's snapshot (level 0 here -> all off).
+		assert options["mitigation_level"] == 0
+		assert options["rem"]["enabled"] is False
+
+		# Mutating the estimator afterwards does not change the job's snapshot.
+		estimator.zne(enabled=True, folding_method="local", seed=99)
+		assert job.mitigator_options["zne"]["folding_method"] == "global"
+		assert job.mitigator_options["zne"]["seed"] == 7
+
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zne_scale_factor_below_one_raises(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Scale factors below 1 are rejected."""

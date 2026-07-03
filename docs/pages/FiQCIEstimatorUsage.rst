@@ -240,6 +240,9 @@ The handle also lets you inspect a multi-batch run before it finishes:
    job.status()          # single aggregated status across all batches
    job.done()            # True once every batch has reached a terminal state
    job.partial_results() # per-batch results for batches that have already completed
+   job.mitigator_options # frozen snapshot of the mitigation settings this run used
+
+Unlike :attr:`~fiqci.ems.FiQCIEstimator.mitigator_options` on the estimator (which reflects the *current*, mutable settings), the handle's ``mitigator_options`` is a snapshot frozen at submission. It reports the ``zne`` configuration together with the underlying ``mitigation_level``, ``rem``, ``dd`` and ``pauli_twirl`` settings this run actually used, and never changes even if you reconfigure the estimator afterwards. (The per-pair scale factors are available separately via ``requested_scale_factors()`` / ``achieved_scale_factors()`` below.)
 
 
 .. note::
@@ -270,6 +273,8 @@ Results
      - ZNE scale factors requested for the run, one list per circuit/observable pair
    * - ``achieved_scale_factors(index=None)``
      - ZNE scale factors folding actually realised (the extrapolation x-axis), same shape
+   * - ``mitigator_options``
+     - Frozen snapshot of the mitigation settings this run used (``zne`` config plus the backend ``mitigation_level``/``rem``/``dd``/``pauli_twirl``)
 
 Examples
 --------

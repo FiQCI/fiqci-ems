@@ -300,6 +300,18 @@ class FiQCIEstimator:
 		zne_extrapolation_method = self._zne["extrapolation_method"]
 		zne_extrapolation_degree = self._zne["extrapolation_degree"]
 
+		# Freeze the full ZNE configuration for reporting on the returned job. Copied so later zne()
+		# mutations do not alter what the job reports it ran with. The realised per-pair scale factors
+		# are exposed separately via the job's requested/achieved_scale_factors() accessors.
+		zne_options_snapshot: dict[str, Any] = {
+			"enabled": self._zne["enabled"],
+			"fold_gates": list(self._zne["fold_gates"]) if self._zne["fold_gates"] is not None else None,
+			"folding_method": self._zne["folding_method"],
+			"extrapolation_method": self._zne["extrapolation_method"],
+			"extrapolation_degree": self._zne["extrapolation_degree"],
+			"seed": self._zne["seed"],
+		}
+
 		def _compute() -> tuple[list, list]:
 			"""Fetch results and compute per-pair (and ZNE-extrapolated) expectation values.
 
@@ -360,7 +372,9 @@ class FiQCIEstimator:
 				return expectation_values, all_zne_expvs
 			return expectation_values, expectation_values
 
-		return FiQCIEstimatorJob(job, _compute, observables, pair_requested_scale_factors, pair_scale_factors)
+		return FiQCIEstimatorJob(
+			job, _compute, observables, pair_requested_scale_factors, pair_scale_factors, zne_options_snapshot
+		)
 
 	def run(
 		self,
@@ -533,6 +547,7 @@ class FiQCIEstimatorJob:
 		observables,
 		requested_scale_factors: list[list[float]] | None = None,
 		achieved_scale_factors: list[list[float]] | None = None,
+		zne_options: dict[str, Any] | None = None,
 	) -> None:
 		"""Initialize the estimator job.
 
@@ -544,12 +559,15 @@ class FiQCIEstimatorJob:
 		        when ZNE is disabled).
 		    achieved_scale_factors: ZNE scale factors actually realised by folding for each pair. The
 		        x-axis used for extrapolation (empty when ZNE is disabled).
+		    zne_options: Frozen snapshot of the ZNE configuration used at submission (folding/extrapolation
+		        settings), surfaced via :attr:`mitigator_options`. ``None`` when unknown.
 		"""
 		self.mitigated_job = job
 		self._compute_fn = compute_fn
 		self._observables = observables
 		self._requested_scale_factors = requested_scale_factors if requested_scale_factors is not None else []
 		self._achieved_scale_factors = achieved_scale_factors if achieved_scale_factors is not None else []
+		self._zne_options = zne_options if zne_options is not None else {}
 		self._expectation_values: list | None = None
 		self._raw_expectation_values: list | None = None
 		self._computed = False
@@ -617,6 +635,19 @@ class FiQCIEstimatorJob:
 		if index is not None:
 			return self._achieved_scale_factors[index]
 		return self._achieved_scale_factors
+
+	@property
+	def mitigator_options(self) -> dict[str, Any]:
+		"""Mitigation settings frozen at submission time for this estimator run.
+
+		Merges the ZNE configuration with the underlying backend job's snapshot (``mitigation_level``,
+		``rem``, ``dd``, ``pauli_twirl``), so the returned dict describes the full mitigation stack the
+		run actually used. Unlike :attr:`FiQCIEstimator.mitigator_options` (which is live and mutable),
+		this never changes after submission. Per-pair scale factors are available via
+		:meth:`requested_scale_factors` / :meth:`achieved_scale_factors`.
+		"""
+		backend_options = getattr(self.mitigated_job, "mitigator_options", None) or {}
+		return {"zne": self._zne_options, **backend_options}
 
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate polling/attribute access (status, done, job_ids, …) to the underlying job."""

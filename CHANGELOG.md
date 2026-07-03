@@ -1,3 +1,17 @@
+## [WIP] [1.0.0] 3.7.2026
+
+## Changed
+- Zero noise extrapolation now supports any >=1 floats as scale factors
+  - If exact given value cannot be reached, and approximation is used (fractional folding). If exact values is not achieved log a warning
+- `zne()` now accepts either a list of floats or a list of list of floats
+  - this allows the user to pass circuit specific scale factors
+- fix bug in folding method handling
+- expose `requested_scale_factors()` and `achieved_scale_factors` in `FiQCIEstimatorJob`
+  - allow the user to view per job used scale factors even if estimator config changed 
+- expose `mitigator_options` on the returned job handles (`BatchedJob`/`MitigatedJob`, and `FiQCIEstimatorJob`)
+  - a frozen snapshot of the mitigation settings (`mitigation_level`, `rem`, `dd`, `pauli_twirl`, plus `zne` on the estimator job) in effect at submission, so the user can inspect what a run actually used even after the backend/estimator config is mutated
+  - unlike the live, mutable `mitigator_options` property on the backend/estimator, the job's snapshot never changes; the live M3 mitigator object is omitted from the REM entry
+
 ## [0.8.1] 12.6.2026
 
 ## Changed
