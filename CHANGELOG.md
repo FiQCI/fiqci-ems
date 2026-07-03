@@ -1,3 +1,12 @@
+## [WIP] [1.0.0] 3.7.2026
+
+## Changed
+- Zero noise extrapolation now supports any >=1 floats as scale factors
+  - If exact given value cannot be reached, and approximation is used (fractional folding)
+- `zne()` now accepts either a list of floats or a list of list of floats
+  - this allows the user to pass circuit specific scale factors
+- fix bug in folding method handling    
+
 ## [0.8.1] 12.6.2026
 
 ## Changed
