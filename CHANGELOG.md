@@ -1,4 +1,4 @@
-## WIP [1.0.0] 3.7.2026
+## [WIP] [1.0.0] 3.7.2026
 
 ## Changed
 - refactor monolithic `fiqci_backend` into a `backend` module
