@@ -44,6 +44,8 @@ job.achieved_scale_factors()    # what folding realised (the extrapolation x-axi
 
 Both accessors return a list of lists (one inner list per circuit/observable pair) and take an optional pair index. Pass a `seed` to make the random gate sampling reproducible.
 
+The returned job also carries `job.mitigator_options`, a snapshot of the full ZNE configuration (folding/extrapolation settings) in effect at submission, merged with the underlying backend mitigation settings. Unlike `estimator.mitigator_options`, this snapshot is frozen and reports what the run actually used even if you reconfigure the estimator afterwards.
+
 ### Per-circuit scale factors
 
 `scale_factors` can be either a single flat list applied to every circuit, or a **list of lists** — one list per submitted circuit — so each circuit uses its own scale factors. The number of lists must match the number of circuit/observable pairs passed to `run`:
