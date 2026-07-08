@@ -8,6 +8,7 @@ fiqci.ems.transpiler\_passes.basis\_measurement
 
    .. autosummary::
    
+      get_measurement_settings
       get_obs_subcircuits
    
    .. rubric:: Classes
