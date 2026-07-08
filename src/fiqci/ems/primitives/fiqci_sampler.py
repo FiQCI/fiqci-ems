@@ -7,7 +7,7 @@ from typing import Any
 
 from fiqci.ems import FiQCIBackend
 from qiskit import QuantumCircuit
-from fiqci.ems.fiqci_backend import BatchedJob, MitigatedJob
+from fiqci.ems.backend import BatchedJob, MitigatedJob
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
 logger: logging.Logger = logging.getLogger(__name__)

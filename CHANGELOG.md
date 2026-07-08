@@ -3,6 +3,11 @@
 ## Changed
 - migrate `combine_pauli_ops` to use Qiskit's `Paulilist.group_qubit_wise_commuting`
 - `get_obs_subcircuits` now directly takes observables as an argument and handles calling `get_measurement_settings` inside the function
+- https://github.com/FiQCI/fiqci-ems/pull/37
+
+- refactor monolithic `fiqci_backend` into a `backend` module
+  - split into `core.py`, `counts.py`, and `jobs.py`
+- https://github.com/FiQCI/fiqci-ems/pull/38
 
 ## [0.8.1] 12.6.2026
 

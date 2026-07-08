@@ -182,7 +182,7 @@ Running Circuits
 
    job = sampler.run(circuits, shots=1024, max_batch_size=100)
 
-``run`` returns **immediately** with a lazy job handle without waiting for results: a :class:`~fiqci.ems.fiqci_backend.BatchedJob` at level 0, or a :class:`~fiqci.ems.fiqci_backend.MitigatedJob` at level 1+. The per-batch ``job_id()`` values and an aggregated ``status()`` are available right away; error mitigation and result combination are computed the first time you call ``job.result()`` (which then exposes a single combined ``Result`` indexed in input order, and caches it).
+``run`` returns **immediately** with a lazy job handle without waiting for results: a :class:`~fiqci.ems.backend.jobs.BatchedJob` at level 0, or a :class:`~fiqci.ems.backend.jobs.MitigatedJob` at level 1+. The per-batch ``job_id()`` values and an aggregated ``status()`` are available right away; error mitigation and result combination are computed the first time you call ``job.result()`` (which then exposes a single combined ``Result`` indexed in input order, and caches it).
 
 The handle also lets you inspect a multi-batch run before it finishes:
 
