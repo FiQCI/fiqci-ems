@@ -14,8 +14,8 @@ from qiskit.quantum_info import SparsePauliOp, Pauli
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
 	get_obs_subcircuits,
+	get_measurement_settings,
 	_get_observable_circuit_index,
-	_combine_pauli_ops,
 )
 from fiqci.ems.utils import _remove_idle_wires
 from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
@@ -83,7 +83,7 @@ class FiQCIEstimator:
 		self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False
 	) -> int | dict[str, int]:
 		"""Calculate total circuits generated for a given number of base circuits and observables."""
-		measurement_settings = _combine_pauli_ops(
+		measurement_settings = get_measurement_settings(
 			observables if isinstance(observables, SparsePauliOp) else observables[0]
 		)
 		num_measurement_circuits = len(measurement_settings)
@@ -149,18 +149,15 @@ class FiQCIEstimator:
 
 			# if lengths match, we pair them elementwise
 			else:
-				obs_circuits = [
-					get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops)
-					for circ, obs in zip(circuits, observables)
-				]
+				obs_circuits = [get_obs_subcircuits([circ], obs, ops) for circ, obs in zip(circuits, observables)]
 
 		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
-			obs_circuits = [get_obs_subcircuits([circ], _combine_pauli_ops(observables), ops) for circ in circuits]
+			obs_circuits = [get_obs_subcircuits([circ], observables, ops) for circ in circuits]
 
 		# if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, QuantumCircuit):
-			obs_circuits = [get_obs_subcircuits([circuits], _combine_pauli_ops(observables), ops)]
+			obs_circuits = [get_obs_subcircuits([circuits], observables, ops)]
 		else:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
@@ -190,7 +187,7 @@ class FiQCIEstimator:
 		for i, obs_circ_groups in enumerate(obs_circuits):
 			obs_circs_list = [group[0] for group in obs_circ_groups]
 
-			measurement_settings = _combine_pauli_ops(
+			measurement_settings = get_measurement_settings(
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
 			)
 			pair_measurement_settings.append(measurement_settings)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from qiskit import QuantumCircuit, ClassicalRegister
 from qiskit.circuit import Instruction
@@ -71,24 +71,25 @@ class ModifyMeasurementBasis(TransformationPass):
 
 
 def get_obs_subcircuits(
-	subcircuits: list[QuantumCircuit],
-	measurement_settings: list[dict[int, str]],
-	ops: dict[str, Instruction] | None = None,
+	subcircuits: list[QuantumCircuit], observable: SparsePauliOp, ops: dict[str, Instruction] | None = None
 ) -> list[dict[int, QuantumCircuit]]:
 	"""
-	Generate modified subcircuits for each measurement setting by applying the _ModifyMeasurementBasis transpiler pass. This function takes a list of subcircuits and a list of measurement settings,
-	and returns a list of dictionaries mapping circuit indices to their corresponding modified subcircuits for each measurement setting.
+	Generate modified subcircuits for each measurement group derived from the observable.
 
-	TODO: pass observables direclty to this function and determine measerement_settings here. Easier manual use if desired and cleaner code.
+	Measurement groups are determined automatically via get_measurement_settings. Each group
+	produces one circuit per input subcircuit with the appropriate basis-rotation gates and
+	measurements appended.
 
 	Args:
 		subcircuits: A list of QuantumCircuit objects.
-		measurement_settings: A list of dictionaries mapping qubit indices to measurement bases.
+		observable: The SparsePauliOp observable to measure.
 		ops: An optional dictionary mapping measurement basis labels to custom Instruction objects.
 
 	Returns:
-		A list of dictionaries mapping circuit indices to their corresponding modified subcircuits for each measurement setting.
+		A list of dictionaries mapping circuit indices to their corresponding modified subcircuits,
+		one dict per measurement group.
 	"""
+	measurement_settings = get_measurement_settings(observable)
 
 	pms = [PassManager([ModifyMeasurementBasis([setting], ops)]) for setting in measurement_settings]
 
@@ -133,54 +134,26 @@ def _get_observable_circuit_index(pauli: Pauli, combined: list[dict[int, str]]) 
 	return {"circuit_index": None, "obs_indices": [], "num_meas": 0}
 
 
-def _combine_pauli_ops(op: SparsePauliOp) -> list[dict[int, str]]:  # noqa: C901
-	"""Combine Pauli operators that have no conflicting non-identity components.
+def get_measurement_settings(op: SparsePauliOp) -> list[dict[int, str]]:
+	"""Return the measurement settings for a SparsePauliOp.
+
+	Groups Pauli operators by qubit-wise commutativity. Each returned dict maps qubit index to
+	Pauli basis ("X", "Y", or "Z") and represents one circuit run. Paulis in the same group
+	have no conflicting basis requirements on any qubit and can be measured together.
 
 	Args:
-	    op (SparsePauliOp): The SparsePauliOp to analyze.
+	    op: The SparsePauliOp to analyze.
 
 	Returns:
-	    list[dict[int, str]]: A list of combined measurement settings, where each dict
-	                        maps qubit indices to Pauli basis measurements.
+	    A list of dicts mapping qubit index to measurement basis, one per measurement group.
 	"""
 
-	pauli_strings = [label[::-1] for label in op.paulis.to_labels()]
-
-	combined_settings = []
-	used = [False] * len(pauli_strings)
-
-	for i, pauli_string in enumerate(pauli_strings):
-		if used[i]:
-			continue
-
-		# Start a new combined setting with the current Pauli string
-		combined = {}
-		for qubit_index, pauli in enumerate(pauli_string):
-			if pauli != "I":
-				combined[qubit_index] = pauli
-
-		used[i] = True
-
-		# Try to combine with remaining Pauli strings
-		for j in range(i + 1, len(pauli_strings)):
-			if used[j]:
-				continue
-
-			# Check if pauli_strings[j] can be combined with current combined setting
-			can_combine = True
-			for qubit_index, pauli in enumerate(pauli_strings[j]):
-				if pauli != "I":
-					if qubit_index in combined and combined[qubit_index] != pauli:
-						can_combine = False
-						break
-
-			# If compatible, add to combined setting
-			if can_combine:
-				for qubit_index, pauli in enumerate(pauli_strings[j]):
-					if pauli != "I":
-						combined[qubit_index] = pauli
-				used[j] = True
-
-		combined_settings.append(combined)
-
-	return combined_settings
+	result_ops = []
+	for group_ops in op.paulis.group_qubit_wise_commuting():
+		combined: dict[int, str] = {}
+		for pauli in group_ops:
+			for qubit_index, basis in enumerate(cast(Pauli, pauli).to_label()[::-1]):
+				if basis != "I":
+					combined[qubit_index] = basis
+		result_ops.append(dict(sorted(combined.items())))
+	return result_ops
