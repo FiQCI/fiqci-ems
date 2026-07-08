@@ -1,7 +1,7 @@
-fiqci.ems.fiqci\_backend
-========================
+fiqci.ems.backend.jobs
+======================
 
-.. automodule:: fiqci.ems.fiqci_backend
+.. automodule:: fiqci.ems.backend.jobs
 
    
    .. rubric:: Classes
@@ -9,7 +9,6 @@ fiqci.ems.fiqci\_backend
    .. autosummary::
    
       BatchedJob
-      FiQCIBackend
       MitigatedJob
       PartialBatch
    

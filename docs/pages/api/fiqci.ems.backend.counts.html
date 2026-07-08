@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>fiqci.ems.transpiler_passes.zne_circuits &#8212; FiQCI EMS</title>
+    <title>fiqci.ems.backend.counts &#8212; FiQCI EMS</title>
   
   
   
@@ -46,13 +46,13 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/api/fiqci.ems.transpiler_passes.zne_circuits';</script>
-    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/api/fiqci.ems.transpiler_passes.zne_circuits.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = 'pages/api/fiqci.ems.backend.counts';</script>
+    <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/api/fiqci.ems.backend.counts.html" />
     <link rel="icon" href="../../_static/FiQCI-logo-nobg.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="fiqci.ems.utils" href="fiqci.ems.utils.html" />
-    <link rel="prev" title="fiqci.ems.transpiler_passes.pauli_twirl" href="fiqci.ems.transpiler_passes.pauli_twirl.html" />
+    <link rel="next" title="fiqci.ems.backend.jobs" href="fiqci.ems.backend.jobs.html" />
+    <link rel="prev" title="fiqci.ems.backend.core" href="fiqci.ems.backend.core.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
@@ -169,9 +169,9 @@
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="../Api.html">API Reference</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="fiqci.ems.html">fiqci.ems</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
-<li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.backend.html">fiqci.ems.backend</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3 current active has-children"><a class="reference internal" href="fiqci.ems.backend.html">fiqci.ems.backend</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.backend.core.html">fiqci.ems.backend.core</a></li>
-<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.backend.counts.html">fiqci.ems.backend.counts</a></li>
+<li class="toctree-l4 current active"><a class="current reference internal" href="#">fiqci.ems.backend.counts</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.backend.jobs.html">fiqci.ems.backend.jobs</a></li>
 </ul>
 </details></li>
@@ -186,10 +186,10 @@
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.primitives.fiqci_sampler.html">fiqci.ems.primitives.fiqci_sampler</a></li>
 </ul>
 </details></li>
-<li class="toctree-l3 current active has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="fiqci.ems.transpiler_passes.html">fiqci.ems.transpiler_passes</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.basis_measurement.html">fiqci.ems.transpiler_passes.basis_measurement</a></li>
 <li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.pauli_twirl.html">fiqci.ems.transpiler_passes.pauli_twirl</a></li>
-<li class="toctree-l4 current active"><a class="current reference internal" href="#">fiqci.ems.transpiler_passes.zne_circuits</a></li>
+<li class="toctree-l4"><a class="reference internal" href="fiqci.ems.transpiler_passes.zne_circuits.html">fiqci.ems.transpiler_passes.zne_circuits</a></li>
 </ul>
 </details></li>
 <li class="toctree-l3"><a class="reference internal" href="fiqci.ems.utils.html">fiqci.ems.utils</a></li>
@@ -256,7 +256,7 @@
       
       
       
-      <li><a href="../../_sources/pages/api/fiqci.ems.transpiler_passes.zne_circuits.rst" target="_blank"
+      <li><a href="../../_sources/pages/api/fiqci.ems.backend.counts.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -319,9 +319,7 @@
 <button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
     <i class="fa-solid fa-magnifying-glass fa-lg"></i>
 </button>
-<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
-    <span class="fa-solid fa-list"></span>
-</button>
+
 </div></div>
       
     </div>
@@ -332,23 +330,11 @@
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>fiqci.ems.transpiler_passes.zne_circuits</h1>
+    <h1>fiqci.ems.backend.counts</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
             
-            <div>
-                <h2> Contents </h2>
-            </div>
-            <nav aria-label="Page">
-                <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits"><code class="docutils literal notranslate"><span class="pre">ZNECircuits</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.__init__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.run()</span></code></a></li>
-</ul>
-</li>
-</ul>
-            </nav>
         </div>
     </div>
 </div>
@@ -358,53 +344,8 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="module-fiqci.ems.transpiler_passes.zne_circuits">
-<span id="fiqci-ems-transpiler-passes-zne-circuits"></span><h1>fiqci.ems.transpiler_passes.zne_circuits<a class="headerlink" href="#module-fiqci.ems.transpiler_passes.zne_circuits" title="Link to this heading">#</a></h1>
-<p class="rubric">Classes</p>
-<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits" title="fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ZNECircuits</span></code></a>(*args, **kwargs)</p></td>
-<td><p>A pass to generate circuits for zero-noise extrapolation (ZNE) by folding gates.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<dl class="py class">
-<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ZNECircuits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">TransformationPass</span></code></p>
-<p>A pass to generate circuits for zero-noise extrapolation (ZNE) by folding gates.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fold_gates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folding_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'local'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Initialize the ZNECircuits pass.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>fold_gates</strong> – An optional iterable of gate names to fold. If None, all gates will be folded.</p></li>
-<li><p><strong>scale_factor</strong> – The factor by which to scale the circuit.</p></li>
-<li><p><strong>folding_method</strong> – The method to use for folding gates (“local” or “global”).</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DAGCircuit</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DAGCircuit</span></span></span><a class="headerlink" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run" title="Link to this definition">#</a></dt>
-<dd><p>Run the ZNECircuits pass on the given DAGCircuit.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>dag</strong> – The input DAGCircuit to transform.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A new DAGCircuit with folded gates for ZNE.</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
+  <section id="module-fiqci.ems.backend.counts">
+<span id="fiqci-ems-backend-counts"></span><h1>fiqci.ems.backend.counts<a class="headerlink" href="#module-fiqci.ems.backend.counts" title="Link to this heading">#</a></h1>
 </section>
 
 
@@ -419,20 +360,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="fiqci.ems.transpiler_passes.pauli_twirl.html"
+       href="fiqci.ems.backend.core.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">fiqci.ems.transpiler_passes.pauli_twirl</p>
+        <p class="prev-next-title">fiqci.ems.backend.core</p>
       </div>
     </a>
     <a class="right-next"
-       href="fiqci.ems.utils.html"
+       href="fiqci.ems.backend.jobs.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">fiqci.ems.utils</p>
+        <p class="prev-next-title">fiqci.ems.backend.jobs</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -442,27 +383,6 @@
             </div>
             
             
-              
-                <dialog id="pst-secondary-sidebar-modal"></dialog>
-                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
-
-
-  <div class="sidebar-secondary-item"><div
-    id="pst-page-navigation-heading-2"
-    class="page-toc tocsection onthispage">
-    <i class="fa-solid fa-list"></i> Contents
-  </div>
-  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits"><code class="docutils literal notranslate"><span class="pre">ZNECircuits</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.__init__()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.run()</span></code></a></li>
-</ul>
-</li>
-</ul>
-  </nav></div>
-
-</div></div>
               
             
           </div>

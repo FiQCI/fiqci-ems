@@ -10,7 +10,7 @@
    :toctree:
    :recursive:
 
-   fiqci_backend
+   backend
    mitigators
    primitives
    transpiler_passes
