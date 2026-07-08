@@ -1,3 +1,9 @@
+## [WIP] [1.0.0] 3.7.2026
+
+## Changed
+- refactor monolithic `fiqci_backend` into a `backend` module
+  - split into `core.py`, `counts.py`, and `jobs.py`
+
 ## [0.8.1] 12.6.2026
 
 ## Changed
