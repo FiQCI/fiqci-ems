@@ -4,20 +4,23 @@ import pytest
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
+from qiskit.converters import circuit_to_dag
+
 from fiqci.ems.transpiler_passes.basis_measurement import (
+	ModifyMeasurementBasis,
 	get_obs_subcircuits,
-	_combine_pauli_ops,
+	get_measurement_settings,
 	_get_observable_circuit_index,
 )
 
 
-class TestCombinePauliOps:
-	"""Tests for _combine_pauli_ops."""
+class TestGetMeasurementSettings:
+	"""Tests for get_measurement_settings."""
 
 	def test_single_pauli(self) -> None:
 		"""Test combining a single Pauli operator."""
 		op = SparsePauliOp.from_list([("ZZ", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		assert len(result) == 1
 		assert result[0] == {0: "Z", 1: "Z"}
@@ -26,7 +29,7 @@ class TestCombinePauliOps:
 		"""Test that compatible Pauli operators are combined into one setting."""
 		# ZI and IZ have no conflicts -> should combine
 		op = SparsePauliOp.from_list([("ZI", 1.0), ("IZ", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		assert len(result) == 1
 		# Pauli labels are reversed internally, so ZI -> qubit 1: Z, IZ -> qubit 0: Z
@@ -36,14 +39,14 @@ class TestCombinePauliOps:
 		"""Test that conflicting Pauli operators get separate settings."""
 		# ZI and XI conflict on qubit 1
 		op = SparsePauliOp.from_list([("ZI", 1.0), ("XI", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		assert len(result) == 2
 
 	def test_identity_only(self) -> None:
 		"""Test a Pauli with only identity terms."""
 		op = SparsePauliOp.from_list([("II", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		assert len(result) == 1
 		assert result[0] == {}  # No non-identity qubits
@@ -52,7 +55,7 @@ class TestCombinePauliOps:
 		"""Test a mix of compatible and conflicting operators."""
 		# ZZ and ZI are compatible (both Z on qubit 1), XI conflicts with Z on qubit 1
 		op = SparsePauliOp.from_list([("ZZ", 1.0), ("ZI", 1.0), ("XI", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		# ZZ and ZI should combine, XI separate
 		assert len(result) == 2
@@ -60,7 +63,7 @@ class TestCombinePauliOps:
 	def test_three_qubit_operators(self) -> None:
 		"""Test with 3-qubit Pauli operators."""
 		op = SparsePauliOp.from_list([("ZZI", 1.0), ("IIZ", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		# No conflicts, should combine
 		assert len(result) == 1
@@ -69,7 +72,7 @@ class TestCombinePauliOps:
 	def test_all_bases(self) -> None:
 		"""Test with X, Y, and Z bases."""
 		op = SparsePauliOp.from_list([("XYZ", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		assert len(result) == 1
 		# XYZ reversed: Z on qubit 0, Y on qubit 1, X on qubit 2
@@ -78,7 +81,7 @@ class TestCombinePauliOps:
 	def test_same_basis_different_qubits_combine(self) -> None:
 		"""Test that same basis on different qubits combines."""
 		op = SparsePauliOp.from_list([("XI", 1.0), ("IX", 1.0)])
-		result = _combine_pauli_ops(op)
+		result = get_measurement_settings(op)
 
 		assert len(result) == 1
 		assert result[0] == {0: "X", 1: "X"}
@@ -166,8 +169,7 @@ class TestGetObsSubcircuits:
 		qc.h(0)
 		qc.cx(0, 1)
 
-		settings = [{0: "Z", 1: "Z"}]
-		result = get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], SparsePauliOp("ZZ"))
 
 		assert len(result) == 1
 		circuit = result[0][0]
@@ -179,11 +181,9 @@ class TestGetObsSubcircuits:
 		qc = QuantumCircuit(1)
 		qc.x(0)
 
-		settings = [{0: "X"}]
-		result = get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], SparsePauliOp("X"))
 
 		circuit = result[0][0]
-		# Should have H gate before measurement
 		op_names = [inst.operation.name for inst in circuit]
 		assert "h" in op_names
 		assert "measure" in op_names
@@ -193,8 +193,7 @@ class TestGetObsSubcircuits:
 		qc = QuantumCircuit(1)
 		qc.x(0)
 
-		settings = [{0: "Y"}]
-		result = get_obs_subcircuits([qc], settings)
+		result = get_obs_subcircuits([qc], SparsePauliOp("Y"))
 
 		circuit = result[0][0]
 		op_names = [inst.operation.name for inst in circuit]
@@ -209,22 +208,21 @@ class TestGetObsSubcircuits:
 		qc.cx(0, 1)
 		qc.measure([0, 1], [0, 1])
 
-		settings = [{0: "Z"}]
-		result = get_obs_subcircuits([qc], settings)
+		# IZ: only qubit 0 measured in Z — should produce exactly 1 measurement
+		result = get_obs_subcircuits([qc], SparsePauliOp("IZ"))
 
 		circuit = result[0][0]
-		# Should only have 1 measurement (from the Z setting), not the original 2
 		measure_count = sum(1 for inst in circuit if inst.operation.name == "measure")
 		assert measure_count == 1
 
 	def test_multiple_settings_produce_multiple_circuits(self) -> None:
-		"""Test that multiple measurement settings produce multiple circuit groups."""
+		"""Test that conflicting observables produce multiple circuit groups."""
 		qc = QuantumCircuit(2)
 		qc.h(0)
 		qc.cx(0, 1)
 
-		settings = [{0: "Z"}, {0: "X"}]
-		result = get_obs_subcircuits([qc], settings)
+		# IZ and IX conflict on qubit 0 → two groups
+		result = get_obs_subcircuits([qc], SparsePauliOp(["IZ", "IX"]))
 
 		assert len(result) == 2
 
@@ -235,11 +233,9 @@ class TestGetObsSubcircuits:
 		qc2 = QuantumCircuit(2)
 		qc2.x(0)
 
-		settings = [{0: "Z", 1: "Z"}]
-		result = get_obs_subcircuits([qc1, qc2], settings)
+		result = get_obs_subcircuits([qc1, qc2], SparsePauliOp("ZZ"))
 
 		assert len(result) == 1
-		# Both subcircuits should be present
 		assert 0 in result[0]
 		assert 1 in result[0]
 
@@ -252,8 +248,7 @@ class TestGetObsSubcircuits:
 		x_meas.h(0)
 		x_meas_inst = x_meas.to_instruction(label="X-meas")
 
-		settings = [{0: "X"}]
-		result = get_obs_subcircuits([qc], settings, ops={"X-meas": x_meas_inst})
+		result = get_obs_subcircuits([qc], SparsePauliOp("X"), ops={"X-meas": x_meas_inst})
 
 		circuit = result[0][0]
 		assert circuit.num_clbits >= 1
@@ -268,18 +263,16 @@ class TestGetObsSubcircuits:
 		y_meas.h(0)
 		y_meas_inst = y_meas.to_instruction(label="Y-meas")
 
-		settings = [{0: "Y"}]
-		result = get_obs_subcircuits([qc], settings, ops={"Y-meas": y_meas_inst})
+		result = get_obs_subcircuits([qc], SparsePauliOp("Y"), ops={"Y-meas": y_meas_inst})
 
 		circuit = result[0][0]
 		assert circuit.num_clbits >= 1
 
 	def test_unsupported_basis_raises_error(self) -> None:
-		"""Test that unsupported measurement basis raises ValueError."""
+		"""Test that ModifyMeasurementBasis raises ValueError for unsupported basis."""
 		qc = QuantumCircuit(1)
 		qc.x(0)
 
-		settings = [{0: "W"}]
-
+		pass_obj = ModifyMeasurementBasis([{0: "W"}])
 		with pytest.raises(ValueError, match="Unsupported measurement basis: W"):
-			get_obs_subcircuits([qc], settings)
+			pass_obj.run(circuit_to_dag(qc))

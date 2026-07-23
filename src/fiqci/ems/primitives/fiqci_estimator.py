@@ -10,20 +10,33 @@ import warnings
 from collections.abc import Callable
 from typing import Any, TypedDict, cast
 
+import numpy as np
 from qiskit import QuantumCircuit, transpile
 from qiskit.quantum_info import SparsePauliOp, Pauli
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
 	get_obs_subcircuits,
+	get_measurement_settings,
 	_get_observable_circuit_index,
-	_combine_pauli_ops,
 )
 from fiqci.ems.utils import _remove_idle_wires
-from fiqci.ems.transpiler_passes.zne_circuits import _get_zne_circuits
+from fiqci.ems.transpiler_passes.zne_circuits import _achieved_scale_factors, _get_zne_circuits
 from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+def _is_nested_scale_factors(scale_factors) -> bool:
+	"""True when ``scale_factors`` is a list of per-circuit lists rather than a single flat list."""
+	return len(scale_factors) > 0 and all(isinstance(s, (list, tuple)) for s in scale_factors)
+
+
+def _valid_flat_scale_factors(scale_factors) -> bool:
+	"""True when ``scale_factors`` is a flat list of at least two real numbers >= 1."""
+	return len(scale_factors) >= 2 and all(
+		isinstance(s, (int, float)) and not isinstance(s, bool) and s >= 1 for s in scale_factors
+	)
 
 
 class FiQCIEstimator:
@@ -53,18 +66,20 @@ class FiQCIEstimator:
 		class ZNESettings(TypedDict):
 			enabled: bool
 			fold_gates: list | None
-			scale_factors: list[int]
+			scale_factors: list[float] | list[list[float]]
 			folding_method: str
 			extrapolation_method: str
 			extrapolation_degree: int | None
+			seed: int | None
 
 		self._zne: ZNESettings = {
 			"enabled": mitigation_level == 3,
 			"fold_gates": None,  # if None, fold all gates. Otherwise, should be a list of gate names to fold (e.g. ["cx", "cz"])
-			"scale_factors": [1, 3, 5],  # odd integers
+			"scale_factors": [1, 3, 5],  # any real numbers >= 1
 			"folding_method": "local",  # global or local folding
 			"extrapolation_method": "exponential",  # exponential, richardson, linear, polynomial
 			"extrapolation_degree": None,  # int only for polynomial, None defaults to min(n_scales - 1, 2), where n_scales is the number of scale factors
+			"seed": None,  # seed for random gate sampling when approximating non-odd-integer scale factors
 		}
 
 		if self._mitigation_level in [0, 1, 2]:
@@ -82,25 +97,37 @@ class FiQCIEstimator:
 
 	def total_circuits_generated(
 		self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False
-	) -> int | dict[str, int]:
-		"""Calculate total circuits generated for a given number of base circuits and observables."""
-		measurement_settings = _combine_pauli_ops(
+	) -> int | dict[str, Any]:
+		"""Calculate total circuits generated for a given number of base circuits and observables.
+
+		When ``scale_factors`` is a per-circuit list of lists, each circuit expands by its own count, so
+		the ZNE contribution is the sum of the per-circuit counts (this assumes ``num_base_circuits``
+		matches the number of per-circuit scale-factor lists).
+		"""
+		measurement_settings = get_measurement_settings(
 			observables if isinstance(observables, SparsePauliOp) else observables[0]
 		)
 		num_measurement_circuits = len(measurement_settings)
-		zne_circuits_multiplier = 1
+		zne_circuits_multiplier: int | list[int] = 1
 		pauli_twirl_circuits_multiplier = 1
 
 		if self._zne["enabled"]:
-			zne_circuits_multiplier = len(self._zne["scale_factors"])
+			if _is_nested_scale_factors(self._zne["scale_factors"]):
+				zne_circuits_multiplier = [len(s) for s in cast(list[list[float]], self._zne["scale_factors"])]
+			else:
+				zne_circuits_multiplier = len(self._zne["scale_factors"])
 		if self.backend._pauli_twirl["enabled"]:
 			pauli_twirl_circuits_multiplier = (
 				self.backend._pauli_twirl["num_twirls"] + 1
 			)  # +1 for the original circuit without twirling
 
-		total_circuits = (
-			num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier
-		)
+		if isinstance(zne_circuits_multiplier, list):
+			# Per-circuit scale factors: each circuit contributes its own number of ZNE circuits.
+			total_circuits = num_measurement_circuits * sum(zne_circuits_multiplier) * pauli_twirl_circuits_multiplier
+		else:
+			total_circuits = (
+				num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier
+			)
 
 		if detailed:
 			print(
@@ -150,18 +177,15 @@ class FiQCIEstimator:
 
 			# if lengths match, we pair them elementwise
 			else:
-				obs_circuits = [
-					get_obs_subcircuits([circ], _combine_pauli_ops(obs), ops)
-					for circ, obs in zip(circuits, observables)
-				]
+				obs_circuits = [get_obs_subcircuits([circ], obs, ops) for circ, obs in zip(circuits, observables)]
 
 		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
-			obs_circuits = [get_obs_subcircuits([circ], _combine_pauli_ops(observables), ops) for circ in circuits]
+			obs_circuits = [get_obs_subcircuits([circ], observables, ops) for circ in circuits]
 
 		# if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, QuantumCircuit):
-			obs_circuits = [get_obs_subcircuits([circuits], _combine_pauli_ops(observables), ops)]
+			obs_circuits = [get_obs_subcircuits([circuits], observables, ops)]
 		else:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
@@ -186,33 +210,72 @@ class FiQCIEstimator:
 		flat_circuits: list[QuantumCircuit] = []
 		pair_lengths: list[int] = []
 		pair_measurement_settings: list[list[dict[int, str]]] = []
+		# Scale factors actually realised per pair. Folding can only approximate the requested values, so
+		# extrapolation uses these achieved x-values. They depend only on each circuit's foldable-gate
+		# count (not the random seed), and equal the requested values exactly for odd integers. Both the
+		# requested and achieved per-pair lists are attached to the returned job (the estimator's
+		# scale_factors config is never mutated).
+		pair_requested_scale_factors: list[list[float]] = []
+		pair_scale_factors: list[list[float]] = []
 		num_base_circuits = 0  # measurement-basis circuits before ZNE scale-factor expansion
+
+		# scale_factors may be a single flat list (same for every circuit) or one list per circuit.
+		zne_nested = self._zne["enabled"] and _is_nested_scale_factors(self._zne["scale_factors"])
+		if zne_nested and len(self._zne["scale_factors"]) != num_pairs:
+			raise ValueError(
+				f"Per-circuit scale_factors has {len(self._zne['scale_factors'])} entr(y/ies) but {num_pairs} "
+				"circuit/observable pair(s) were submitted; provide one scale-factor list per circuit."
+			)
 
 		for i, obs_circ_groups in enumerate(obs_circuits):
 			obs_circs_list = [group[0] for group in obs_circ_groups]
 
-			measurement_settings = _combine_pauli_ops(
+			measurement_settings = get_measurement_settings(
 				observables if isinstance(observables, SparsePauliOp) else observables[i]
 			)
 			pair_measurement_settings.append(measurement_settings)
 			num_base_circuits += len(obs_circs_list)
 
 			if self._zne["enabled"]:
+				requested_scales = cast(
+					list[float], self._zne["scale_factors"][i] if zne_nested else self._zne["scale_factors"]
+				)
+				pair_requested_scale_factors.append([float(s) for s in requested_scales])
+				# All measurement-basis subcircuits in a pair share the same foldable-gate count (basis
+				# rotations are single-qubit), so one achieved-scale list applies to the whole pair.
+				pair_scale_factors.append(
+					_achieved_scale_factors(
+						obs_circs_list[0], requested_scales, self._zne["folding_method"], self._zne["fold_gates"]
+					)
+				)
 				obs_circs_list = _get_zne_circuits(
-					obs_circs_list, self._zne["fold_gates"], self._zne["scale_factors"], self._zne["folding_method"]
+					obs_circs_list,
+					self._zne["fold_gates"],
+					requested_scales,
+					self._zne["folding_method"],
+					self._zne["seed"],
 				)
 
 			pair_lengths.append(len(obs_circs_list))
 			flat_circuits.extend(obs_circs_list)
 
+		if self._zne["enabled"] and pair_scale_factors:
+			# The estimator's scale_factors config is left untouched; the requested and achieved per-pair
+			# values are attached to the job below. Warn whenever folding could not reach the request
+			# exactly (per pair, since sublists may differ in length).
+			if not all(np.allclose(pair_scale_factors[i], pair_requested_scale_factors[i]) for i in range(num_pairs)):
+				warnings.warn(
+					"Requested ZNE scale factors are not all exactly reachable by folding; extrapolation uses "
+					f"the achieved values {pair_scale_factors}. Access them via the job's achieved_scale_factors()."
+				)
+
 		if self._zne["enabled"]:
 			logger.info(
-				"Flattened %d pair(s) into %d measurement-basis circuit(s), expanded to %d after %dx ZNE; "
+				"Flattened %d pair(s) into %d measurement-basis circuit(s), expanded to %d ZNE circuit(s); "
 				"forwarding to backend with max_batch_size=%d",
 				num_pairs,
 				num_base_circuits,
 				len(flat_circuits),
-				len(self._zne["scale_factors"]),
 				max_batch_size,
 			)
 		else:
@@ -231,11 +294,23 @@ class FiQCIEstimator:
 		# the circuits that were actually submitted, even if the user mutates settings via zne()
 		# before accessing the results.
 		zne_enabled = self._zne["enabled"]
-		zne_scale_factors = self._zne["scale_factors"]
+		zne_scale_factors_per_pair = pair_scale_factors
 		zne_extrapolation_method = self._zne["extrapolation_method"]
 		zne_extrapolation_degree = self._zne["extrapolation_degree"]
 
-		def _compute() -> tuple[list, list, list]:
+		# Freeze the full ZNE configuration for reporting on the returned job. Copied so later zne()
+		# mutations do not alter what the job reports it ran with. The realised per-pair scale factors
+		# are exposed separately via the job's requested/achieved_scale_factors() accessors.
+		zne_options_snapshot: dict[str, Any] = {
+			"enabled": self._zne["enabled"],
+			"fold_gates": list(self._zne["fold_gates"]) if self._zne["fold_gates"] is not None else None,
+			"folding_method": self._zne["folding_method"],
+			"extrapolation_method": self._zne["extrapolation_method"],
+			"extrapolation_degree": self._zne["extrapolation_degree"],
+			"seed": self._zne["seed"],
+		}
+
+		def _compute() -> tuple[list, list]:
 			"""Fetch results and compute per-pair (and ZNE-extrapolated) expectation values.
 
 			Returns ``(expectation_values, raw_expectation_values, standard_errors)`` where the
@@ -267,12 +342,17 @@ class FiQCIEstimator:
 
 					per_scale_sigmas = []
 					for c in split_counts:
-						zne_expvs.append(self._calculate_expectation_values(c, obs, measurement_settings))
-						per_scale_sigmas.append(self._calculate_shot_errors(c, obs, measurement_settings))
+						expvs = self._calculate_expectation_values(
+							c,
+							observables if isinstance(observables, SparsePauliOp) else observables[i],
+							measurement_settings,
+						)
+						zne_expvs.append(expvs)
 
+					scales = zne_scale_factors_per_pair[i]
 					if zne_extrapolation_method == "exponential":
 						expvs, ext_err = exponential_extrapolation(
-							zne_expvs, zne_scale_factors, sigmas=per_scale_sigmas
+							zne_expvs, scales, sigmas=per_scale_sigmas
 						)
 					elif zne_extrapolation_method == "richardson":
 						expvs, ext_err = richardson_extrapolation(zne_expvs, zne_scale_factors, sigmas=per_scale_sigmas)
@@ -310,7 +390,9 @@ class FiQCIEstimator:
 				return expectation_values, all_zne_expvs, standard_errors
 			return expectation_values, expectation_values, standard_errors
 
-		return FiQCIEstimatorJob(job, _compute, observables)
+		return FiQCIEstimatorJob(
+			job, _compute, observables, pair_requested_scale_factors, pair_scale_factors, zne_options_snapshot
+		)
 
 	def run(
 		self,
@@ -429,14 +511,23 @@ class FiQCIEstimator:
 		self,
 		enabled: bool,
 		fold_gates: list | None = None,
-		scale_factors: list[int] = [1, 3, 5],
+		scale_factors: list[float] | list[list[float]] = [1, 3, 5],
 		folding_method: str = "local",
 		extrapolation_method: str = "exponential",
 		extrapolation_degree: int | None = None,
+		seed: int | None = None,
 	):
-		# TODO: Support any real >= 1 scale factor
 		# TODO: More extrapolation methods, allow user-defined extrapolation functions
-		"""Configure zero-noise extrapolation settings."""
+		"""Configure zero-noise extrapolation settings.
+
+		Scale factors may be any real numbers >= 1. Non-odd-integer values (even integers, fractions)
+		are approximated by partially folding a randomly-sampled subset of gates; ``seed`` makes that
+		sampling reproducible. Extrapolation uses the achieved scale factors as the x-axis.
+
+		``scale_factors`` may be either a single flat list applied to every submitted circuit, or a list
+		of lists (one per submitted circuit) so each circuit uses its own scale factors — the number of
+		lists must then match the number of circuit/observable pairs passed to :meth:`run`.
+		"""
 		if extrapolation_method not in ["exponential", "richardson", "polynomial", "linear"]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
 		if folding_method not in ["local", "global"]:
@@ -444,10 +535,14 @@ class FiQCIEstimator:
 		if folding_method == "global" and fold_gates is not None:
 			warnings.warn("fold_gates is not applicable for global folding and will be ignored.")
 			fold_gates = None
-		if len(scale_factors) < 2:
-			raise ValueError("At least two scale factors are required for extrapolation.")
-		if not all(isinstance(s, int) and s > 0 and s % 2 == 1 for s in scale_factors):
-			raise ValueError("Scale factors must be positive odd integers.")
+		if _is_nested_scale_factors(scale_factors):
+			if not all(_valid_flat_scale_factors(sub) for sub in scale_factors):
+				raise ValueError("Each per-circuit scale factor list must contain at least two real numbers >= 1.")
+		else:
+			if len(scale_factors) < 2:
+				raise ValueError("At least two scale factors are required for extrapolation.")
+			if not all(isinstance(s, (int, float)) and not isinstance(s, bool) and s >= 1 for s in scale_factors):
+				raise ValueError("Scale factors must be real numbers >= 1.")
 		if fold_gates is not None and not isinstance(fold_gates, list):
 			raise ValueError("fold_gates must be a list of gate names or None.")
 		if extrapolation_degree is not None and extrapolation_degree < 1 and extrapolation_method == "polynomial":
@@ -464,6 +559,8 @@ class FiQCIEstimator:
 		self._zne["enabled"] = enabled
 		self._zne["fold_gates"] = fold_gates
 		self._zne["scale_factors"] = scale_factors
+		self._zne["folding_method"] = folding_method
+		self._zne["seed"] = seed
 		self._zne["extrapolation_method"] = extrapolation_method
 		if extrapolation_method in ["polynomial"] and extrapolation_degree is not None:
 			self._zne["extrapolation_degree"] = extrapolation_degree
@@ -486,7 +583,15 @@ class FiQCIEstimatorJob:
 	underlying job (``status``/``done``/``job_ids``) works before the values are computed.
 	"""
 
-	def __init__(self, job, compute_fn: Callable[[], tuple[list, list, list]], observables) -> None:
+	def __init__(
+		self,
+		job,
+		compute_fn: Callable[[], tuple[list, list]],
+		observables,
+		requested_scale_factors: list[list[float]] | None = None,
+		achieved_scale_factors: list[list[float]] | None = None,
+		zne_options: dict[str, Any] | None = None,
+	) -> None:
 		"""Initialize the estimator job.
 
 		Args:
@@ -494,10 +599,19 @@ class FiQCIEstimatorJob:
 		    compute_fn: Deferred callable returning
 		        ``(expectation_values, raw_expectation_values, standard_errors)``.
 		    observables: Observable(s) for which expectation values were calculated.
+		    requested_scale_factors: ZNE scale factors requested for each circuit/observable pair (empty
+		        when ZNE is disabled).
+		    achieved_scale_factors: ZNE scale factors actually realised by folding for each pair — the
+		        x-axis used for extrapolation (empty when ZNE is disabled).
+		    zne_options: Frozen snapshot of the ZNE configuration used at submission (folding/extrapolation
+		        settings), surfaced via :attr:`mitigator_options`. ``None`` when unknown.
 		"""
 		self.mitigated_job = job
 		self._compute_fn = compute_fn
 		self._observables = observables
+		self._requested_scale_factors = requested_scale_factors if requested_scale_factors is not None else []
+		self._achieved_scale_factors = achieved_scale_factors if achieved_scale_factors is not None else []
+		self._zne_options = zne_options if zne_options is not None else {}
 		self._expectation_values: list | None = None
 		self._raw_expectation_values: list | None = None
 		self._standard_errors: list | None = None
@@ -566,6 +680,42 @@ class FiQCIEstimatorJob:
 		if index is not None:
 			return self._standard_errors[index]
 		return self._standard_errors
+
+	def requested_scale_factors(self, index: int | None = None) -> list[list[float]] | list[float]:
+		"""ZNE scale factors requested for this run, as one list per circuit/observable pair.
+
+		Returns all pairs' lists (a list of lists) when ``index`` is None, or a single pair's list when
+		``index`` is given. Empty when ZNE was disabled for the run. See :meth:`achieved_scale_factors`
+		for the values folding could actually realise.
+		"""
+		if index is not None:
+			return self._requested_scale_factors[index]
+		return self._requested_scale_factors
+
+	def achieved_scale_factors(self, index: int | None = None) -> list[list[float]] | list[float]:
+		"""ZNE scale factors actually realised by folding, as one list per circuit/observable pair.
+
+		Folding can only approximate the requested scale factors, so these (the x-axis used for
+		extrapolation) may differ from :meth:`requested_scale_factors`. Returns all pairs' lists (a list
+		of lists) when ``index`` is None, or a single pair's list when ``index`` is given. Empty when ZNE
+		was disabled for the run.
+		"""
+		if index is not None:
+			return self._achieved_scale_factors[index]
+		return self._achieved_scale_factors
+
+	@property
+	def mitigator_options(self) -> dict[str, Any]:
+		"""Mitigation settings frozen at submission time for this estimator run.
+
+		Merges the ZNE configuration with the underlying backend job's snapshot (``mitigation_level``,
+		``rem``, ``dd``, ``pauli_twirl``), so the returned dict describes the full mitigation stack the
+		run actually used. Unlike :attr:`FiQCIEstimator.mitigator_options` (which is live and mutable),
+		this never changes after submission. Per-pair scale factors are available via
+		:meth:`requested_scale_factors` / :meth:`achieved_scale_factors`.
+		"""
+		backend_options = getattr(self.mitigated_job, "mitigator_options", None) or {}
+		return {"zne": self._zne_options, **backend_options}
 
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate polling/attribute access (status, done, job_ids, …) to the underlying job."""

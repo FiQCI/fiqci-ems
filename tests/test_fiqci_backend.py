@@ -6,7 +6,7 @@ import pytest
 from qiskit import QuantumCircuit
 from qiskit.providers import JobStatus
 
-from fiqci.ems.fiqci_backend import BatchFailedError, BatchedJob, FiQCIBackend, MitigatedJob
+from fiqci.ems.backend import BatchFailedError, BatchedJob, FiQCIBackend, MitigatedJob
 
 
 class TestFiQCIBackend:
@@ -42,7 +42,7 @@ class TestFiQCIBackend:
 
 	def test_init_creates_m3iqm_for_level_1(self, mock_backend: Mock) -> None:
 		"""Test that M3IQM mitigator is created for level 1."""
-		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+		with patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm:
 			mitigated_backend = FiQCIBackend(mock_backend, mitigation_level=1)
 			mock_m3iqm.assert_called_once_with(mock_backend)
 			assert mitigated_backend._rem["mitigator"] is not None
@@ -84,9 +84,9 @@ class TestFiQCIBackend:
 		mock_backend.run.return_value = mock_job
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
@@ -122,9 +122,9 @@ class TestFiQCIBackend:
 		mock_backend.run.return_value = mock_job
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
@@ -200,9 +200,9 @@ class TestFiQCIBackend:
 		mock_backend.run.return_value = mock_job
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
@@ -244,12 +244,12 @@ class TestREMSettings:
 	@pytest.fixture
 	def backend_level1(self, mock_backend: Mock) -> FiQCIBackend:
 		"""Create a FiQCIBackend with mitigation level 1."""
-		with patch("fiqci.ems.fiqci_backend.M3IQM"):
+		with patch("fiqci.ems.backend.core.M3IQM"):
 			return FiQCIBackend(mock_backend, mitigation_level=1)
 
 	def test_rem_enable_on_level0(self, mock_backend: Mock, backend_level0: FiQCIBackend) -> None:
 		"""Test enabling REM on a level 0 backend."""
-		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+		with patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm:
 			backend_level0.rem(enabled=True, calibration_shots=500)
 			assert backend_level0._rem["enabled"] is True
 			assert backend_level0._rem["calibration_shots"] == 500
@@ -267,7 +267,7 @@ class TestREMSettings:
 		backend_level1.rem(enabled=False)
 		assert backend_level1._rem["enabled"] is False
 
-		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+		with patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm:
 			backend_level1.rem(enabled=True, calibration_shots=2048)
 			assert backend_level1._rem["enabled"] is True
 			assert backend_level1._rem["calibration_shots"] == 2048
@@ -275,14 +275,14 @@ class TestREMSettings:
 
 	def test_rem_change_calibration_shots_reinitializes(self, mock_backend: Mock, backend_level1: FiQCIBackend) -> None:
 		"""Test that changing calibration_shots triggers reinitialization."""
-		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+		with patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm:
 			backend_level1.rem(enabled=True, calibration_shots=4096)
 			assert backend_level1._rem["calibration_shots"] == 4096
 			mock_m3iqm.assert_called_once_with(mock_backend)
 
 	def test_rem_change_calibration_file_reinitializes(self, mock_backend: Mock, backend_level1: FiQCIBackend) -> None:
 		"""Test that changing calibration_file triggers reinitialization."""
-		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+		with patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm:
 			backend_level1.rem(enabled=True, calibration_file="/tmp/new_cal.json")
 			assert backend_level1._rem["calibration_file"] == "/tmp/new_cal.json"
 			mock_m3iqm.assert_called_once_with(mock_backend)
@@ -290,14 +290,14 @@ class TestREMSettings:
 	def test_rem_same_settings_does_not_reinitialize(self, backend_level1: FiQCIBackend) -> None:
 		"""Test that calling rem() with same settings does not reinitialize."""
 		original_mitigator = backend_level1._rem["mitigator"]
-		with patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm:
+		with patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm:
 			backend_level1.rem(enabled=True)
 			mock_m3iqm.assert_not_called()
 			assert backend_level1._rem["mitigator"] is original_mitigator
 
 	def test_rem_disable_preserves_settings(self, backend_level1: FiQCIBackend) -> None:
 		"""Test that disabling REM preserves calibration settings."""
-		with patch("fiqci.ems.fiqci_backend.M3IQM"):
+		with patch("fiqci.ems.backend.core.M3IQM"):
 			backend_level1.rem(enabled=True, calibration_shots=2048, calibration_file="/tmp/cal.json")
 		backend_level1.rem(enabled=False)
 		assert backend_level1._rem["calibration_shots"] == 2048
@@ -337,6 +337,93 @@ class TestMitigatedJob:
 		result = mitigated_job.result(timeout=10.0)
 		assert result is mock_mitigated_result
 		mock_handle.result.assert_called_once_with(10.0)
+
+
+class TestJobMitigatorOptionsSnapshot:
+	"""Tests that a returned job carries a frozen snapshot of the mitigation settings used."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	@pytest.fixture
+	def mock_circuit(self) -> QuantumCircuit:
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure_all()
+		return qc
+
+	def test_level0_job_reports_all_disabled(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""A level-0 handle reports a snapshot with every technique disabled."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		job = FiQCIBackend(mock_backend, mitigation_level=0).run(mock_circuit, shots=1024)
+
+		options = job.mitigator_options
+		assert options["mitigation_level"] == 0
+		assert options["rem"]["enabled"] is False
+		assert options["dd"]["enabled"] is False
+		assert options["pauli_twirl"]["enabled"] is False
+
+	def test_snapshot_omits_live_m3_object(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""The snapshot carries REM settings but not the heavyweight M3 mitigator instance."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		with patch("fiqci.ems.backend.core.M3IQM"):
+			job = FiQCIBackend(mock_backend, mitigation_level=1).run(mock_circuit, shots=1024)
+
+		rem = job.mitigator_options["rem"]
+		assert rem["enabled"] is True
+		assert "mitigator" not in rem
+		assert set(rem) == {"enabled", "calibration_shots", "calibration_file"}
+
+	def test_snapshot_frozen_against_later_backend_mutation(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""Mutating the backend's settings after run() does not change the job's snapshot."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		job = backend.run(mock_circuit, shots=1024)
+
+		# Later reconfigure the backend; the already-submitted job must be unaffected.
+		backend.dd(enabled=True)
+		backend.pauli_twirl(enabled=True, num_twirls=7)
+
+		assert job.mitigator_options["dd"]["enabled"] is False
+		assert job.mitigator_options["pauli_twirl"]["enabled"] is False
+		# The backend's own live view does reflect the mutation.
+		assert backend.mitigator_options["dd"]["enabled"] is True
+
+	def test_snapshot_captures_dd_config(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""DD settings in effect at submission are recorded in the snapshot."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		backend.dd(enabled=True)
+		job = backend.run(mock_circuit, shots=1024)
+
+		assert job.mitigator_options["dd"]["enabled"] is True
+
+	def test_snapshot_captures_twirl_config(self) -> None:
+		"""Pauli-twirl settings in effect at submission are recorded in the snapshot."""
+		from qiskit_aer import AerSimulator
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+		qc.measure_all()
+
+		backend = FiQCIBackend(AerSimulator(), mitigation_level=0)
+		backend.pauli_twirl(enabled=True, num_twirls=3)
+		job = backend.run(qc, shots=1024)
+
+		options = job.mitigator_options
+		assert options["pauli_twirl"]["enabled"] is True
+		assert options["pauli_twirl"]["num_twirls"] == 3
 
 
 def _make_result_mock(counts_per_circuit: list[dict[str, int]]) -> Mock:
@@ -628,9 +715,9 @@ class TestCalibrationMaxBatchSize:
 		mock_backend.run.return_value = mock_job
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
@@ -666,9 +753,9 @@ class TestCalibrationMaxBatchSize:
 		mock_backend.run.return_value = mock_job
 
 		with (
-			patch("fiqci.ems.fiqci_backend.M3IQM") as mock_m3iqm_class,
-			patch("fiqci.ems.fiqci_backend.final_measurement_mapping", return_value={0: 0, 1: 1}),
-			patch("fiqci.ems.fiqci_backend.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value={0: 0, 1: 1}),
+			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
 			mock_quasi_dist = Mock()
