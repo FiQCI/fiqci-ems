@@ -1,6 +1,14 @@
 ## [WIP] [1.0.0] 3.7.2026
 
 ## Changed
+- migrate `combine_pauli_ops` to use Qiskit's `Paulilist.group_qubit_wise_commuting`
+- `get_obs_subcircuits` now directly takes observables as an argument and handles calling `get_measurement_settings` inside the function
+- https://github.com/FiQCI/fiqci-ems/pull/38
+
+- refactor monolithic `fiqci_backend` into a `backend` module
+  - split into `core.py`, `counts.py`, and `jobs.py`
+- https://github.com/FiQCI/fiqci-ems/pull/37
+
 - Zero noise extrapolation now supports any >=1 floats as scale factors
   - If exact given value cannot be reached, and approximation is used (fractional folding). If exact values is not achieved log a warning
 - `zne()` now accepts either a list of floats or a list of list of floats
@@ -11,6 +19,7 @@
 - expose `mitigator_options` on the returned job handles (`BatchedJob`/`MitigatedJob`, and `FiQCIEstimatorJob`)
   - a frozen snapshot of the mitigation settings (`mitigation_level`, `rem`, `dd`, `pauli_twirl`, plus `zne` on the estimator job) in effect at submission, so the user can inspect what a run actually used even after the backend/estimator config is mutated
   - unlike the live, mutable `mitigator_options` property on the backend/estimator, the job's snapshot never changes; the live M3 mitigator object is omitted from the REM entry
+- https://github.com/FiQCI/fiqci-ems/pull/39
 
 ## [0.8.1] 12.6.2026
 
