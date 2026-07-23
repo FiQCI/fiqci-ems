@@ -369,6 +369,97 @@ class TestZNECircuitsPass:
 
 		assert np.allclose(Operator(qc_nm).data, Operator(folded_nm).data, atol=1e-10)
 
+	def test_even_integer_scale_factor_local(self) -> None:
+		"""Even-integer scale factor 2 folds half the gates so the average matches (4 -> 8 gates)."""
+		qc = QuantumCircuit(2)
+		for _ in range(4):
+			qc.cx(0, 1)
+
+		pm = PassManager(ZNECircuits(scale_factor=2, seed=0))
+		result = pm.run(qc)
+
+		# num_folds = round((2-1)*4/2) = 2 gates folded once each: 2*1 + 2*3 = 8 instances.
+		cx_count = sum(1 for inst in result.data if inst.operation.name == "cx")
+		assert cx_count == 8
+
+	def test_fractional_scale_factor_local(self) -> None:
+		"""Fractional scale factor 1.5 folds a subset to approximate the average (4 -> 6 gates)."""
+		qc = QuantumCircuit(2)
+		for _ in range(4):
+			qc.cx(0, 1)
+
+		pm = PassManager(ZNECircuits(scale_factor=1.5, seed=0))
+		result = pm.run(qc)
+
+		# num_folds = round((1.5-1)*4/2) = 1 gate folded once: 3*1 + 1*3 = 6 instances.
+		cx_count = sum(1 for inst in result.data if inst.operation.name == "cx")
+		assert cx_count == 6
+
+	def test_fractional_local_folding_preserves_semantics(self) -> None:
+		"""Partial random folding must still leave the overall unitary unchanged."""
+		from qiskit.quantum_info import Operator
+
+		qc = QuantumCircuit(2)
+		for theta in (0.5, 0.3, 0.7, 0.2):
+			qc.crx(theta, 0, 1)
+
+		pm = PassManager(ZNECircuits(scale_factor=1.5, folding_method="local", seed=0))
+		folded = pm.run(qc)
+
+		assert np.allclose(Operator(qc).data, Operator(folded).data, atol=1e-10)
+
+	def _instruction_layout(self, circuit) -> list[tuple[str, tuple[int, ...]]]:
+		return [(inst.operation.name, tuple(circuit.find_bit(q).index for q in inst.qubits)) for inst in circuit.data]
+
+	def test_seed_reproducible(self) -> None:
+		"""Same seed yields identical folded circuits for a non-odd-integer scale factor."""
+		qc = QuantumCircuit(2)
+		for _ in range(6):
+			qc.cx(0, 1)
+
+		a = PassManager(ZNECircuits(scale_factor=1.5, seed=42)).run(qc)
+		b = PassManager(ZNECircuits(scale_factor=1.5, seed=42)).run(qc)
+
+		assert self._instruction_layout(a) == self._instruction_layout(b)
+
+	def test_different_seeds_can_differ(self) -> None:
+		"""Different seeds generally sample different gates to fold (not all layouts identical)."""
+		# Alternate the qubit pair so the *position* of each folded gate is distinguishable.
+		qc = QuantumCircuit(3)
+		for i in range(6):
+			qc.cx(0, 1) if i % 2 == 0 else qc.cx(1, 2)
+
+		layouts = {
+			tuple(self._instruction_layout(PassManager(ZNECircuits(scale_factor=1.5, seed=s)).run(qc)))
+			for s in range(6)
+		}
+
+		assert len(layouts) > 1
+
+	def test_fractional_global_folding_preserves_semantics(self) -> None:
+		"""Fractional global folding appends a suffix fold but preserves the unitary."""
+		from qiskit.quantum_info import Operator
+
+		qc = QuantumCircuit(2, 2)
+		qc.crx(0.5, 0, 1)
+		qc.crx(0.3, 0, 1)
+		qc.measure([0, 1], [0, 1])
+
+		pm = PassManager(ZNECircuits(scale_factor=2, folding_method="global"))
+		folded = pm.run(qc)
+
+		qc_nm = QuantumCircuit(2)
+		qc_nm.crx(0.5, 0, 1)
+		qc_nm.crx(0.3, 0, 1)
+		folded_nm = QuantumCircuit(2)
+		for inst in folded.data:
+			if inst.operation.name not in ("measure", "barrier"):
+				folded_nm.append(inst.operation, inst.qubits)
+
+		# Suffix fold of 1 gate grew the circuit beyond the original 2 gates.
+		assert folded_nm.size() > qc_nm.size()
+		assert np.allclose(Operator(qc_nm).data, Operator(folded_nm).data, atol=1e-10)
+
 
 class TestGetZNECircuits:
 	"""Tests for _get_zne_circuits helper function."""
@@ -432,18 +523,26 @@ class TestGetZNECircuits:
 		assert cz_count == 1
 
 	def test_invalid_scale_factors_raises_error(self) -> None:
-		"""Test that invalid scale factors raise ValueError."""
+		"""Test that scale factors below 1 (or negative) raise ValueError."""
 		qc = QuantumCircuit(2)
 		qc.cx(0, 1)
 
-		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
-			_get_zne_circuits([qc], scale_factors=[1, 2, 3])  # 2 is even
-
-		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
+		with pytest.raises(ValueError, match="Scale factors must be real numbers >= 1"):
 			_get_zne_circuits([qc], scale_factors=[-1, 3, 5])  # -1 is negative
 
-		with pytest.raises(ValueError, match="Scale factors must be positive odd integers"):
-			_get_zne_circuits([qc], scale_factors=[1, 3, 0.2])  # 0.2 is not an integer
+		with pytest.raises(ValueError, match="Scale factors must be real numbers >= 1"):
+			_get_zne_circuits([qc], scale_factors=[1, 3, 0.2])  # 0.2 is below 1
+
+	def test_arbitrary_scale_factors_accepted(self) -> None:
+		"""Even integers and fractions (>= 1) are now valid scale factors."""
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore")  # small circuit can't reach all scales exactly
+			result = _get_zne_circuits([qc], scale_factors=[1, 1.5, 2, 2.5])
+
+		assert len(result) == 4
 
 
 class TestEstimatorZNESettings:
@@ -491,6 +590,179 @@ class TestEstimatorZNESettings:
 		assert estimator._zne["fold_gates"] == ["cx"]
 		assert estimator._zne["scale_factors"] == [1, 3]
 		assert estimator._zne["extrapolation_method"] == "richardson"
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_arbitrary_scale_factors_and_seed(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Arbitrary scale factors, folding_method, and seed are stored on the estimator."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[1, 1.5, 2, 3], folding_method="global", seed=7)
+
+		assert estimator._zne["scale_factors"] == [1, 1.5, 2, 3]
+		assert estimator._zne["folding_method"] == "global"
+		assert estimator._zne["seed"] == 7
+		assert estimator.mitigator_options["zne"]["seed"] == 7
+
+	def test_zne_job_exposes_achieved_scale_factors(self) -> None:
+		"""Unreachable scales warn at run and are exposed on the job; estimator config is untouched."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[1, 2], folding_method="local", seed=0)
+
+		qc = QuantumCircuit(2)
+		for _ in range(3):  # 3 foldable CX gates -> scale 2 rounds to (3 + 2*2)/3 = 7/3
+			qc.cx(0, 1)
+
+		with pytest.warns(UserWarning, match="Access them via the job's achieved_scale_factors"):
+			job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=1024)
+
+		# The estimator's user-defined config is never mutated.
+		assert estimator._zne["scale_factors"] == [1, 2]
+		# Requested and achieved are per-pair (always a list of lists) and live on the job.
+		assert np.allclose(job.requested_scale_factors(), [[1.0, 2.0]])
+		assert np.allclose(job.achieved_scale_factors(), [[1.0, 7 / 3]])
+		assert np.allclose(job.achieved_scale_factors(0), [1.0, 7 / 3])
+
+	def test_zne_job_mitigator_options_snapshot(self) -> None:
+		"""The estimator job reports a frozen snapshot merging ZNE config with the backend stack."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=[1, 3], folding_method="global", extrapolation_method="richardson", seed=7
+		)
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+		job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=1024)
+
+		options = job.mitigator_options
+		# ZNE settings the run used.
+		assert options["zne"]["enabled"] is True
+		assert options["zne"]["folding_method"] == "global"
+		assert options["zne"]["extrapolation_method"] == "richardson"
+		assert options["zne"]["seed"] == 7
+		# Merged with the underlying backend job's snapshot (level 0 here -> all off).
+		assert options["mitigation_level"] == 0
+		assert options["rem"]["enabled"] is False
+
+		# Mutating the estimator afterwards does not change the job's snapshot.
+		estimator.zne(enabled=True, folding_method="local", seed=99)
+		assert job.mitigator_options["zne"]["folding_method"] == "global"
+		assert job.mitigator_options["zne"]["seed"] == 7
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_scale_factor_below_one_raises(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Scale factors below 1 are rejected."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+
+		with pytest.raises(ValueError, match="Scale factors must be real numbers >= 1"):
+			estimator.zne(enabled=True, scale_factors=[0.5, 1.5])
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_nested_scale_factors_stored(self, mock_fiqci_backend_class: Mock) -> None:
+		"""A list of per-circuit scale-factor lists is accepted and stored."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[[1, 3, 5], [1, 2, 4]])
+
+		assert estimator._zne["scale_factors"] == [[1, 3, 5], [1, 2, 4]]
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_nested_scale_factors_invalid_sublist_raises(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Each per-circuit list must itself have at least two real numbers >= 1."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(Mock())
+
+		with pytest.raises(ValueError, match="Each per-circuit scale factor list"):
+			estimator.zne(enabled=True, scale_factors=[[1, 3], [0.5, 2]])  # 0.5 < 1
+
+		with pytest.raises(ValueError, match="Each per-circuit scale factor list"):
+			estimator.zne(enabled=True, scale_factors=[[1, 3], [3]])  # sublist too short
+
+	def test_zne_nested_scale_factors_length_mismatch_raises(self) -> None:
+		"""Number of per-circuit lists must match the number of submitted circuits."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[[1, 3], [1, 3]], seed=0)
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+
+		with pytest.raises(ValueError, match="Per-circuit scale_factors has 2 entr"):
+			estimator.run([qc], SparsePauliOp(["ZZ"]), shots=256)  # only 1 circuit
+
+	def test_zne_nested_scale_factors_per_circuit_run(self) -> None:
+		"""Each circuit folds with and extrapolates against its own scale factors."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[[1, 3, 5], [1, 3]], folding_method="local", seed=0)
+
+		qc0 = QuantumCircuit(2)
+		qc0.h(0)
+		qc0.cx(0, 1)
+		qc1 = QuantumCircuit(2)
+		qc1.h(0)
+		qc1.cx(0, 1)
+
+		job = estimator.run([qc0, qc1], SparsePauliOp(["ZZ"]), shots=1024)
+		vals = job.expectation_values()
+
+		# Two circuit/observable pairs, each with a single ZZ expectation value.
+		assert len(vals) == 2
+		# Config is never mutated; each pair reports its own requested/achieved scales on the job
+		# (per-pair lists differ in length, so compare pair by pair).
+		assert estimator._zne["scale_factors"] == [[1, 3, 5], [1, 3]]
+		assert np.allclose(job.requested_scale_factors(0), [1, 3, 5])
+		assert np.allclose(job.requested_scale_factors(1), [1, 3])
+		# Odd integers are reachable exactly, so achieved equals requested per pair.
+		assert np.allclose(job.achieved_scale_factors(0), [1, 3, 5])
+		assert np.allclose(job.achieved_scale_factors(1), [1, 3])
+
+	def test_zne_flat_request_reports_per_circuit_achieved(self) -> None:
+		"""A flat request yields per-circuit achieved scales on the job when circuits differ in size."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[1, 2], folding_method="local", seed=0)
+
+		# Different foldable-gate counts -> different achieved scale for the requested 2.
+		qc_small = QuantumCircuit(2)
+		qc_small.cx(0, 1)  # N=1: scale 2 -> achieved 1.0 (round(0.5)=0 folds)
+		qc_big = QuantumCircuit(2)
+		for _ in range(3):
+			qc_big.cx(0, 1)  # N=3: scale 2 -> achieved 7/3
+
+		with pytest.warns(UserWarning, match="not all exactly reachable"):
+			job = estimator.run([qc_small, qc_big], SparsePauliOp(["ZZ"]), shots=512)
+
+		# Config unchanged; both pairs share the flat request but report their own achieved scales.
+		assert estimator._zne["scale_factors"] == [1, 2]
+		assert np.allclose(job.requested_scale_factors(), [[1.0, 2.0], [1.0, 2.0]])
+		assert np.allclose(job.achieved_scale_factors(), [[1.0, 1.0], [1.0, 7 / 3]])
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zne_invalid_extrapolation_method_raises_error(self, mock_fiqci_backend_class: Mock) -> None:

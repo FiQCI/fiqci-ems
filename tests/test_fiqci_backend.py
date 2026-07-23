@@ -339,6 +339,93 @@ class TestMitigatedJob:
 		mock_handle.result.assert_called_once_with(10.0)
 
 
+class TestJobMitigatorOptionsSnapshot:
+	"""Tests that a returned job carries a frozen snapshot of the mitigation settings used."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	@pytest.fixture
+	def mock_circuit(self) -> QuantumCircuit:
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure_all()
+		return qc
+
+	def test_level0_job_reports_all_disabled(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""A level-0 handle reports a snapshot with every technique disabled."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		job = FiQCIBackend(mock_backend, mitigation_level=0).run(mock_circuit, shots=1024)
+
+		options = job.mitigator_options
+		assert options["mitigation_level"] == 0
+		assert options["rem"]["enabled"] is False
+		assert options["dd"]["enabled"] is False
+		assert options["pauli_twirl"]["enabled"] is False
+
+	def test_snapshot_omits_live_m3_object(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""The snapshot carries REM settings but not the heavyweight M3 mitigator instance."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		with patch("fiqci.ems.backend.core.M3IQM"):
+			job = FiQCIBackend(mock_backend, mitigation_level=1).run(mock_circuit, shots=1024)
+
+		rem = job.mitigator_options["rem"]
+		assert rem["enabled"] is True
+		assert "mitigator" not in rem
+		assert set(rem) == {"enabled", "calibration_shots", "calibration_file"}
+
+	def test_snapshot_frozen_against_later_backend_mutation(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		"""Mutating the backend's settings after run() does not change the job's snapshot."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		job = backend.run(mock_circuit, shots=1024)
+
+		# Later reconfigure the backend; the already-submitted job must be unaffected.
+		backend.dd(enabled=True)
+		backend.pauli_twirl(enabled=True, num_twirls=7)
+
+		assert job.mitigator_options["dd"]["enabled"] is False
+		assert job.mitigator_options["pauli_twirl"]["enabled"] is False
+		# The backend's own live view does reflect the mutation.
+		assert backend.mitigator_options["dd"]["enabled"] is True
+
+	def test_snapshot_captures_dd_config(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""DD settings in effect at submission are recorded in the snapshot."""
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		backend.dd(enabled=True)
+		job = backend.run(mock_circuit, shots=1024)
+
+		assert job.mitigator_options["dd"]["enabled"] is True
+
+	def test_snapshot_captures_twirl_config(self) -> None:
+		"""Pauli-twirl settings in effect at submission are recorded in the snapshot."""
+		from qiskit_aer import AerSimulator
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+		qc.measure_all()
+
+		backend = FiQCIBackend(AerSimulator(), mitigation_level=0)
+		backend.pauli_twirl(enabled=True, num_twirls=3)
+		job = backend.run(qc, shots=1024)
+
+		options = job.mitigator_options
+		assert options["pauli_twirl"]["enabled"] is True
+		assert options["pauli_twirl"]["num_twirls"] == 3
+
+
 def _make_result_mock(counts_per_circuit: list[dict[str, int]]) -> Mock:
 	"""Build a Mock job whose result.to_dict()/get_counts behave like a real backend job."""
 	mock_job = Mock()

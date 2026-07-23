@@ -90,6 +90,7 @@ class BatchedJob:
 		jobs: list[JobV1],
 		batch_ranges: list[tuple[int, int]] | None = None,
 		post_process: Callable[[Result], Result] | None = None,
+		mitigator_options: dict[str, Any] | None = None,
 	) -> None:
 		"""Initialize the handle.
 
@@ -100,14 +101,28 @@ class BatchedJob:
 				reported as best-effort placeholders.
 			post_process: Optional callback mapping the combined raw Result to the final
 				(mitigated) Result. Runs once on the first :meth:`result` call.
+			mitigator_options: Frozen snapshot of the mitigation settings used at submission time,
+				exposed via :attr:`mitigator_options`. ``None`` when unknown.
 		"""
 		assert jobs, "BatchedJob must wrap at least one job"
 		self._jobs = jobs
 		self._batch_ranges = batch_ranges
 		self._post_process = post_process
+		self._mitigator_options = mitigator_options
 		self._combined_result: Result | None = None
 		self._final_result: Result | None = None
 		self._lock = threading.Lock()
+
+	@property
+	def mitigator_options(self) -> dict[str, Any] | None:
+		"""Mitigation settings frozen at submission time (``mitigation_level``, ``rem``, ``dd``,
+		``pauli_twirl``).
+
+		Unlike :attr:`FiQCIBackend.mitigator_options` (which is live and mutable), this reports the
+		configuration this job actually ran with and never changes. ``None`` if no snapshot was
+		attached.
+		"""
+		return self._mitigator_options
 
 	# -- identity / polling (available immediately, before any results) --
 

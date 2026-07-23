@@ -115,7 +115,7 @@ Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
      - Gate names to fold (e.g. ``["cx", "cz"]``). If ``None``, folds all gates.
    * - ``scale_factors``
      - ``[1, 3, 5]``
-     - List of positive odd integers for noise scaling. At least 2 required.
+     - List of real numbers >= 1 for noise scaling. At least 2 required. Odd integers fold exactly; other values are approximated by partial/random folding. May be a list of lists (one per submitted circuit) to use different scale factors per circuit.
    * - ``folding_method``
      - ``"local"``
      - ``"local"`` (per-gate folding) or ``"global"`` (whole-circuit folding). When ``"global"``, ``fold_gates`` is ignored.
@@ -125,6 +125,9 @@ Configure ZNE using the :meth:`~fiqci.ems.FiQCIEstimator.zne` method:
    * - ``extrapolation_degree``
      - ``None``
      - Polynomial degree (only for ``"polynomial"`` method). Defaults to ``min(n_scales - 1, 2)``.
+   * - ``seed``
+     - ``None``
+     - Seed for the random gate sampling used to approximate non-odd-integer scale factors.
 
 .. _fiqci-estimator-dd:
 
@@ -237,6 +240,9 @@ The handle also lets you inspect a multi-batch run before it finishes:
    job.status()          # single aggregated status across all batches
    job.done()            # True once every batch has reached a terminal state
    job.partial_results() # per-batch results for batches that have already completed
+   job.mitigator_options # frozen snapshot of the mitigation settings this run used
+
+Unlike :attr:`~fiqci.ems.FiQCIEstimator.mitigator_options` on the estimator (which reflects the *current*, mutable settings), the handle's ``mitigator_options`` is a snapshot frozen at submission. It reports the ``zne`` configuration together with the underlying ``mitigation_level``, ``rem``, ``dd`` and ``pauli_twirl`` settings this run actually used, and never changes even if you reconfigure the estimator afterwards. (The per-pair scale factors are available separately via ``requested_scale_factors()`` / ``achieved_scale_factors()`` below.)
 
 
 .. note::
@@ -263,6 +269,12 @@ Results
      - Combined ``Result`` from the backend job
    * - ``observables(index=None)``
      - Observables used in the computation
+   * - ``requested_scale_factors(index=None)``
+     - ZNE scale factors requested for the run, one list per circuit/observable pair
+   * - ``achieved_scale_factors(index=None)``
+     - ZNE scale factors folding actually realised (the extrapolation x-axis), same shape
+   * - ``mitigator_options``
+     - Frozen snapshot of the mitigation settings this run used (``zne`` config plus the backend ``mitigation_level``/``rem``/``dd``/``pauli_twirl``)
 
 Examples
 --------

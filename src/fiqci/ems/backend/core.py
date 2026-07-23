@@ -159,6 +159,25 @@ class FiQCIBackend:
 		"""
 		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
 
+	def _snapshot_mitigator_options(self) -> dict[str, Any]:
+		"""Freeze the current mitigator settings for attachment to a submitted job.
+
+		Unlike :attr:`mitigator_options` (which reflects the backend's live, mutable settings),
+		the returned dict is a copy taken at submission time, so a job can faithfully report the
+		configuration it actually ran with even if the backend's settings are later mutated. The
+		live ``M3IQM`` mitigator is intentionally omitted.
+		"""
+		return {
+			"mitigation_level": self._mitigation_level,
+			"rem": {
+				"enabled": self._rem["enabled"],
+				"calibration_shots": self._rem["calibration_shots"],
+				"calibration_file": self._rem["calibration_file"],
+			},
+			"dd": {"enabled": self._dd["enabled"], "gate_sequences": list(self._dd["gate_sequences"])},
+			"pauli_twirl": dict(self._pauli_twirl),
+		}
+
 	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int | dict[str, int]:
 		"""Calculate total circuits generated for a given number of base circuits and observables."""
 		pauli_twirl_circuits_multiplier = 1
@@ -376,6 +395,10 @@ class FiQCIBackend:
 			"on" if self._pauli_twirl["enabled"] else "off",
 		)
 
+		# Freeze the mitigation config now so every returned handle reports the exact settings it
+		# ran with, unaffected by any later mutation of the backend's settings.
+		options_snapshot = self._snapshot_mitigator_options()
+
 		# If Pauli Twirling is enabled, replace circuits with twirled versions
 		twirl_group_size = 0
 		if self._pauli_twirl["enabled"]:
@@ -459,7 +482,7 @@ class FiQCIBackend:
 		# handle's result() via a post-process callback (no blocking here).
 		if not self._rem["enabled"]:
 			if twirl_group_size == 0:
-				return BatchedJob(batch_jobs, batch_ranges)
+				return BatchedJob(batch_jobs, batch_ranges, mitigator_options=options_snapshot)
 
 			# Snapshot mitigation metadata at submission time so deferred post-processing is not
 			# affected by later changes to the backend's settings.
@@ -489,7 +512,9 @@ class FiQCIBackend:
 					calibration_shots=calibration_shots,
 				)
 
-			return MitigatedJob(BatchedJob(batch_jobs, batch_ranges, post_process=_twirl_post))
+			return MitigatedJob(
+				BatchedJob(batch_jobs, batch_ranges, post_process=_twirl_post, mitigator_options=options_snapshot)
+			)
 
 		# REM enabled: run with M3 mitigation (deferred to the handle's result()).
 		return self._run_with_m3_mitigation(
@@ -499,6 +524,7 @@ class FiQCIBackend:
 			shots,
 			twirl_group_size=twirl_group_size,
 			max_batch_size=max_batch_size,
+			mitigator_options=options_snapshot,
 		)
 
 	def _run_with_m3_mitigation(
@@ -509,6 +535,7 @@ class FiQCIBackend:
 		shots: int,
 		twirl_group_size: int = 0,
 		max_batch_size: int = 100,
+		mitigator_options: dict[str, Any] | None = None,
 	) -> MitigatedJob:
 		"""Build a lazy M3-mitigated handle for already-submitted batch jobs.
 
@@ -524,6 +551,8 @@ class FiQCIBackend:
 			shots: Number of measurement shots.
 			twirl_group_size: Size of each twirl group (num_twirls + 1), or 0 if no twirling.
 			max_batch_size: Maximum circuits per calibration job (default: 100).
+			mitigator_options: Frozen snapshot of the mitigation settings used at submission, attached
+				to the returned handle so it can report the configuration it ran with.
 
 		Returns:
 			A MitigatedJob view whose ``result()`` lazily applies M3 mitigation.
@@ -615,7 +644,9 @@ class FiQCIBackend:
 				calibration_shots=calibration_shots,
 			)
 
-		return MitigatedJob(BatchedJob(batch_jobs, batch_ranges, post_process=_m3_post))
+		return MitigatedJob(
+			BatchedJob(batch_jobs, batch_ranges, post_process=_m3_post, mitigator_options=mitigator_options)
+		)
 
 	def _create_mitigated_result(
 		self,
