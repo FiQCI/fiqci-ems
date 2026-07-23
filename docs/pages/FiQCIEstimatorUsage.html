@@ -483,7 +483,7 @@
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5]</span></code></p></td>
-<td><p>List of positive odd integers for noise scaling. At least 2 required.</p></td>
+<td><p>List of real numbers &gt;= 1 for noise scaling. At least 2 required. Odd integers fold exactly; other values are approximated by partial/random folding. May be a list of lists (one per submitted circuit) to use different scale factors per circuit.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">folding_method</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code></p></td>
@@ -496,6 +496,10 @@
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_degree</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Polynomial degree (only for <code class="docutils literal notranslate"><span class="pre">&quot;polynomial&quot;</span></code> method). Defaults to <code class="docutils literal notranslate"><span class="pre">min(n_scales</span> <span class="pre">-</span> <span class="pre">1,</span> <span class="pre">2)</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Seed for the random gate sampling used to approximate non-odd-integer scale factors.</p></td>
 </tr>
 </tbody>
 </table>
@@ -612,8 +616,10 @@
 <span class="n">job</span><span class="o">.</span><span class="n">status</span><span class="p">()</span>          <span class="c1"># single aggregated status across all batches</span>
 <span class="n">job</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>            <span class="c1"># True once every batch has reached a terminal state</span>
 <span class="n">job</span><span class="o">.</span><span class="n">partial_results</span><span class="p">()</span> <span class="c1"># per-batch results for batches that have already completed</span>
+<span class="n">job</span><span class="o">.</span><span class="n">mitigator_options</span> <span class="c1"># frozen snapshot of the mitigation settings this run used</span>
 </pre></div>
 </div>
+<p>Unlike <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.mitigator_options" title="fiqci.ems.FiQCIEstimator.mitigator_options"><code class="xref py py-attr docutils literal notranslate"><span class="pre">mitigator_options</span></code></a> on the estimator (which reflects the <em>current</em>, mutable settings), the handle’s <code class="docutils literal notranslate"><span class="pre">mitigator_options</span></code> is a snapshot frozen at submission. It reports the <code class="docutils literal notranslate"><span class="pre">zne</span></code> configuration together with the underlying <code class="docutils literal notranslate"><span class="pre">mitigation_level</span></code>, <code class="docutils literal notranslate"><span class="pre">rem</span></code>, <code class="docutils literal notranslate"><span class="pre">dd</span></code> and <code class="docutils literal notranslate"><span class="pre">pauli_twirl</span></code> settings this run actually used, and never changes even if you reconfigure the estimator afterwards. (The per-pair scale factors are available separately via <code class="docutils literal notranslate"><span class="pre">requested_scale_factors()</span></code> / <code class="docutils literal notranslate"><span class="pre">achieved_scale_factors()</span></code> below.)</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>As with the sampler, submission is not atomic: if the backend rejects a circuit partway through, <code class="docutils literal notranslate"><span class="pre">run</span></code> logs a warning and still returns a handle (rejected/skipped batches report <code class="docutils literal notranslate"><span class="pre">ERROR</span></code>/<code class="docutils literal notranslate"><span class="pre">CANCELLED</span></code> — inspect <code class="docutils literal notranslate"><span class="pre">job.statuses()</span></code>). In that case <code class="docutils literal notranslate"><span class="pre">expectation_values()</span></code> and <code class="docutils literal notranslate"><span class="pre">result()</span></code> raise <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.BatchFailedError" title="fiqci.ems.BatchFailedError"><code class="xref py py-class docutils literal notranslate"><span class="pre">BatchFailedError</span></code></a>, since the values cannot be computed without all circuits.</p>
@@ -643,6 +649,15 @@
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">observables(index=None)</span></code></p></td>
 <td><p>Observables used in the computation</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">requested_scale_factors(index=None)</span></code></p></td>
+<td><p>ZNE scale factors requested for the run, one list per circuit/observable pair</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">achieved_scale_factors(index=None)</span></code></p></td>
+<td><p>ZNE scale factors folding actually realised (the extrapolation x-axis), same shape</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mitigator_options</span></code></p></td>
+<td><p>Frozen snapshot of the mitigation settings this run used (<code class="docutils literal notranslate"><span class="pre">zne</span></code> config plus the backend <code class="docutils literal notranslate"><span class="pre">mitigation_level</span></code>/<code class="docutils literal notranslate"><span class="pre">rem</span></code>/<code class="docutils literal notranslate"><span class="pre">dd</span></code>/<code class="docutils literal notranslate"><span class="pre">pauli_twirl</span></code>)</p></td>
 </tr>
 </tbody>
 </table>

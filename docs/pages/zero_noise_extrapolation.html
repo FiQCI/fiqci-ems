@@ -345,7 +345,11 @@
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-zero-noise-extrapolation">What is Zero Noise Extrapolation?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#circuit-folding-methods">Circuit Folding Methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#circuit-folding-methods">Circuit Folding Methods</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arbitrary-scale-factors">Arbitrary scale factors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-circuit-scale-factors">Per-circuit scale factors</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-methods">Extrapolation Methods</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#via-mitigation-level">Via Mitigation Level</a></li>
@@ -377,6 +381,7 @@
 <li><p><strong>Amplify the noise</strong> by creating scaled versions of the circuit (e.g., at scale factors 1, 3, 5).</p></li>
 <li><p><strong>Extrapolate</strong> the measured expectation values to the zero-noise point using a fitted model.</p></li>
 </ol>
+<p>Scale factors may be <strong>any real number ≥ 1</strong> (e.g. <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">1.5,</span> <span class="pre">2,</span> <span class="pre">3]</span></code>), not just odd integers — see <a class="reference internal" href="#arbitrary-scale-factors"><span class="xref myst">Arbitrary scale factors</span></a> below.</p>
 <p>Because noise grows predictably with circuit depth, measuring at multiple noise levels reveals the trend, and extrapolation removes the noise contribution.</p>
 </section>
 <section id="circuit-folding-methods">
@@ -396,6 +401,34 @@
 </ul>
 </li>
 </ul>
+<section id="arbitrary-scale-factors">
+<h3>Arbitrary scale factors<a class="headerlink" href="#arbitrary-scale-factors" title="Link to this heading">#</a></h3>
+<p>Odd integers are the only scale factors reachable by <em>fully</em> folding every gate. Any other real value ≥ 1 (even integers, fractions) is <strong>approximated</strong> by partial folding:</p>
+<ul class="simple">
+<li><p><strong>Local</strong>: every foldable gate is folded a base number of times, then a randomly-sampled subset is folded once more so the average folding matches the requested scale factor as closely as possible.</p></li>
+<li><p><strong>Global</strong>: the circuit is fully folded for the integer part, then a suffix of the circuit is partially folded for the fractional remainder.</p></li>
+</ul>
+<p>Because folding is discrete, small circuits may not reach the requested scale factor exactly. Extrapolation always uses the <strong>achieved</strong> scale factors as the x-axis (they depend only on each circuit’s foldable-gate count, not the random seed, and equal the requested values exactly for odd integers). Your <code class="docutils literal notranslate"><span class="pre">scale_factors</span></code> configuration is never modified; instead, when any requested value can’t be reached exactly the estimator warns at <code class="docutils literal notranslate"><span class="pre">run</span></code> and attaches both the requested and achieved values to the returned job:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">circuits</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">observables</span><span class="p">)</span>
+<span class="n">job</span><span class="o">.</span><span class="n">requested_scale_factors</span><span class="p">()</span>   <span class="c1"># what you asked for, one list per circuit/observable pair</span>
+<span class="n">job</span><span class="o">.</span><span class="n">achieved_scale_factors</span><span class="p">()</span>    <span class="c1"># what folding realised (the extrapolation x-axis), same shape</span>
+</pre></div>
+</div>
+<p>Both accessors return a list of lists (one inner list per circuit/observable pair) and take an optional pair index. Pass a <code class="docutils literal notranslate"><span class="pre">seed</span></code> to make the random gate sampling reproducible.</p>
+<p>The returned job also carries <code class="docutils literal notranslate"><span class="pre">job.mitigator_options</span></code>, a snapshot of the full ZNE configuration (folding/extrapolation settings) in effect at submission, merged with the underlying backend mitigation settings. Unlike <code class="docutils literal notranslate"><span class="pre">estimator.mitigator_options</span></code>, this snapshot is frozen and reports what the run actually used even if you reconfigure the estimator afterwards.</p>
+</section>
+<section id="per-circuit-scale-factors">
+<h3>Per-circuit scale factors<a class="headerlink" href="#per-circuit-scale-factors" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code> can be either a single flat list applied to every circuit, or a <strong>list of lists</strong> — one list per submitted circuit — so each circuit uses its own scale factors. The number of lists must match the number of circuit/observable pairs passed to <code class="docutils literal notranslate"><span class="pre">run</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">zne</span><span class="p">(</span>
+    <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="c1"># circuit 0 uses [1, 3, 5]; circuit 1 uses [1, 2, 4]</span>
+    <span class="n">scale_factors</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">]],</span>
+<span class="p">)</span>
+<span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">circuit0</span><span class="p">,</span> <span class="n">circuit1</span><span class="p">],</span> <span class="n">observables</span><span class="o">=</span><span class="p">[</span><span class="n">obs0</span><span class="p">,</span> <span class="n">obs1</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="extrapolation-methods">
 <h2>Extrapolation Methods<a class="headerlink" href="#extrapolation-methods" title="Link to this heading">#</a></h2>
@@ -454,9 +487,9 @@
 <td><p>Gate names to fold (local folding only). <code class="docutils literal notranslate"><span class="pre">None</span></code> folds all two-qubit gates.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">list[int]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[float]</span> <span class="pre">|</span> <span class="pre">list[list[float]]</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5]</span></code></p></td>
-<td><p>Positive odd integers specifying the noise scale levels. At least two are required.</p></td>
+<td><p>Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">folding_method</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
@@ -472,6 +505,11 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Polynomial degree (only for <code class="docutils literal notranslate"><span class="pre">&quot;polynomial&quot;</span></code> extrapolation).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Seed for the random gate sampling used to approximate non-odd-integer scale factors.</p></td>
 </tr>
 </tbody>
 </table>
@@ -542,7 +580,11 @@
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-zero-noise-extrapolation">What is Zero Noise Extrapolation?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#circuit-folding-methods">Circuit Folding Methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#circuit-folding-methods">Circuit Folding Methods</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arbitrary-scale-factors">Arbitrary scale factors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-circuit-scale-factors">Per-circuit scale factors</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-methods">Extrapolation Methods</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#via-mitigation-level">Via Mitigation Level</a></li>
