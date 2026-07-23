@@ -20,7 +20,7 @@ def _ls_intercept_row(x: np.ndarray, degree: int) -> np.ndarray:
 
 def exponential_extrapolation(
 	expectation_values: list[list[float]],
-	scale_factors: list[int],
+	scale_factors: list[float],
 	eps: float = 1e-9,
 	sigmas: list[list[float]] | None = None,
 ) -> list[float] | tuple[list[float], list[float]]:
@@ -94,7 +94,7 @@ def exponential_extrapolation(
 
 
 def richardson_extrapolation(
-	expectation_values: list[list[float]], scales: list[int], sigmas: list[list[float]] | None = None
+	expectation_values: list[list[float]], scales: list[float], sigmas: list[list[float]] | None = None
 ) -> list[float] | tuple[list[float], list[float]]:
 	"""
 	Richardson extrapolation to estimate the zero-noise value.
@@ -146,7 +146,7 @@ def richardson_extrapolation(
 
 def polynomial_extrapolation(
 	expectation_values: list[list[float]],
-	scales: list[int],
+	scales: list[float],
 	degree: int | None = None,
 	sigmas: list[list[float]] | None = None,
 ) -> list[float] | tuple[list[float], list[float]]:

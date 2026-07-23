@@ -105,7 +105,9 @@ def test_standard_errors_match_shot_noise_and_bound_deviation(estimator: FiQCIEs
 def test_standard_errors_with_zne_enabled() -> None:
 	"""With ZNE on, shot_error (at scale 1) and a propagated zne_extrapolation_error are reported."""
 	estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
-	estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method="linear")
+	# Global folding so the single-qubit-gate circuit reaches distinct achieved scales [1, 3, 5];
+	# local folding of a circuit with no foldable multi-qubit gates would collapse them to [1, 1, 1].
+	estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method="linear", folding_method="global")
 
 	# Superposition gives <ZZ> = <ZI> = 0, i.e. maximal (non-zero) shot noise to propagate.
 	obs = SparsePauliOp(["ZZ", "ZI"])

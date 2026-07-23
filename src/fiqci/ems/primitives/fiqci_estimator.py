@@ -310,7 +310,7 @@ class FiQCIEstimator:
 			"seed": self._zne["seed"],
 		}
 
-		def _compute() -> tuple[list, list]:
+		def _compute() -> tuple[list, list, list]:
 			"""Fetch results and compute per-pair (and ZNE-extrapolated) expectation values.
 
 			Returns ``(expectation_values, raw_expectation_values, standard_errors)`` where the
@@ -342,37 +342,25 @@ class FiQCIEstimator:
 
 					per_scale_sigmas = []
 					for c in split_counts:
-						expvs = self._calculate_expectation_values(
-							c,
-							observables if isinstance(observables, SparsePauliOp) else observables[i],
-							measurement_settings,
-						)
-						zne_expvs.append(expvs)
+						zne_expvs.append(self._calculate_expectation_values(c, obs, measurement_settings))
+						per_scale_sigmas.append(self._calculate_shot_errors(c, obs, measurement_settings))
 
 					scales = zne_scale_factors_per_pair[i]
 					if zne_extrapolation_method == "exponential":
-						expvs, ext_err = exponential_extrapolation(
-							zne_expvs, scales, sigmas=per_scale_sigmas
-						)
+						expvs, ext_err = exponential_extrapolation(zne_expvs, scales, sigmas=per_scale_sigmas)
 					elif zne_extrapolation_method == "richardson":
-						expvs, ext_err = richardson_extrapolation(zne_expvs, zne_scale_factors, sigmas=per_scale_sigmas)
+						expvs, ext_err = richardson_extrapolation(zne_expvs, scales, sigmas=per_scale_sigmas)
 					elif zne_extrapolation_method == "polynomial":
 						expvs, ext_err = polynomial_extrapolation(
-							zne_expvs, zne_scale_factors, degree=zne_extrapolation_degree, sigmas=per_scale_sigmas
+							zne_expvs, scales, degree=zne_extrapolation_degree, sigmas=per_scale_sigmas
 						)
 					elif zne_extrapolation_method == "linear":
-						expvs, ext_err = polynomial_extrapolation(
-							zne_expvs, zne_scale_factors, degree=1, sigmas=per_scale_sigmas
-						)
+						expvs, ext_err = polynomial_extrapolation(zne_expvs, scales, degree=1, sigmas=per_scale_sigmas)
 					else:
 						raise ValueError(f"Unsupported extrapolation method: {zne_extrapolation_method}")
 
 					# Report the raw shot error at the unfolded (scale 1) point when available.
-					scale_1_idx = (
-						zne_scale_factors.index(1)
-						if 1 in zne_scale_factors
-						else zne_scale_factors.index(min(zne_scale_factors))
-					)
+					scale_1_idx = scales.index(1) if 1 in scales else scales.index(min(scales))
 					shot_err = per_scale_sigmas[scale_1_idx]
 					standard_errors.append(
 						{"shot_error": shot_err, "zne_extrapolation_error": ext_err, "total": ext_err}
@@ -586,7 +574,7 @@ class FiQCIEstimatorJob:
 	def __init__(
 		self,
 		job,
-		compute_fn: Callable[[], tuple[list, list]],
+		compute_fn: Callable[[], tuple[list, list, list]],
 		observables,
 		requested_scale_factors: list[list[float]] | None = None,
 		achieved_scale_factors: list[list[float]] | None = None,
