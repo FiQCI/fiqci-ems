@@ -373,7 +373,7 @@ class TestJobMitigatorOptionsSnapshot:
 		"""The snapshot carries REM settings but not the heavyweight M3 mitigator instance."""
 		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
 
-		with patch("fiqci.ems.fiqci_backend.M3IQM"):
+		with patch("fiqci.ems.backend.core.M3IQM"):
 			job = FiQCIBackend(mock_backend, mitigation_level=1).run(mock_circuit, shots=1024)
 
 		rem = job.mitigator_options["rem"]

@@ -103,7 +103,7 @@ class FiQCIEstimator:
 		the ZNE contribution is the sum of the per-circuit counts (this assumes ``num_base_circuits``
 		matches the number of per-circuit scale-factor lists).
 		"""
-		measurement_settings = _combine_pauli_ops(
+		measurement_settings = get_measurement_settings(
 			observables if isinstance(observables, SparsePauliOp) else observables[0]
 		)
 		num_measurement_circuits = len(measurement_settings)
