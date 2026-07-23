@@ -126,9 +126,11 @@ estimator.zne(
 | `enabled` | `bool` | - | Enable or disable ZNE. |
 | `fold_gates` | `list[str] \| None` | `None` | Gate names to fold (local folding only). `None` folds all two-qubit gates. |
 | `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
+| `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
 | `extrapolation_method` | `str \| Callable` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, `"linear"`, or a custom callable `fn(expectation_values, scale_factors) -> list[float]` (see [Custom extrapolation functions](#custom-extrapolation-functions)). |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
+| `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
 | `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
 
 ## Examples

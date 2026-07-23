@@ -10,11 +10,9 @@ backend interface without additional code.
 from __future__ import annotations
 
 import logging
-import threading
-import time
 from pathlib import Path
-from typing import Any, NamedTuple, TypedDict
-from collections.abc import Callable, Iterable
+from typing import Any, TypedDict
+from collections.abc import Iterable
 
 from iqm.iqm_client import STANDARD_DD_STRATEGY
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
@@ -24,6 +22,14 @@ from fiqci.ems.mitigators.rem import M3IQM
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry, build_dd_options
 from fiqci.ems.transpiler_passes.pauli_twirl import get_twirled_circuits
 from fiqci.ems.utils import probabilities_to_counts
+from fiqci.ems.backend.jobs import MitigatedJob, BatchedJob, _UnsubmittedBatch
+from fiqci.ems.backend.counts import (
+	_key_layout,
+	_reduce_counts,
+	_expand_counts,
+	_average_counts,
+	_trim_result_to_groups,
+)
 
 from qiskit import QuantumCircuit
 from qiskit.circuit import Gate
@@ -31,78 +37,6 @@ from qiskit.providers import JobStatus, JobV1
 from qiskit.result import Result
 
 logger: logging.Logger = logging.getLogger(__name__)
-
-# Job statuses that indicate a batch will not change further.
-_TERMINAL_STATUSES = frozenset({JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED})
-
-
-class BatchFailedError(RuntimeError):
-	"""Raised when one or more batches of a submitted job fail.
-
-	The message identifies the failing batch by its index and the range of original circuit
-	indices it covered, so callers can map the failure back to their input.
-	"""
-
-
-class _UnsubmittedBatch:
-	"""Stand-in for a batch that was not successfully submitted to the backend.
-
-	Submission is not atomic: when a batch is rejected mid-stream, ``run()`` stops submitting and
-	still returns a handle covering every intended batch. The rejected batch and any batches skipped
-	after it are represented by this placeholder so the handle exposes a uniform, index-aligned
-	per-batch view. It reports a terminal status (``ERROR`` for the batch that failed to submit,
-	``CANCELLED`` for batches skipped afterwards), has no backend job id, and raises when its result
-	is requested.
-	"""
-
-	def __init__(self, circuit_range: tuple[int, int], status: JobStatus, error: str | None = None) -> None:
-		self._range = circuit_range
-		self._status = status
-		self._error = error
-
-	def job_id(self) -> None:
-		"""Unsubmitted batches have no backend job id."""
-		return None
-
-	def status(self) -> JobStatus:
-		return self._status
-
-	def result(self, timeout: float | None = None) -> Result:
-		start, end = self._range
-		detail = f": {self._error}" if self._error else ""
-		raise BatchFailedError(f"Batch covering circuits {start}-{end - 1} was not submitted{detail}")
-
-
-class PartialBatch(NamedTuple):
-	"""Snapshot of a single batch within a multi-batch job.
-
-	Attributes:
-		index: Position of the batch in submission order.
-		circuit_range: ``(start, end_exclusive)`` original circuit indices covered by the batch.
-		status: Current :class:`~qiskit.providers.JobStatus` of the batch job.
-		job_id: Backend job id of the batch.
-		result: The batch's :class:`~qiskit.result.Result` if it has completed, else ``None``.
-	"""
-
-	index: int  # type: ignore[bad-override]  # NamedTuple field shadows the read-write tuple.index method
-	circuit_range: tuple[int, int]
-	status: JobStatus
-	job_id: str
-	result: Result | None
-
-
-class _KeyLayout(NamedTuple):
-	"""Structure of result count keys, used to reduce them for M3 and restore them afterwards.
-
-	Attributes:
-		num_clbits: Total number of classical bits (length of a key with spaces removed).
-		measured: Classical bit indices that are actually measured; all others are always zero.
-		space_positions: Indices (in the original spaced key) at which spaces occur.
-	"""
-
-	num_clbits: int
-	measured: frozenset[int]
-	space_positions: tuple[int, ...]
 
 
 class FiQCIBackend:
@@ -224,6 +158,25 @@ class FiQCIBackend:
 			A dictionary of current mitigator settings and their values.
 		"""
 		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
+
+	def _snapshot_mitigator_options(self) -> dict[str, Any]:
+		"""Freeze the current mitigator settings for attachment to a submitted job.
+
+		Unlike :attr:`mitigator_options` (which reflects the backend's live, mutable settings),
+		the returned dict is a copy taken at submission time, so a job can faithfully report the
+		configuration it actually ran with even if the backend's settings are later mutated. The
+		live ``M3IQM`` mitigator is intentionally omitted.
+		"""
+		return {
+			"mitigation_level": self._mitigation_level,
+			"rem": {
+				"enabled": self._rem["enabled"],
+				"calibration_shots": self._rem["calibration_shots"],
+				"calibration_file": self._rem["calibration_file"],
+			},
+			"dd": {"enabled": self._dd["enabled"], "gate_sequences": list(self._dd["gate_sequences"])},
+			"pauli_twirl": dict(self._pauli_twirl),
+		}
 
 	def _snapshot_mitigator_options(self) -> dict[str, Any]:
 		"""Freeze the current mitigator settings for attachment to a submitted job.
@@ -563,12 +516,12 @@ class FiQCIBackend:
 				self._raw_counts_cache = raw_counts_list
 
 				averaged_counts_list = [
-					self._average_counts(raw_counts_list[i : i + twirl_group_size])
+					_average_counts(raw_counts_list[i : i + twirl_group_size])
 					for i in range(0, len(raw_counts_list), twirl_group_size)
 				]
 
 				num_groups = len(circuits_list) // twirl_group_size
-				result_to_use = self._trim_result_to_groups(result, num_groups)
+				result_to_use = _trim_result_to_groups(result, num_groups)
 				return self._create_mitigated_result(
 					result_to_use,
 					averaged_counts_list,
@@ -592,134 +545,6 @@ class FiQCIBackend:
 			max_batch_size=max_batch_size,
 			mitigator_options=options_snapshot,
 		)
-
-	@staticmethod
-	def _key_layout(counts: dict[str, int], mapping: dict[int, int]) -> _KeyLayout:
-		"""Describe the structure of count dictionary keys for M3 correction.
-
-		M3 expects a bitstring with exactly one bit per measured qubit and no spaces. Result
-		keys, however, contain a bit for every classical bit in the circuit, including spaces
-		between classical registers (e.g. ``"001 00"``) and zero-filled bits for classical
-		registers that are never measured. This computes the information needed to strip those
-		extra bits before correction and restore them afterwards.
-
-		Bitstrings are little-endian on the classical bit index: the character at spaceless
-		index ``i`` corresponds to classical bit ``num_clbits - 1 - i`` (Qiskit MSB-left). A
-		classical bit is "measured" iff it is a key of ``mapping`` (from
-		``final_measurement_mapping``); every other bit is always zero in the results.
-
-		Args:
-			counts: Count dictionary whose keys may contain spaces and unmeasured bits.
-			mapping: ``{classical_bit: qubit}`` mapping for the circuit's final measurements.
-
-		Returns:
-			A :class:`_KeyLayout` describing the total bit count, the measured bits, and the
-			space positions of the original keys.
-		"""
-		sample_key = next(iter(counts))
-		space_positions = tuple(i for i, char in enumerate(sample_key) if char == " ")
-		num_clbits = len(sample_key) - len(space_positions)
-		return _KeyLayout(num_clbits=num_clbits, measured=frozenset(mapping), space_positions=space_positions)
-
-	@staticmethod
-	def _reduce_counts(counts: dict[str, int], layout: _KeyLayout) -> dict[str, int]:
-		"""Strip spaces and unmeasured (always-zero) bits from count keys for M3 correction.
-
-		Keys differing only in unmeasured bits collapse to the same reduced key (those bits are
-		always zero), so their values are summed; in practice no collision occurs.
-
-		Args:
-			counts: Count dictionary with full, spaced keys.
-			layout: Layout describing the key structure, from :meth:`_key_layout`.
-
-		Returns:
-			Count dictionary keyed by measured bits only, with no spaces.
-		"""
-		reduced: dict[str, int] = {}
-		for key, value in counts.items():
-			spaceless = key.replace(" ", "")
-			measured_bits = "".join(
-				char for i, char in enumerate(spaceless) if (layout.num_clbits - 1 - i) in layout.measured
-			)
-			reduced[measured_bits] = reduced.get(measured_bits, 0) + value
-		return reduced
-
-	@staticmethod
-	def _expand_counts(counts: dict[str, int], layout: _KeyLayout) -> dict[str, int]:
-		"""Restore unmeasured zero bits and register spaces to reduced count keys.
-
-		Inverse of :meth:`_reduce_counts`: each measured bit is placed back at its original
-		position, unmeasured bits are filled with ``"0"``, and spaces are reinserted.
-
-		Args:
-			counts: Count dictionary keyed by measured bits only (e.g. M3 output).
-			layout: Layout describing the key structure, from :meth:`_key_layout`.
-
-		Returns:
-			Count dictionary with full, spaced keys matching the original structure.
-		"""
-		expanded: dict[str, int] = {}
-		for key, value in counts.items():
-			measured_iter = iter(key)
-			chars = [
-				next(measured_iter) if (layout.num_clbits - 1 - i) in layout.measured else "0"
-				for i in range(layout.num_clbits)
-			]
-			full = "".join(chars)
-			for pos in layout.space_positions:
-				full = full[:pos] + " " + full[pos:]
-			expanded[full] = expanded.get(full, 0) + value
-		return expanded
-
-	@staticmethod
-	def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
-		"""Average multiple count dictionaries.
-
-		Args:
-			counts_list: List of count dictionaries to average.
-
-		Returns:
-			Averaged count dictionary with integer values.
-		"""
-		if len(counts_list) == 1:
-			return counts_list[0]
-
-		totals: dict[str, float] = {}
-		for counts in counts_list:
-			for key, value in counts.items():
-				totals[key] = totals.get(key, 0.0) + value
-		n = len(counts_list)
-		return {key: round(value / n) for key, value in totals.items()}
-
-	@staticmethod
-	def _trim_result_to_groups(result: Result, num_groups: int) -> Result:
-		"""Trim a flat (per-twirl) Result down to one entry per twirl group.
-
-		The flat result list is ``[g0_orig, g0_tw1..g0_twN, g1_orig, g1_tw1.., ...]`` of length
-		``num_groups * twirl_group_size``. We must keep the *representative* entry of each group
-		(its original circuit, at stride ``twirl_group_size``) rather than the first ``num_groups``
-		flat entries: a plain ``[:num_groups]`` slice keeps mostly group 0's twirl copies, so every
-		kept entry carries group 0's header. Since ``Result.get_counts()`` reconstructs each
-		bitstring's structure (creg sizes, memory slots) from the per-entry header, wrong headers
-		yield misaligned, wrongly-structured counts even though ``_create_mitigated_result`` later
-		overwrites ``data["counts"]``. Keeping ``results_list[i * stride]`` makes each kept entry's
-		header match input circuit ``i``.
-
-		Args:
-			result: Original Result object (flat, one entry per submitted twirl circuit).
-			num_groups: Number of twirl groups (== number of input circuits).
-
-		Returns:
-			New Result object with one representative entry per group, in input-circuit order.
-		"""
-		from qiskit.result import Result as QiskitResult
-
-		result_data = result.to_dict()
-		results_list = result_data.get("results")
-		if results_list is not None and num_groups:
-			stride = len(results_list) // num_groups  # == twirl_group_size
-			result_data["results"] = [results_list[i * stride] for i in range(num_groups)]
-		return QiskitResult.from_dict(result_data)
 
 	def _run_with_m3_mitigation(
 		self,
@@ -810,23 +635,23 @@ class FiQCIBackend:
 				# keys instead carry a bit for every classical bit (with spaces between registers and
 				# zero-filled bits for unmeasured registers), so reduce them to the measured bits
 				# before correction and restore the original structure afterwards.
-				layout = self._key_layout(raw_counts, qubits)
-				counts_for_correction = self._reduce_counts(raw_counts, layout)
+				layout = _key_layout(raw_counts, qubits)
+				counts_for_correction = _reduce_counts(raw_counts, layout)
 
 				quasi_dist = mitigator.apply_correction(counts_for_correction, qubits)
 				mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
 				mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
-				mitigated_counts_list.append(self._expand_counts(mitigated_counts[0], layout))
+				mitigated_counts_list.append(_expand_counts(mitigated_counts[0], layout))
 
 			result_to_use = result
 			# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
 			if twirl_group_size:
 				averaged_mitigated: list[dict[str, int]] = []
 				for i in range(0, len(mitigated_counts_list), twirl_group_size):
-					averaged_mitigated.append(self._average_counts(mitigated_counts_list[i : i + twirl_group_size]))
+					averaged_mitigated.append(_average_counts(mitigated_counts_list[i : i + twirl_group_size]))
 				mitigated_counts_list = averaged_mitigated
 				num_groups = len(circuits) // twirl_group_size
-				result_to_use = self._trim_result_to_groups(result, num_groups)
+				result_to_use = _trim_result_to_groups(result, num_groups)
 
 			self._raw_counts_cache = raw_counts_list
 			return self._create_mitigated_result(
@@ -937,7 +762,6 @@ class BatchedJob:
 		jobs: list[JobV1],
 		batch_ranges: list[tuple[int, int]] | None = None,
 		post_process: Callable[[Result], Result] | None = None,
-		mitigator_options: dict[str, Any] | None = None,
 	) -> None:
 		"""Initialize the handle.
 
@@ -948,30 +772,16 @@ class BatchedJob:
 				reported as best-effort placeholders.
 			post_process: Optional callback mapping the combined raw Result to the final
 				(mitigated) Result. Runs once on the first :meth:`result` call.
-			mitigator_options: Frozen snapshot of the mitigation settings used at submission time,
-				exposed via :attr:`mitigator_options`. ``None`` when unknown.
 		"""
 		assert jobs, "BatchedJob must wrap at least one job"
 		self._jobs = jobs
 		self._batch_ranges = batch_ranges
 		self._post_process = post_process
-		self._mitigator_options = mitigator_options
 		self._combined_result: Result | None = None
 		self._final_result: Result | None = None
 		self._lock = threading.Lock()
 
 	# -- identity / polling (available immediately, before any results) --
-
-	@property
-	def mitigator_options(self) -> dict[str, Any] | None:
-		"""Mitigation settings frozen at submission time (``mitigation_level``, ``rem``, ``dd``,
-		``pauli_twirl``).
-
-		Unlike :attr:`FiQCIBackend.mitigator_options` (which is live and mutable), this reports the
-		configuration this job actually ran with and never changes. ``None`` if no snapshot was
-		attached.
-		"""
-		return self._mitigator_options
 
 	def job_id(self) -> str:
 		"""Backend job id of the first batch (for single-job back-compat)."""
