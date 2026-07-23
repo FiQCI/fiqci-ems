@@ -26,7 +26,6 @@ FiQCI EMS supports two methods for amplifying noise by increasing the effective 
     - This uniformly amplifies noise across all gates.
     - The `fold_gates` parameter is not applicable and will be ignored if set.
 
-(arbitrary-scale-factors)=
 ### Arbitrary scale factors
 
 Odd integers are the only scale factors reachable by *fully* folding every gate. Any other real value ≥ 1 (even integers, fractions) is **approximated** by partial folding:
