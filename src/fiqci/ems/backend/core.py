@@ -739,4 +739,3 @@ class FiQCIBackend:
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate attribute access to underlying backend object."""
 		return getattr(self._backend, name)
-
