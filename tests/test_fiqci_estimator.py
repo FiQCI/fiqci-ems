@@ -454,6 +454,69 @@ class TestCalculateExpectationValues:
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(-1.0)
 
+	@pytest.mark.parametrize("counts", [pytest.param([{}], id="empty-dict"), pytest.param([{"0": 0}], id="all-zero")])
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zero_total_counts_report_zero_instead_of_dividing_by_zero(
+		self, mock_fiqci_backend_class: Mock, counts: list[dict[str, int]]
+	) -> None:
+		"""A measurement circuit with no recorded shots reports 0.0, matching _calculate_shot_errors."""
+		mock_backend = Mock()
+		mock_fiqci_backend_class.return_value = Mock()
+
+		estimator = FiQCIEstimator(mock_backend)
+
+		obs = SparsePauliOp.from_list([("IZ", 1.0)])
+		measurement_settings = [{0: "Z"}]
+
+		assert estimator._calculate_expectation_values(counts, obs, measurement_settings) == [0.0]
+		assert estimator._calculate_shot_errors(counts, obs, measurement_settings) == [0.0]
+
+
+class TestEstimatorMitigatorOptionsIsolation:
+	"""``FiQCIEstimator.mitigator_options`` hands out a copy of the live ZNE settings."""
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_mutating_returned_zne_dict_does_not_change_settings(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Reassigning entries of the returned ``zne`` dict leaves the estimator's settings intact."""
+		mock_fiqci_backend_class.return_value = Mock(mitigator_options={})
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[1, 3], fold_gates=["cz"], folding_method="local")
+
+		options = estimator.mitigator_options
+		options["zne"]["enabled"] = "clobbered"
+		options["zne"]["folding_method"] = "clobbered"
+
+		assert estimator._zne["enabled"] is True
+		assert estimator._zne["folding_method"] == "local"
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_mutating_nested_zne_lists_does_not_change_settings(self, mock_fiqci_backend_class: Mock) -> None:
+		"""``scale_factors`` and ``fold_gates`` are copied too, not just the outer dict."""
+		mock_fiqci_backend_class.return_value = Mock(mitigator_options={})
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[1, 3], fold_gates=["cz"])
+
+		options = estimator.mitigator_options
+		options["zne"]["scale_factors"].append(99)
+		options["zne"]["fold_gates"].append("clobbered")
+
+		assert estimator._zne["scale_factors"] == [1, 3]
+		assert estimator._zne["fold_gates"] == ["cz"]
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_nested_per_circuit_scale_factor_sublists_are_copied(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Per-circuit scale factors are a list of lists; the sublists must be copied as well."""
+		mock_fiqci_backend_class.return_value = Mock(mitigator_options={})
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[[1, 3], [1, 3, 5]])
+
+		estimator.mitigator_options["zne"]["scale_factors"][0].append(99)
+
+		assert estimator._zne["scale_factors"] == [[1, 3], [1, 3, 5]]
+
 
 def _const_compute(exp_vals, raw=None, errors=None):
 	"""Build a compute_fn returning fixed (expectation_values, raw_expectation_values, standard_errors)."""
