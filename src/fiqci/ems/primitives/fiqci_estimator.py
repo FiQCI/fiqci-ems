@@ -33,6 +33,13 @@ def _is_nested_scale_factors(scale_factors) -> bool:
 	return len(scale_factors) > 0 and all(isinstance(s, (list, tuple)) for s in scale_factors)
 
 
+def _copy_scale_factors(scale_factors) -> list:
+	"""Copy a flat or per-circuit-nested scale-factor list so callers cannot mutate the original."""
+	if _is_nested_scale_factors(scale_factors):
+		return [list(sub) for sub in scale_factors]
+	return list(scale_factors)
+
+
 def _accepts_sigmas(fn: Callable) -> bool:
 	"""True when ``fn`` can be handed the per-scale shot errors as a ``sigmas`` keyword argument."""
 	try:
@@ -55,8 +62,9 @@ def _apply_custom_extrapolation(
 
 	``sigmas`` is passed only when the callable's signature accepts it, so two-argument extrapolators
 	keep working unchanged. Following the convention of the built-in extrapolators, the callable may
-	return either the zero-noise values alone or a ``(values, standard_errors)`` pair; the errors are
-	``None`` when it reports none.
+	return either the zero-noise values alone, a ``(values, standard_errors)`` pair, or a
+	``(values, None)`` pair to report values without standard errors; the errors are ``None`` in the
+	latter two cases.
 	"""
 	if _accepts_sigmas(fn):
 		result = fn(expectation_values, scales, sigmas=sigmas)
@@ -64,14 +72,27 @@ def _apply_custom_extrapolation(
 		result = fn(expectation_values, scales)
 
 	values, errors = result, None
-	# A (values, errors) pair is a 2-sequence whose entries are themselves sequences, while plain
-	# values are scalars, so the two shapes cannot be confused (not even for two observables).
-	if len(result) == 2 and all(isinstance(part, (list, tuple, np.ndarray)) for part in result):
+	# A (values, errors) pair is a 2-sequence whose first entry is itself a sequence, while plain
+	# values are scalars, so the two shapes cannot be confused (not even for two observables). The
+	# second entry may be None, which is how a callable reports "no standard errors" explicitly.
+	if (
+		len(result) == 2
+		and isinstance(result[0], (list, tuple, np.ndarray))
+		and (result[1] is None or isinstance(result[1], (list, tuple, np.ndarray)))
+	):
 		values, errors = result
 
-	values = [float(v) for v in values]
+	try:
+		values = [float(v) for v in values]
+		if errors is not None:
+			errors = [float(e) for e in errors]
+	except (TypeError, ValueError) as exc:
+		raise TypeError(
+			"Custom extrapolation function must return a sequence of floats (one per observable), "
+			"optionally as a (values, standard_errors) pair; "
+			f"got {result!r}."
+		) from exc
 	if errors is not None:
-		errors = [float(e) for e in errors]
 		if len(errors) != len(values):
 			raise ValueError(
 				"Custom extrapolation function returned "
@@ -140,8 +161,16 @@ class FiQCIEstimator:
 
 	@property
 	def mitigator_options(self) -> dict[str, Any]:
-		"""Get current mitigator settings."""
-		return {"zne": self._zne, **self.backend.mitigator_options}
+		"""Get current mitigator settings.
+
+		The returned dict is a copy, so mutating it does not change the estimator's configuration;
+		use :meth:`zne` / :meth:`rem` / :meth:`dd` / :meth:`pauli_twirl`, which validate their input.
+		"""
+		zne = dict(self._zne)
+		if self._zne["fold_gates"] is not None:
+			zne["fold_gates"] = list(self._zne["fold_gates"])
+		zne["scale_factors"] = _copy_scale_factors(self._zne["scale_factors"])
+		return {"zne": zne, **self.backend.mitigator_options}
 
 	def total_circuits_generated(
 		self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False
@@ -317,6 +346,31 @@ class FiQCIEstimator:
 					f"the achieved values {pair_scale_factors}. Access them via the job's achieved_scale_factors()."
 				)
 
+			# Folding is discrete, so distinct requests can collapse onto the same achieved factor (most
+			# often when a circuit has too few foldable gates to resolve them, e.g. no two-qubit gates at
+			# all under local folding, where every request collapses to 1.0). Extrapolation then has
+			# fewer distinct x-values than it needs and will produce nan/inf or a meaningless fit. The
+			# circuits have already been submitted at this point, so warn loudly here rather than at
+			# result time: the run is still cancellable via the returned job handle.
+			for i, achieved in enumerate(pair_scale_factors):
+				num_distinct = len(np.unique(np.round(achieved, 12)))
+				if num_distinct < 2:
+					warnings.warn(
+						f"ZNE for circuit/observable pair {i} collapsed every requested scale factor "
+						f"{pair_requested_scale_factors[i]} onto the single achieved value {achieved[0]}, so no "
+						"extrapolation is possible and the returned expectation values will be meaningless "
+						"(nan/inf or a degenerate fit). This usually means the circuit has too few foldable "
+						"gates (a circuit with no two-qubit gates cannot be folded locally at all). Cancel the "
+						"job and either use 'global' folding, widen the scale factors, or disable ZNE."
+					)
+				elif num_distinct < len(achieved):
+					warnings.warn(
+						f"ZNE for circuit/observable pair {i} has only {num_distinct} distinct achieved scale "
+						f"factor(s) for {len(achieved)} requested ({achieved}); folding cannot resolve them on "
+						"this circuit. The extrapolation is fitted to the duplicated points and may be "
+						"unreliable. Cancel the job and widen the scale factors if this is not intended."
+					)
+
 		if self._zne["enabled"]:
 			logger.info(
 				"Flattened %d pair(s) into %d measurement-basis circuit(s), expanded to %d ZNE circuit(s); "
@@ -473,6 +527,12 @@ class FiQCIEstimator:
 			obs_info = _get_observable_circuit_index(pauli, measurement_settings)
 			if obs_info["circuit_index"] is not None:
 				circuit_counts = counts[obs_info["circuit_index"]]
+				total = sum(circuit_counts.values())
+				if total == 0:
+					# No shots recorded for this measurement circuit; there is nothing to average
+					# over. Report 0.0 rather than dividing by zero (matches _calculate_shot_errors).
+					expectation_values.append(0.0)
+					continue
 				# Calculate expectation value from counts
 				exp_val = 0
 				for bitstring, count in circuit_counts.items():
@@ -481,7 +541,7 @@ class FiQCIEstimator:
 						if bitstring[idx] == "1":
 							parity *= -1
 					exp_val += parity * count
-				exp_val /= sum(circuit_counts.values())
+				exp_val /= total
 				expectation_values.append(exp_val)
 			else:
 				expectation_values.append(0)  # No measurement setting covers this observable
