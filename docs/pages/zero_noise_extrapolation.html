@@ -357,6 +357,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parameters">Parameters</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-uncertainty">Extrapolation Uncertainty</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
 </ul>
@@ -516,6 +517,21 @@
 </div>
 </section>
 </section>
+<section id="extrapolation-uncertainty">
+<h2>Extrapolation Uncertainty<a class="headerlink" href="#extrapolation-uncertainty" title="Link to this heading">#</a></h2>
+<p>Each extrapolator here is a fixed <em>linear</em> map from the per-scale measurements to the zero-noise estimate, <span class="math notranslate nohighlight">\(E(0) = \sum_i a_i\, E(\lambda_i)\)</span>, where the coefficients <span class="math notranslate nohighlight">\(a_i\)</span> depend only on the scale factors and the method. The shot noise of each measured point therefore propagates analytically to the extrapolated value:</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{Var}\big(E(0)\big) = \sum_i a_i^2\, \sigma_i^2 .\]</div>
+<p>This standard error is available through <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a> as the <code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code> key:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">zne</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">extrapolation_method</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+<span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
+
+<span class="n">job</span><span class="o">.</span><span class="n">standard_errors</span><span class="p">(</span><span class="mi">0</span><span class="p">)[</span><span class="s2">&quot;zne_extrapolation_error&quot;</span><span class="p">]</span>  <span class="c1"># propagated SE of the zero-noise estimate</span>
+</pre></div>
+</div>
+<p>Because extrapolation evaluates the fit <em>outside</em> the measured range (at <span class="math notranslate nohighlight">\(\lambda = 0\)</span>), the coefficients <span class="math notranslate nohighlight">\(a_i\)</span> are large and alternate in sign, so the extrapolation error is typically <strong>larger</strong> than the raw shot error, the price ZNE pays in variance for reducing bias. Only this statistical (shot-propagated) error is reported. The systematic <em>model</em> error from choosing a particular extrapolation shape is not quantified.</p>
+<p>See <a class="reference internal" href="FiQCIEstimatorUsage.html"><span class="doc">FiQCIEstimator standard errors</span></a> for the full set of error keys.</p>
+</section>
 <section id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h2>
 <ul class="simple">
@@ -592,6 +608,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#parameters">Parameters</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-uncertainty">Extrapolation Uncertainty</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
 </ul>

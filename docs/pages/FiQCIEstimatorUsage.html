@@ -46,6 +46,8 @@
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'pages/FiQCIEstimatorUsage';</script>
     <link rel="canonical" href="https://fiqci.fi/fiqci-ems/docs/pages/FiQCIEstimatorUsage.html" />
     <link rel="icon" href="../_static/FiQCI-logo-nobg.png"/>
@@ -354,7 +356,10 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#counting-circuits">Counting Circuits</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-circuits">Running Circuits</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#standard-errors">Standard Errors</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>
             </nav>
@@ -659,9 +664,45 @@
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mitigator_options</span></code></p></td>
 <td><p>Frozen snapshot of the mitigation settings this run used (<code class="docutils literal notranslate"><span class="pre">zne</span></code> config plus the backend <code class="docutils literal notranslate"><span class="pre">mitigation_level</span></code>/<code class="docutils literal notranslate"><span class="pre">rem</span></code>/<code class="docutils literal notranslate"><span class="pre">dd</span></code>/<code class="docutils literal notranslate"><span class="pre">pauli_twirl</span></code>)</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">standard_errors(index=None)</span></code></p></td>
+<td><p>Standard errors of the expectation values (shot noise and, when ZNE is enabled, the extrapolation uncertainty)</p></td>
+</tr>
 </tbody>
 </table>
 </div>
+<section id="standard-errors">
+<h3>Standard Errors<a class="headerlink" href="#standard-errors" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a> reports the uncertainty of each expectation value, computed lazily and cached alongside the values. It mirrors the shape of <code class="docutils literal notranslate"><span class="pre">expectation_values</span></code>: one entry per circuit/observable pair, each a dict of per-Pauli-term standard errors.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
+
+<span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># e.g. [0.92, -0.01, ...]</span>
+<span class="n">job</span><span class="o">.</span><span class="n">standard_errors</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>      <span class="c1"># {&quot;shot_error&quot;: [...], &quot;zne_extrapolation_error&quot;: ..., &quot;total&quot;: [...]}</span>
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">shot_error</span></code></p></td>
+<td><p>Statistical standard error of the raw measurement, <span class="math notranslate nohighlight">\(\sqrt{(1 - \langle P \rangle^2) / N}\)</span> per term. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit’s sampling-based <code class="docutils literal notranslate"><span class="pre">EstimatorV2</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code></p></td>
+<td><p>Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. <code class="docutils literal notranslate"><span class="pre">None</span></code> when ZNE is disabled. See <a class="reference internal" href="#fiqci-estimator-zne"><span class="std std-ref">ZNE</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">total</span></code></p></td>
+<td><p>Standard error of the value <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">expectation_values()</span></code></a> actually returns — <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> when ZNE is off, <code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code> when ZNE is on. Not a quadrature sum, since the extrapolation error already incorporates the shot noise.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only statistical error is reported. The estimator does not account for ZNE <em>model</em> bias (the systematic error from the chosen extrapolation shape), nor does it inflate <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> by the M3 readout-mitigation overhead at mitigation level ≥ 1.</p>
+</div>
+</section>
 </section>
 <section id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h2>
@@ -731,7 +772,10 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inspecting-options">Inspecting Options</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#counting-circuits">Counting Circuits</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#running-circuits">Running Circuits</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#results">Results</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#standard-errors">Standard Errors</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 </ul>
   </nav></div>

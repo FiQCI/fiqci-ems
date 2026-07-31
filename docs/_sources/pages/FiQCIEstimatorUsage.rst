@@ -275,6 +275,36 @@ Results
      - ZNE scale factors folding actually realised (the extrapolation x-axis), same shape
    * - ``mitigator_options``
      - Frozen snapshot of the mitigation settings this run used (``zne`` config plus the backend ``mitigation_level``/``rem``/``dd``/``pauli_twirl``)
+   * - ``standard_errors(index=None)``
+     - Standard errors of the expectation values (shot noise and, when ZNE is enabled, the extrapolation uncertainty)
+
+Standard Errors
+~~~~~~~~~~~~~~~
+
+:meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors` reports the uncertainty of each expectation value, computed lazily and cached alongside the values. It mirrors the shape of ``expectation_values``: one entry per circuit/observable pair, each a dict of per-Pauli-term standard errors.
+
+.. code-block:: python
+
+   job = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+
+   job.expectation_values(0)   # e.g. [0.92, -0.01, ...]
+   job.standard_errors(0)      # {"shot_error": [...], "zne_extrapolation_error": ..., "total": [...]}
+
+.. list-table::
+   :header-rows: 1
+
+   * - Key
+     - Description
+   * - ``shot_error``
+     - Statistical standard error of the raw measurement, :math:`\sqrt{(1 - \langle P \rangle^2) / N}` per term. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit's sampling-based ``EstimatorV2``.
+   * - ``zne_extrapolation_error``
+     - Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. ``None`` when ZNE is disabled. See :ref:`ZNE <fiqci-estimator-zne>`.
+   * - ``total``
+     - Standard error of the value :meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values` actually returns — ``shot_error`` when ZNE is off, ``zne_extrapolation_error`` when ZNE is on. Not a quadrature sum, since the extrapolation error already incorporates the shot noise.
+
+.. note::
+
+   Only statistical error is reported. The estimator does not account for ZNE *model* bias (the systematic error from the chosen extrapolation shape), nor does it inflate ``shot_error`` by the M3 readout-mitigation overhead at mitigation level ≥ 1.
 
 Examples
 --------
