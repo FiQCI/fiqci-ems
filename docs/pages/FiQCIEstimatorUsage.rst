@@ -298,7 +298,7 @@ Standard Errors
    * - ``shot_error``
      - Statistical standard error of the raw measurement, :math:`\sqrt{(1 - \langle P \rangle^2) / N}` per term. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit's sampling-based ``EstimatorV2``.
    * - ``zne_extrapolation_error``
-     - Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. ``None`` when ZNE is disabled. See :ref:`ZNE <fiqci-estimator-zne>`.
+     - Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. ``None`` when ZNE is disabled, or when a user-defined extrapolation callable reports no standard errors. See :ref:`ZNE <fiqci-estimator-zne>`.
    * - ``total``
      - Standard error of the value :meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values` actually returns — ``shot_error`` when ZNE is off, ``zne_extrapolation_error`` when ZNE is on. Not a quadrature sum, since the extrapolation error already incorporates the shot noise.
 
