@@ -92,6 +92,29 @@ estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method=my_lin
 
 `extrapolation_degree` is ignored when a callable is supplied.
 
+#### Reporting standard errors from a custom extrapolation
+
+A callable can also report the uncertainty of its zero-noise estimate, exactly as the built-in extrapolators do. If it accepts a `sigmas` keyword argument, it is additionally called with `sigmas=<per-scale shot standard errors>` (same `(n_scales, n_obs)` shape as `expectation_values`), and it may then return a `(values, standard_errors)` pair instead of just the values:
+
+```python
+def my_linear_fit(expectation_values, scale_factors, sigmas=None):
+    y = np.asarray(expectation_values, dtype=float)  # (n_scales, n_obs)
+    x = np.asarray(scale_factors, dtype=float)
+    values, errors = [], []
+    for j in range(y.shape[1]):
+        coeffs = np.polyfit(x, y[:, j], 1)
+        values.append(float(np.polyval(coeffs, 0.0)))
+        # Row of the least-squares operator giving the intercept, so Var(E(0)) = sum_i a_i^2 sigma_i^2.
+        a = np.linalg.pinv(np.vander(x, 2))[-1, :]
+        errors.append(float(np.sqrt(np.sum(a**2 * np.asarray(sigmas)[:, j] ** 2))))
+    return values, errors
+
+estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method=my_linear_fit)
+job.standard_errors(0)["zne_extrapolation_error"]  # the errors the callable returned
+```
+
+The returned `standard_errors` must have one entry per expectation value; a length mismatch raises `ValueError`. The values are surfaced unchanged as the `zne_extrapolation_error` and `total` keys of {meth}`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors`. Callables that take no `sigmas` argument, or return only values, leave both keys `None` — `shot_error` is still measured and reported. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. `extrapolation_method=richardson_extrapolation`) and their propagated errors come through as usual.
+
 ## Usage
 
 ### Via Mitigation Level
@@ -128,7 +151,7 @@ estimator.zne(
 | `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
-| `extrapolation_method` | `str \| Callable` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, `"linear"`, or a custom callable `fn(expectation_values, scale_factors) -> list[float]` (see [Custom extrapolation functions](#custom-extrapolation-functions)). |
+| `extrapolation_method` | `str \| Callable` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, `"linear"`, or a custom callable `fn(expectation_values, scale_factors[, sigmas]) -> list[float] \| tuple[list[float], list[float]]` (see [Custom extrapolation functions](#custom-extrapolation-functions)). |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
 | `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
 | `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
@@ -149,6 +172,8 @@ job.standard_errors(0)["zne_extrapolation_error"]  # propagated SE of the zero-n
 ```
 
 Because extrapolation evaluates the fit *outside* the measured range (at $\lambda = 0$), the coefficients $a_i$ are large and alternate in sign, so the extrapolation error is typically **larger** than the raw shot error, the price ZNE pays in variance for reducing bias. Only this statistical (shot-propagated) error is reported. The systematic *model* error from choosing a particular extrapolation shape is not quantified.
+
+A user-defined extrapolation callable can report its own standard errors through the same key; see [Reporting standard errors from a custom extrapolation](#reporting-standard-errors-from-a-custom-extrapolation).
 
 See {doc}`FiQCIEstimator standard errors <FiQCIEstimatorUsage>` for the full set of error keys.
 
