@@ -245,6 +245,73 @@ class TestPolynomialExtrapolation:
 			polynomial_extrapolation([[0.9], [0.7]], [1, 3, 5])
 
 
+class TestExtrapolationErrors:
+	"""Tests for the optional ``sigmas`` error-propagation path of the extrapolation functions."""
+
+	def test_omitting_sigmas_returns_plain_value_list(self) -> None:
+		"""Without sigmas, every extrapolator returns a plain list (backward compatible)."""
+		scales = [1, 3, 5]
+		vals = [[0.9], [0.7], [0.5]]
+		assert isinstance(richardson_extrapolation(vals, scales), list)
+		assert isinstance(polynomial_extrapolation(vals, scales, degree=1), list)
+		assert isinstance(exponential_extrapolation(vals, scales), list)
+
+	def test_passing_sigmas_returns_values_and_errors(self) -> None:
+		"""With sigmas, each extrapolator returns a (values, errors) tuple of matching length."""
+		scales = [1, 3, 5]
+		vals = [[0.9, 0.8], [0.7, 0.6], [0.5, 0.4]]
+		sig = [[0.01, 0.02], [0.01, 0.02], [0.01, 0.02]]
+		for fn in (
+			lambda: richardson_extrapolation(vals, scales, sigmas=sig),
+			lambda: polynomial_extrapolation(vals, scales, degree=1, sigmas=sig),
+			lambda: exponential_extrapolation(vals, scales, sigmas=sig),
+		):
+			values, errors = fn()
+			assert len(values) == 2
+			assert len(errors) == 2
+			assert all(e >= 0 for e in errors)
+
+	def test_richardson_error_matches_hand_computed_propagation(self) -> None:
+		"""Richardson error equals sqrt(sum_i c_i^2 sigma_i^2) with the Lagrange coefficients."""
+		scales = [1, 3]
+		# c_0 = 3/(3-1) = 1.5, c_1 = 1/(1-3) = -0.5
+		sig = [[0.1], [0.2]]
+		_, errors = richardson_extrapolation([[0.9], [0.7]], scales, sigmas=sig)
+		expected = np.sqrt((1.5**2) * 0.1**2 + (0.5**2) * 0.2**2)
+		assert errors[0] == pytest.approx(expected)
+
+	@pytest.mark.parametrize(
+		"fn",
+		[
+			lambda vals, scales, sig: richardson_extrapolation(vals, scales, sigmas=sig),
+			lambda vals, scales, sig: polynomial_extrapolation(vals, scales, degree=1, sigmas=sig),
+			lambda vals, scales, sig: exponential_extrapolation(vals, scales, sigmas=sig),
+		],
+	)
+	def test_zero_sigma_gives_zero_error(self, fn) -> None:
+		"""No shot noise in -> no extrapolation error out."""
+		scales = [1, 3, 5]
+		vals = [[0.8], [0.6], [0.45]]
+		_, errors = fn(vals, scales, [[0.0], [0.0], [0.0]])
+		assert errors[0] == pytest.approx(0.0)
+
+	@pytest.mark.parametrize(
+		"fn",
+		[
+			lambda vals, scales, sig: richardson_extrapolation(vals, scales, sigmas=sig),
+			lambda vals, scales, sig: polynomial_extrapolation(vals, scales, degree=1, sigmas=sig),
+			lambda vals, scales, sig: exponential_extrapolation(vals, scales, sigmas=sig),
+		],
+	)
+	def test_error_increases_with_sigma(self, fn) -> None:
+		"""Larger per-scale shot errors propagate to a larger extrapolation error."""
+		scales = [1, 3, 5]
+		vals = [[0.8], [0.6], [0.45]]
+		_, small = fn(vals, scales, [[0.01], [0.01], [0.01]])
+		_, large = fn(vals, scales, [[0.05], [0.05], [0.05]])
+		assert large[0] > small[0]
+
+
 class TestZNECircuitsPass:
 	"""Tests for ZNECircuits transpiler pass."""
 

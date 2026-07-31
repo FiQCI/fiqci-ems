@@ -1,6 +1,9 @@
 ## [WIP] [1.0.0] 3.7.2026
 
 ## Changed
+- added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
+- https://github.com/FiQCI/fiqci-ems/pull/41
+
 - migrate `combine_pauli_ops` to use Qiskit's `Paulilist.group_qubit_wise_commuting`
 - `get_obs_subcircuits` now directly takes observables as an argument and handles calling `get_measurement_settings` inside the function
 - https://github.com/FiQCI/fiqci-ems/pull/38
