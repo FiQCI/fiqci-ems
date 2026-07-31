@@ -1,5 +1,17 @@
 ## [WIP] [1.0.0] 31.7.2026
 
+### Breaking changes
+
+Importing from `fiqci.ems` is unaffected — `FiQCIBackend`, `FiQCISampler`, `FiQCIEstimator` and `BatchFailedError` are still exported from there. The rest only affects code reaching into submodules or mutating settings dicts directly.
+
+- the `fiqci.ems.fiqci_backend` module was split into the `fiqci.ems.backend` package and no longer exists. `BatchedJob`, `MitigatedJob`, `PartialBatch` and `BatchFailedError` now come from `fiqci.ems.backend`
+- `get_obs_subcircuits(subcircuits, measurement_settings, ops)` now takes the observable instead of the measurement settings: `get_obs_subcircuits(subcircuits, observable, ops)`, and derives the settings itself
+- `_combine_pauli_ops()` is renamed to the now-public `get_measurement_settings()`
+- `mitigator_options` returns a copy, so mutating it no longer reconfigures a run. Use `rem()` / `dd()` / `pauli_twirl()` / `zne()`, which validate their input
+- ZNE extrapolation now fits against the **achieved** scale factors rather than the requested ones, so expectation values can differ for any scale factor folding cannot reach exactly (anything other than odd integers). Inspect them with `job.achieved_scale_factors()`
+
+See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and behaviour.
+
 ### Changed
 - added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
 - https://github.com/FiQCI/fiqci-ems/pull/41
@@ -28,6 +40,12 @@
   - a frozen snapshot of the mitigation settings (`mitigation_level`, `rem`, `dd`, `pauli_twirl`, plus `zne` on the estimator job) in effect at submission, so the user can inspect what a run actually used even after the backend/estimator config is mutated
   - unlike the live, mutable `mitigator_options` property on the backend/estimator, the job's snapshot never changes; the live M3 mitigator object is omitted from the REM entry
 - https://github.com/FiQCI/fiqci-ems/pull/39
+
+- warn at `run()` when discrete folding collapses distinct ZNE scale factors onto the same achieved value
+- `mitigator_options` on `FiQCIBackend`, `FiQCISampler` and `FiQCIEstimator` now returns a copy
+- a custom `extrapolation_method` may now return `(values, None)` to report values without standard errors
+- `_calculate_expectation_values` no longer raises `ZeroDivisionError` for a measurement circuit with no recorded shots. It reports `0.0`, matching `_calculate_shot_errors`
+- https://github.com/FiQCI/fiqci-ems/pull/42
 
 ## [0.8.1] 12.6.2026
 
