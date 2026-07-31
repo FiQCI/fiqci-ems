@@ -350,7 +350,13 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-circuit-scale-factors">Per-circuit scale factors</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-methods">Extrapolation Methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-methods">Extrapolation Methods</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-extrapolation-functions">Custom extrapolation functions</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#reporting-standard-errors-from-a-custom-extrapolation">Reporting standard errors from a custom extrapolation</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#via-mitigation-level">Via Mitigation Level</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-configuration">Manual Configuration</a></li>
@@ -382,7 +388,7 @@
 <li><p><strong>Amplify the noise</strong> by creating scaled versions of the circuit (e.g., at scale factors 1, 3, 5).</p></li>
 <li><p><strong>Extrapolate</strong> the measured expectation values to the zero-noise point using a fitted model.</p></li>
 </ol>
-<p>Scale factors may be <strong>any real number ≥ 1</strong> (e.g. <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">1.5,</span> <span class="pre">2,</span> <span class="pre">3]</span></code>), not just odd integers — see <a class="reference internal" href="#arbitrary-scale-factors"><span class="xref myst">Arbitrary scale factors</span></a> below.</p>
+<p>Scale factors may be <strong>any real number ≥ 1</strong> (e.g. <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">1.5,</span> <span class="pre">2,</span> <span class="pre">3]</span></code>), not just odd integers. See <a class="reference internal" href="#arbitrary-scale-factors">Arbitrary scale factors</a> below.</p>
 <p>Because noise grows predictably with circuit depth, measuring at multiple noise levels reveals the trend, and extrapolation removes the noise contribution.</p>
 </section>
 <section id="circuit-folding-methods">
@@ -420,7 +426,7 @@
 </section>
 <section id="per-circuit-scale-factors">
 <h3>Per-circuit scale factors<a class="headerlink" href="#per-circuit-scale-factors" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code> can be either a single flat list applied to every circuit, or a <strong>list of lists</strong> — one list per submitted circuit — so each circuit uses its own scale factors. The number of lists must match the number of circuit/observable pairs passed to <code class="docutils literal notranslate"><span class="pre">run</span></code>:</p>
+<p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code> can be either a single flat list applied to every circuit, or a <strong>list of lists</strong>, one list per submitted circuit, so each circuit uses its own scale factors. The number of lists must match the number of circuit/observable pairs passed to <code class="docutils literal notranslate"><span class="pre">run</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">zne</span><span class="p">(</span>
     <span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="c1"># circuit 0 uses [1, 3, 5]; circuit 1 uses [1, 2, 4]</span>
@@ -440,6 +446,47 @@
 <li><p><strong>Polynomial</strong>: Fits a polynomial of a given degree to the data. The degree defaults to <code class="docutils literal notranslate"><span class="pre">min(n_scales</span> <span class="pre">-</span> <span class="pre">1,</span> <span class="pre">2)</span></code> and can be set with the <code class="docutils literal notranslate"><span class="pre">extrapolation_degree</span></code> parameter.</p></li>
 <li><p><strong>Linear</strong>: A special case of polynomial extrapolation with degree 1. Fits a straight line through the data points.</p></li>
 </ul>
+<section id="custom-extrapolation-functions">
+<h3>Custom extrapolation functions<a class="headerlink" href="#custom-extrapolation-functions" title="Link to this heading">#</a></h3>
+<p>Instead of one of the built-in strings, <code class="docutils literal notranslate"><span class="pre">extrapolation_method</span></code> accepts a <strong>user-defined callable</strong>. It is invoked once per circuit/observable pair as <code class="docutils literal notranslate"><span class="pre">fn(expectation_values,</span> <span class="pre">scale_factors)</span></code> and must return a list of floats (the zero-noise estimate per observable):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">expectation_values</span></code>: a list with one entry per scale factor; each entry is itself the list of per-observable expectation values measured at that scale (shape <code class="docutils literal notranslate"><span class="pre">(n_scales,</span> <span class="pre">n_obs)</span></code>, the same layout the built-in functions receive).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code>: the list of <strong>achieved</strong> scale factors for that pair (the extrapolation x-axis).</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">my_linear_fit</span><span class="p">(</span><span class="n">expectation_values</span><span class="p">,</span> <span class="n">scale_factors</span><span class="p">):</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">expectation_values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (n_scales, n_obs)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">scale_factors</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="c1"># Fit a line per observable and evaluate at x = 0.</span>
+    <span class="k">return</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyval</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">[:,</span> <span class="n">j</span><span class="p">],</span> <span class="mi">1</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">))</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+
+<span class="n">estimator</span><span class="o">.</span><span class="n">zne</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">scale_factors</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">extrapolation_method</span><span class="o">=</span><span class="n">my_linear_fit</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">extrapolation_degree</span></code> is ignored when a callable is supplied.</p>
+<section id="reporting-standard-errors-from-a-custom-extrapolation">
+<h4>Reporting standard errors from a custom extrapolation<a class="headerlink" href="#reporting-standard-errors-from-a-custom-extrapolation" title="Link to this heading">#</a></h4>
+<p>A callable can also report the uncertainty of its zero-noise estimate, exactly as the built-in extrapolators do. If it accepts a <code class="docutils literal notranslate"><span class="pre">sigmas</span></code> keyword argument, it is additionally called with <code class="docutils literal notranslate"><span class="pre">sigmas=&lt;per-scale</span> <span class="pre">shot</span> <span class="pre">standard</span> <span class="pre">errors&gt;</span></code> (same <code class="docutils literal notranslate"><span class="pre">(n_scales,</span> <span class="pre">n_obs)</span></code> shape as <code class="docutils literal notranslate"><span class="pre">expectation_values</span></code>), and it may then return a <code class="docutils literal notranslate"><span class="pre">(values,</span> <span class="pre">standard_errors)</span></code> pair instead of just the values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">my_linear_fit</span><span class="p">(</span><span class="n">expectation_values</span><span class="p">,</span> <span class="n">scale_factors</span><span class="p">,</span> <span class="n">sigmas</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">expectation_values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>  <span class="c1"># (n_scales, n_obs)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">scale_factors</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">values</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="n">coeffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">[:,</span> <span class="n">j</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">polyval</span><span class="p">(</span><span class="n">coeffs</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)))</span>
+        <span class="c1"># Row of the least-squares operator giving the intercept, so Var(E(0)) = sum_i a_i^2 sigma_i^2.</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vander</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">a</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">sigmas</span><span class="p">)[:,</span> <span class="n">j</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))))</span>
+    <span class="k">return</span> <span class="n">values</span><span class="p">,</span> <span class="n">errors</span>
+
+<span class="n">estimator</span><span class="o">.</span><span class="n">zne</span><span class="p">(</span><span class="n">enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">scale_factors</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">extrapolation_method</span><span class="o">=</span><span class="n">my_linear_fit</span><span class="p">)</span>
+<span class="n">job</span><span class="o">.</span><span class="n">standard_errors</span><span class="p">(</span><span class="mi">0</span><span class="p">)[</span><span class="s2">&quot;zne_extrapolation_error&quot;</span><span class="p">]</span>  <span class="c1"># the errors the callable returned</span>
+</pre></div>
+</div>
+<p>The returned <code class="docutils literal notranslate"><span class="pre">standard_errors</span></code> must have one entry per expectation value; a length mismatch raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. The values are surfaced unchanged as the <code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code> and <code class="docutils literal notranslate"><span class="pre">total</span></code> keys of <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a>. Callables that take no <code class="docutils literal notranslate"><span class="pre">sigmas</span></code> argument, or return only values, leave both keys <code class="docutils literal notranslate"><span class="pre">None</span></code> — <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> is still measured and reported. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. <code class="docutils literal notranslate"><span class="pre">extrapolation_method=richardson_extrapolation</span></code>) and their propagated errors come through as usual.</p>
+</section>
+</section>
 </section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">#</a></h2>
@@ -479,7 +526,7 @@
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>—</p></td>
+<td><p>-</p></td>
 <td><p>Enable or disable ZNE.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fold_gates</span></code></p></td>
@@ -492,22 +539,27 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5]</span></code></p></td>
 <td><p>Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">folding_method</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[float]</span> <span class="pre">|</span> <span class="pre">list[list[float]]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5]</span></code></p></td>
+<td><p>Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">folding_method</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;global&quot;</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_method</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_method</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">Callable</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;exponential&quot;</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&quot;exponential&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;richardson&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;polynomial&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;exponential&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;richardson&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;polynomial&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>, or a custom callable <code class="docutils literal notranslate"><span class="pre">fn(expectation_values,</span> <span class="pre">scale_factors[,</span> <span class="pre">sigmas])</span> <span class="pre">-&gt;</span> <span class="pre">list[float]</span> <span class="pre">|</span> <span class="pre">tuple[list[float],</span> <span class="pre">list[float]]</span></code> (see <a class="reference internal" href="#custom-extrapolation-functions">Custom extrapolation functions</a>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_degree</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_degree</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Polynomial degree (only for <code class="docutils literal notranslate"><span class="pre">&quot;polynomial&quot;</span></code> extrapolation).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Seed for the random gate sampling used to approximate non-odd-integer scale factors.</p></td>
@@ -530,12 +582,13 @@
 </pre></div>
 </div>
 <p>Because extrapolation evaluates the fit <em>outside</em> the measured range (at <span class="math notranslate nohighlight">\(\lambda = 0\)</span>), the coefficients <span class="math notranslate nohighlight">\(a_i\)</span> are large and alternate in sign, so the extrapolation error is typically <strong>larger</strong> than the raw shot error, the price ZNE pays in variance for reducing bias. Only this statistical (shot-propagated) error is reported. The systematic <em>model</em> error from choosing a particular extrapolation shape is not quantified.</p>
+<p>A user-defined extrapolation callable can report its own standard errors through the same key; see <a class="reference internal" href="#reporting-standard-errors-from-a-custom-extrapolation">Reporting standard errors from a custom extrapolation</a>.</p>
 <p>See <a class="reference internal" href="FiQCIEstimatorUsage.html"><span class="doc">FiQCIEstimator standard errors</span></a> for the full set of error keys.</p>
 </section>
 <section id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="../notebooks/zero_noise_extrapolation_example.html"><span class="doc std std-doc">Zero Noise Extrapolation Example</span></a> — runnable notebook demonstrating ZNE with default and custom settings.</p></li>
+<li><p><a class="reference internal" href="../notebooks/zero_noise_extrapolation_example.html"><span class="doc std std-doc">Zero Noise Extrapolation Example</span></a>. Runnable notebook demonstrating ZNE with default and custom settings.</p></li>
 </ul>
 </section>
 <section id="references">
@@ -601,7 +654,13 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-circuit-scale-factors">Per-circuit scale factors</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-methods">Extrapolation Methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extrapolation-methods">Extrapolation Methods</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-extrapolation-functions">Custom extrapolation functions</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#reporting-standard-errors-from-a-custom-extrapolation">Reporting standard errors from a custom extrapolation</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#via-mitigation-level">Via Mitigation Level</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-configuration">Manual Configuration</a></li>
