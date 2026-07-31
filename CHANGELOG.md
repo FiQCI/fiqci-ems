@@ -16,18 +16,26 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
 - added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
 - https://github.com/FiQCI/fiqci-ems/pull/41
 
+---
+
 - allow passing a callable `extrapolation_fn(scales, values) -> float` to `.zne()` in addition to using the built-in methods
   - a callable that accepts a `sigmas` keyword argument is given the per-scale shot standard errors and may return `(values, standard_errors)`, which are reported via `standard_errors()` like the built-in extrapolators' propagated errors
   - fixes `expectation_values()` raising `UnboundLocalError` when a callable extrapolation method was used
 - https://github.com/FiQCI/fiqci-ems/pull/40
 
+---
+
 - migrate `combine_pauli_ops` to use Qiskit's `Paulilist.group_qubit_wise_commuting`
 - `get_obs_subcircuits` now directly takes observables as an argument and handles calling `get_measurement_settings` inside the function
 - https://github.com/FiQCI/fiqci-ems/pull/38
 
+---
+
 - refactor monolithic `fiqci_backend` into a `backend` module
   - split into `core.py`, `counts.py`, and `jobs.py`
 - https://github.com/FiQCI/fiqci-ems/pull/37
+
+---
 
 - Zero noise extrapolation now supports any >=1 floats as scale factors
   - If exact given value cannot be reached, and approximation is used (fractional folding). If exact values is not achieved log a warning
@@ -35,11 +43,13 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
   - this allows the user to pass circuit specific scale factors
 - fix bug in folding method handling
 - expose `requested_scale_factors()` and `achieved_scale_factors` in `FiQCIEstimatorJob`
-  - allow the user to view per job used scale factors even if estimator config changed 
+  - allow the user to view per job used scale factors even if estimator config changed
 - expose `mitigator_options` on the returned job handles (`BatchedJob`/`MitigatedJob`, and `FiQCIEstimatorJob`)
   - a frozen snapshot of the mitigation settings (`mitigation_level`, `rem`, `dd`, `pauli_twirl`, plus `zne` on the estimator job) in effect at submission, so the user can inspect what a run actually used even after the backend/estimator config is mutated
   - unlike the live, mutable `mitigator_options` property on the backend/estimator, the job's snapshot never changes; the live M3 mitigator object is omitted from the REM entry
 - https://github.com/FiQCI/fiqci-ems/pull/39
+
+---
 
 - warn at `run()` when discrete folding collapses distinct ZNE scale factors onto the same achieved value
 - `mitigator_options` on `FiQCIBackend`, `FiQCISampler` and `FiQCIEstimator` now returns a copy
