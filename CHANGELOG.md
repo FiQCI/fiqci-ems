@@ -45,6 +45,7 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
 - `mitigator_options` on `FiQCIBackend`, `FiQCISampler` and `FiQCIEstimator` now returns a copy
 - a custom `extrapolation_method` may now return `(values, None)` to report values without standard errors
 - `_calculate_expectation_values` no longer raises `ZeroDivisionError` for a measurement circuit with no recorded shots. It reports `0.0`, matching `_calculate_shot_errors`
+- ship a PEP 561 `py.typed` marker so the package's type annotations are visible to downstream type checkers
 - https://github.com/FiQCI/fiqci-ems/pull/42
 
 ## [0.8.1] 12.6.2026
