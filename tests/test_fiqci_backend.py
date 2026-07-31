@@ -877,3 +877,64 @@ class TestBatchedJobStatus:
 		assert first is second
 		assert len(calls) == 1
 		assert job.result.call_count == 1
+
+
+class TestMitigatorOptionsIsolation:
+	"""``mitigator_options`` hands out a copy, so callers cannot bypass the setter validation."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	def test_mutating_returned_dict_does_not_change_settings(self, mock_backend: Mock) -> None:
+		"""Reassigning entries of the returned dict leaves the backend's own settings intact."""
+		with patch("fiqci.ems.backend.core.M3IQM"):
+			backend = FiQCIBackend(mock_backend, mitigation_level=3)
+
+		options = backend.mitigator_options
+		options["rem"]["enabled"] = "clobbered"
+		options["dd"]["enabled"] = "clobbered"
+		options["pauli_twirl"]["num_twirls"] = 9999
+
+		assert backend._rem["enabled"] is True
+		assert backend._dd["enabled"] is True
+		assert backend._pauli_twirl["num_twirls"] == 10
+
+	def test_mutating_nested_gate_sequences_list_does_not_change_settings(self, mock_backend: Mock) -> None:
+		"""The nested ``dd.gate_sequences`` list is copied too, not just the outer dicts."""
+		with patch("fiqci.ems.backend.core.M3IQM"):
+			backend = FiQCIBackend(mock_backend, mitigation_level=2)
+
+		original_length = len(backend._dd["gate_sequences"])
+		backend.mitigator_options["dd"]["gate_sequences"].append(("x", "y", "z"))
+
+		assert len(backend._dd["gate_sequences"]) == original_length
+
+	def test_mutating_nested_gates_to_twirl_list_does_not_change_settings(self, mock_backend: Mock) -> None:
+		"""A materialised ``gates_to_twirl`` collection is copied as well."""
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		backend.pauli_twirl(True, num_twirls=2, gates_to_twirl=["cz"])
+
+		backend.mitigator_options["pauli_twirl"]["gates_to_twirl"].append("clobbered")
+
+		assert backend._pauli_twirl["gates_to_twirl"] == ["cz"]
+
+	def test_iterator_gates_to_twirl_is_not_consumed_by_reading_options(self, mock_backend: Mock) -> None:
+		"""Copying must not drain a user-supplied iterator; it is passed through by reference."""
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		backend.pauli_twirl(True, num_twirls=2, gates_to_twirl=(g for g in ["cz"]))
+
+		backend.mitigator_options
+		backend.mitigator_options
+
+		assert list(backend._pauli_twirl["gates_to_twirl"]) == ["cz"]
+
+	def test_live_m3_mitigator_is_shared_by_reference(self, mock_backend: Mock) -> None:
+		"""The mitigator owns the calibration data, so it is deliberately not copied."""
+		with patch("fiqci.ems.backend.core.M3IQM"):
+			backend = FiQCIBackend(mock_backend, mitigation_level=1)
+
+		assert backend.mitigator_options["rem"]["mitigator"] is backend._rem["mitigator"]
