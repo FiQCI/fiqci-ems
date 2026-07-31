@@ -55,6 +55,9 @@ source_suffix = {".rst": "restructuredtext", ".ipynb": "myst-nb", ".md": "myst-n
 
 myst_enable_extensions = ["amsmath", "dollarmath"]
 
+# Generate implicit anchors for headings up to h4 so the guides' in-page ](#section) links resolve.
+myst_heading_anchors = 4
+
 nb_execution_mode = "cache"
 
 add_module_names = False

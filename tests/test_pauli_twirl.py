@@ -298,7 +298,7 @@ class TestGetTwirledCircuits:
 			name = "cx"
 
 		class InstructionWithNoName:
-			pass  # no .name — triggers AttributeError without the getattr guard
+			pass  # no .name, triggers AttributeError without the getattr guard
 
 		mock_backend = Mock()
 		mock_backend.name = "MockBackend"

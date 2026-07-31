@@ -178,6 +178,25 @@ class FiQCIBackend:
 			"pauli_twirl": dict(self._pauli_twirl),
 		}
 
+	def _snapshot_mitigator_options(self) -> dict[str, Any]:
+		"""Freeze the current mitigator settings for attachment to a submitted job.
+
+		Unlike :attr:`mitigator_options` (which reflects the backend's live, mutable settings),
+		the returned dict is a copy taken at submission time, so a job can faithfully report the
+		configuration it actually ran with even if the backend's settings are later mutated. The
+		live ``M3IQM`` mitigator is intentionally omitted.
+		"""
+		return {
+			"mitigation_level": self._mitigation_level,
+			"rem": {
+				"enabled": self._rem["enabled"],
+				"calibration_shots": self._rem["calibration_shots"],
+				"calibration_file": self._rem["calibration_file"],
+			},
+			"dd": {"enabled": self._dd["enabled"], "gate_sequences": list(self._dd["gate_sequences"])},
+			"pauli_twirl": dict(self._pauli_twirl),
+		}
+
 	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int | dict[str, int]:
 		"""Calculate total circuits generated for a given number of base circuits and observables."""
 		pauli_twirl_circuits_multiplier = 1
@@ -539,7 +558,7 @@ class FiQCIBackend:
 	) -> MitigatedJob:
 		"""Build a lazy M3-mitigated handle for already-submitted batch jobs.
 
-		Calibration is kicked off eagerly here (``cals_from_system`` is non-blocking — mthree runs
+		Calibration is kicked off eagerly here (``cals_from_system`` is non-blocking and mthree runs
 		it in a background thread) so it proceeds in parallel with the circuit jobs. The blocking
 		result fetch and the per-circuit M3 correction are deferred to a ``post_process`` callback
 		that runs the first time the returned handle's ``result()`` is called.

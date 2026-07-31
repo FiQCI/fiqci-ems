@@ -935,6 +935,174 @@ class TestEstimatorZNESettings:
 		assert estimator._zne["extrapolation_method"] == method
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zne_accepts_user_defined_extrapolation_callable(self, mock_fiqci_backend_class: Mock) -> None:
+		"""A user-defined callable is accepted and stored verbatim as the extrapolation method."""
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		def my_extrapolation(expectation_values, scales):
+			return [0.0 for _ in expectation_values[0]]
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, extrapolation_method=my_extrapolation)
+
+		assert estimator._zne["extrapolation_method"] is my_extrapolation
+
+	def test_zne_user_defined_extrapolation_used_in_run(self) -> None:
+		"""The user-defined callable is invoked with (expectation_values, scales) and its result used."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		calls: list[tuple] = []
+
+		def my_extrapolation(expectation_values, scales):
+			calls.append((expectation_values, scales))
+			# Return a sentinel value per observable so we can assert it flowed through.
+			return [42.0 for _ in expectation_values[0]]
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=[1, 3], folding_method="local", seed=0, extrapolation_method=my_extrapolation
+		)
+
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+
+		job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=512)
+		vals = job.expectation_values()
+
+		assert vals == [[42.0]]
+		# Callable was invoked once for the single pair with the achieved scale factors.
+		assert len(calls) == 1
+		_, scales = calls[0]
+		assert np.allclose(scales, job.achieved_scale_factors(0))
+
+	def test_zne_user_defined_extrapolation_without_sigmas_reports_no_extrapolation_error(self) -> None:
+		"""A two-argument callable still works and leaves the extrapolation error unreported."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		def my_extrapolation(expectation_values, scales):
+			return [42.0 for _ in expectation_values[0]]
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=[1, 3], folding_method="global", extrapolation_method=my_extrapolation
+		)
+
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+
+		obs = SparsePauliOp(["ZZ", "ZI"])
+		job = estimator.run(qc, obs, shots=512)
+		errors = job.standard_errors(0)
+
+		assert job.expectation_values(0) == [42.0, 42.0]
+		# The shot error at the unfolded point is still measured and reported.
+		assert len(errors["shot_error"]) == len(obs.paulis)
+		assert errors["zne_extrapolation_error"] is None
+		assert errors["total"] is None
+
+	def test_zne_user_defined_extrapolation_receives_sigmas_and_reports_errors(self) -> None:
+		"""A callable accepting sigmas is given the per-scale shot errors and may return SEs."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		calls: list[tuple] = []
+
+		def my_extrapolation(expectation_values, scales, sigmas=None):
+			calls.append((expectation_values, scales, sigmas))
+			values = [42.0 for _ in expectation_values[0]]
+			errors = [0.5 for _ in expectation_values[0]]
+			return values, errors
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=[1, 3], folding_method="global", extrapolation_method=my_extrapolation
+		)
+
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+
+		obs = SparsePauliOp(["ZZ", "ZI"])
+		job = estimator.run(qc, obs, shots=512)
+		errors = job.standard_errors(0)
+
+		assert job.expectation_values(0) == [42.0, 42.0]
+		assert errors["zne_extrapolation_error"] == [0.5, 0.5]
+		assert errors["total"] == [0.5, 0.5]
+
+		# sigmas mirrors the (n_scales, n_obs) shape of the expectation values handed to the callable.
+		assert len(calls) == 1
+		expvs, scales, sigmas = calls[0]
+		assert sigmas is not None
+		assert len(sigmas) == len(scales) == len(expvs)
+		assert all(len(s) == len(obs.paulis) for s in sigmas)
+		assert all(e >= 0 for s in sigmas for e in s)
+
+	def test_zne_user_defined_extrapolation_kwargs_callable_receives_sigmas(self) -> None:
+		"""A callable that only declares **kwargs is also handed the sigmas."""
+		from fiqci.ems.primitives.fiqci_estimator import _apply_custom_extrapolation
+
+		seen: dict = {}
+
+		def my_extrapolation(expectation_values, scales, **kwargs):
+			seen.update(kwargs)
+			return [0.0 for _ in expectation_values[0]]
+
+		values, errors = _apply_custom_extrapolation(my_extrapolation, [[0.9], [0.7]], [1.0, 3.0], [[0.01], [0.02]])
+
+		assert seen["sigmas"] == [[0.01], [0.02]]
+		assert values == [0.0]
+		assert errors is None
+
+	def test_zne_user_defined_extrapolation_builtin_as_callable_reports_errors(self) -> None:
+		"""Passing a built-in extrapolator as the callable propagates errors exactly as the string does."""
+		from fiqci.ems.primitives.fiqci_estimator import _apply_custom_extrapolation
+
+		expvs = [[0.9, 0.5], [0.7, 0.3]]
+		scales = [1.0, 3.0]
+		sigmas = [[0.01, 0.02], [0.03, 0.04]]
+
+		values, errors = _apply_custom_extrapolation(richardson_extrapolation, expvs, scales, sigmas)
+		want_values, want_errors = richardson_extrapolation(expvs, scales, sigmas=sigmas)
+
+		assert values == pytest.approx(want_values)
+		assert errors == pytest.approx(want_errors)
+
+	def test_zne_user_defined_extrapolation_error_length_mismatch_raises(self) -> None:
+		"""Returning a different number of standard errors than values is rejected."""
+		from fiqci.ems.primitives.fiqci_estimator import _apply_custom_extrapolation
+
+		def my_extrapolation(expectation_values, scales, sigmas=None):
+			return [0.0, 0.0], [0.1]
+
+		with pytest.raises(ValueError, match="standard error"):
+			_apply_custom_extrapolation(my_extrapolation, [[0.9, 0.5], [0.7, 0.3]], [1.0, 3.0], [[0.01, 0.01]] * 2)
+
+	def test_zne_user_defined_extrapolation_two_observables_not_read_as_pair(self) -> None:
+		"""A plain two-element value list is not mistaken for a (values, errors) pair."""
+		from fiqci.ems.primitives.fiqci_estimator import _apply_custom_extrapolation
+
+		def my_extrapolation(expectation_values, scales):
+			return [0.25, -0.5]
+
+		values, errors = _apply_custom_extrapolation(
+			my_extrapolation, [[0.9, 0.5], [0.7, 0.3]], [1.0, 3.0], [[0.01, 0.01], [0.02, 0.02]]
+		)
+
+		assert values == [0.25, -0.5]
+		assert errors is None
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_zne_extraplation_degree_only_for_polynomial(self, mock_fiqci_backend_class: Mock) -> None:
 		"""Test that extrapolation_degree is only set for polynomial method."""
 		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator

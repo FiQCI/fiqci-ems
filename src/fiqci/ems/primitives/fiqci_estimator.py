@@ -3,6 +3,7 @@ A class that runs quantum circuits and calculates expectation values of observab
 """
 
 from __future__ import annotations
+import inspect
 import logging
 import math
 import threading
@@ -30,6 +31,53 @@ logger: logging.Logger = logging.getLogger(__name__)
 def _is_nested_scale_factors(scale_factors) -> bool:
 	"""True when ``scale_factors`` is a list of per-circuit lists rather than a single flat list."""
 	return len(scale_factors) > 0 and all(isinstance(s, (list, tuple)) for s in scale_factors)
+
+
+def _accepts_sigmas(fn: Callable) -> bool:
+	"""True when ``fn`` can be handed the per-scale shot errors as a ``sigmas`` keyword argument."""
+	try:
+		params = inspect.signature(fn).parameters
+	except (TypeError, ValueError):
+		# C-implemented callables may not expose a signature; fall back to the two-argument form.
+		return False
+	if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+		return True
+	return any(
+		name == "sigmas" and p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.KEYWORD_ONLY)
+		for name, p in params.items()
+	)
+
+
+def _apply_custom_extrapolation(
+	fn: Callable, expectation_values: list[list[float]], scales: list[float], sigmas: list[list[float]]
+) -> tuple[list[float], list[float] | None]:
+	"""Run a user-supplied extrapolator and normalise its return into ``(values, standard_errors)``.
+
+	``sigmas`` is passed only when the callable's signature accepts it, so two-argument extrapolators
+	keep working unchanged. Following the convention of the built-in extrapolators, the callable may
+	return either the zero-noise values alone or a ``(values, standard_errors)`` pair; the errors are
+	``None`` when it reports none.
+	"""
+	if _accepts_sigmas(fn):
+		result = fn(expectation_values, scales, sigmas=sigmas)
+	else:
+		result = fn(expectation_values, scales)
+
+	values, errors = result, None
+	# A (values, errors) pair is a 2-sequence whose entries are themselves sequences, while plain
+	# values are scalars, so the two shapes cannot be confused (not even for two observables).
+	if len(result) == 2 and all(isinstance(part, (list, tuple, np.ndarray)) for part in result):
+		values, errors = result
+
+	values = [float(v) for v in values]
+	if errors is not None:
+		errors = [float(e) for e in errors]
+		if len(errors) != len(values):
+			raise ValueError(
+				"Custom extrapolation function returned "
+				f"{len(errors)} standard error(s) for {len(values)} expectation value(s); the two must match."
+			)
+	return values, errors
 
 
 def _valid_flat_scale_factors(scale_factors) -> bool:
@@ -68,7 +116,7 @@ class FiQCIEstimator:
 			fold_gates: list | None
 			scale_factors: list[float] | list[list[float]]
 			folding_method: str
-			extrapolation_method: str
+			extrapolation_method: str | Callable[..., list[float] | tuple[list[float], list[float]]]
 			extrapolation_degree: int | None
 			seed: int | None
 
@@ -346,7 +394,11 @@ class FiQCIEstimator:
 						per_scale_sigmas.append(self._calculate_shot_errors(c, obs, measurement_settings))
 
 					scales = zne_scale_factors_per_pair[i]
-					if zne_extrapolation_method == "exponential":
+					if callable(zne_extrapolation_method):
+						expvs, ext_err = _apply_custom_extrapolation(
+							zne_extrapolation_method, zne_expvs, scales, per_scale_sigmas
+						)
+					elif zne_extrapolation_method == "exponential":
 						expvs, ext_err = exponential_extrapolation(zne_expvs, scales, sigmas=per_scale_sigmas)
 					elif zne_extrapolation_method == "richardson":
 						expvs, ext_err = richardson_extrapolation(zne_expvs, scales, sigmas=per_scale_sigmas)
@@ -501,11 +553,10 @@ class FiQCIEstimator:
 		fold_gates: list | None = None,
 		scale_factors: list[float] | list[list[float]] = [1, 3, 5],
 		folding_method: str = "local",
-		extrapolation_method: str = "exponential",
+		extrapolation_method: str | Callable[..., list[float] | tuple[list[float], list[float]]] = "exponential",
 		extrapolation_degree: int | None = None,
 		seed: int | None = None,
 	):
-		# TODO: More extrapolation methods, allow user-defined extrapolation functions
 		"""Configure zero-noise extrapolation settings.
 
 		Scale factors may be any real numbers >= 1. Non-odd-integer values (even integers, fractions)
@@ -513,10 +564,29 @@ class FiQCIEstimator:
 		sampling reproducible. Extrapolation uses the achieved scale factors as the x-axis.
 
 		``scale_factors`` may be either a single flat list applied to every submitted circuit, or a list
-		of lists (one per submitted circuit) so each circuit uses its own scale factors — the number of
+		of lists (one per submitted circuit) so each circuit uses its own scale factors. The number of
 		lists must then match the number of circuit/observable pairs passed to :meth:`run`.
+
+		``extrapolation_method`` may be one of the built-in strings (``"exponential"``, ``"richardson"``,
+		``"polynomial"``, ``"linear"``) or a user-defined callable. The callable is invoked once per
+		circuit/observable pair as ``fn(expectation_values, scale_factors)``, where ``expectation_values``
+		is a list (one entry per scale factor) of per-observable expectation-value lists and
+		``scale_factors`` is the list of achieved scale factors; it must return a list of floats (the
+		zero-noise estimate per observable). ``extrapolation_degree`` is ignored for callables.
+
+		A callable can also report the uncertainty of its estimate the way the built-in extrapolators do.
+		If it accepts a ``sigmas`` keyword argument, it is additionally called with
+		``sigmas=<per-scale shot standard errors>`` (same shape as ``expectation_values``), and it may
+		then return a ``(values, standard_errors)`` pair instead of just the values. Those standard
+		errors are surfaced as the ``"zne_extrapolation_error"`` / ``"total"`` entries of
+		:meth:`FiQCIEstimatorJob.standard_errors`; callables that return only values leave both ``None``.
 		"""
-		if extrapolation_method not in ["exponential", "richardson", "polynomial", "linear"]:
+		if not callable(extrapolation_method) and extrapolation_method not in [
+			"exponential",
+			"richardson",
+			"polynomial",
+			"linear",
+		]:
 			raise ValueError(f"Unsupported extrapolation method: {extrapolation_method}")
 		if folding_method not in ["local", "global"]:
 			raise ValueError(f"Unsupported folding method: {folding_method}")
@@ -564,7 +634,7 @@ class FiQCIEstimatorJob:
 	"""Lazy wrapper around the backend job that produced an estimator's results.
 
 	The estimator flattens all per-pair measurement-basis circuits into one backend call, so there
-	is exactly one underlying job (which may itself batch internally — see ``BatchedJob``). This
+	is exactly one underlying job (which may itself batch internally. See ``BatchedJob``). This
 	class is returned immediately from :meth:`FiQCIEstimator.run`; the expectation-value
 	computation is deferred until :meth:`expectation_values` / :meth:`raw_expectation_values` is
 	first called (it fetches the underlying results and computes once, then caches). Polling the
@@ -589,7 +659,7 @@ class FiQCIEstimatorJob:
 		    observables: Observable(s) for which expectation values were calculated.
 		    requested_scale_factors: ZNE scale factors requested for each circuit/observable pair (empty
 		        when ZNE is disabled).
-		    achieved_scale_factors: ZNE scale factors actually realised by folding for each pair — the
+		    achieved_scale_factors: ZNE scale factors actually realised by folding for each pair. The
 		        x-axis used for extrapolation (empty when ZNE is disabled).
 		    zne_options: Frozen snapshot of the ZNE configuration used at submission (folding/extrapolation
 		        settings), surfaced via :attr:`mitigator_options`. ``None`` when unknown.
@@ -655,7 +725,8 @@ class FiQCIEstimatorJob:
 		- ``"shot_error"``: statistical SE of the raw measurement, ``sqrt((1 - ⟨P⟩²) / N)`` per term.
 		  When ZNE is enabled this is taken at the unfolded (scale 1) point.
 		- ``"zne_extrapolation_error"``: SE of the extrapolated value, the per-scale shot errors
-		  propagated through the (linear) extrapolator; ``None`` when ZNE is disabled.
+		  propagated through the (linear) extrapolator; ``None`` when ZNE is disabled, or when a
+		  user-defined extrapolation callable reports no standard errors.
 		- ``"total"``: SE of the value :meth:`expectation_values` actually returns — ``"shot_error"``
 		  when ZNE is off, ``"zne_extrapolation_error"`` when ZNE is on. Not a quadrature sum, since
 		  the extrapolation error already incorporates the shot noise.

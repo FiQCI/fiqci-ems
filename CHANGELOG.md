@@ -1,8 +1,13 @@
-## [WIP] [1.0.0] 3.7.2026
+## [WIP] [1.0.0] 31.7.2026
 
 ## Changed
 - added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
 - https://github.com/FiQCI/fiqci-ems/pull/41
+
+- allow passing a callable `extrapolation_fn(scales, values) -> float` to `.zne()` in addition to using the built-in methods
+  - a callable that accepts a `sigmas` keyword argument is given the per-scale shot standard errors and may return `(values, standard_errors)`, which are reported via `standard_errors()` like the built-in extrapolators' propagated errors
+  - fixes `expectation_values()` raising `UnboundLocalError` when a callable extrapolation method was used
+- https://github.com/FiQCI/fiqci-ems/pull/40
 
 - migrate `combine_pauli_ops` to use Qiskit's `Paulilist.group_qubit_wise_commuting`
 - `get_obs_subcircuits` now directly takes observables as an argument and handles calling `get_measurement_settings` inside the function
