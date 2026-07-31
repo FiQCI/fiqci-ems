@@ -209,6 +209,12 @@ Use the :attr:`~fiqci.ems.FiQCIEstimator.mitigator_options` property to view cur
 
    estimator.mitigator_options
 
+The returned dictionary is a **copy**, so mutating it does not reconfigure the estimator; use
+:meth:`~fiqci.ems.FiQCIEstimator.zne` / :meth:`~fiqci.ems.FiQCIEstimator.rem` /
+:meth:`~fiqci.ems.FiQCIEstimator.dd` / :meth:`~fiqci.ems.FiQCIEstimator.pauli_twirl` for that, which
+validate their input. The live ``M3IQM`` mitigator under ``rem`` is shared by reference rather than
+copied, since it owns the calibration data.
+
 Counting Circuits
 -----------------
 

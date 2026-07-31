@@ -162,6 +162,11 @@ Use the :attr:`~fiqci.ems.FiQCISampler.mitigator_options` property to view curre
 
    sampler.mitigator_options
 
+The returned dictionary is a **copy**, so mutating it does not reconfigure the sampler; use
+:meth:`~fiqci.ems.FiQCISampler.rem` / :meth:`~fiqci.ems.FiQCISampler.dd` /
+:meth:`~fiqci.ems.FiQCISampler.pauli_twirl` for that, which validate their input. The live ``M3IQM``
+mitigator under ``rem`` is shared by reference rather than copied, since it owns the calibration data.
+
 Counting Circuits
 -----------------
 
