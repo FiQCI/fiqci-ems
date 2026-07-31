@@ -1112,3 +1112,158 @@ class TestEstimatorZNESettings:
 
 		assert estimator._zne["extrapolation_method"] == "linear"
 		assert estimator._zne["extrapolation_degree"] is None
+
+
+class TestDegenerateAchievedScaleFactors:
+	"""Folding is discrete, so distinct requested scales can collapse onto the same achieved value.
+
+	Extrapolation then has too few distinct x-values and yields nan/inf or a meaningless fit, so
+	``run()`` warns at submission time (while the job is still cancellable).
+	"""
+
+	def _estimator(self, **zne_kwargs):
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, **zne_kwargs)
+		return estimator
+
+	def test_no_two_qubit_gates_collapses_every_scale_and_warns(self) -> None:
+		"""A circuit with no foldable 2q gates cannot be locally folded: every scale becomes 1.0."""
+		from qiskit.quantum_info import SparsePauliOp
+
+		estimator = self._estimator(scale_factors=[1, 3, 5], folding_method="local")
+
+		qc = QuantumCircuit(2)  # single-qubit gates only -> nothing to fold
+		qc.h(0)
+		qc.h(1)
+
+		with pytest.warns(UserWarning, match="collapsed every requested scale factor"):
+			job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=512)
+
+		assert np.allclose(job.achieved_scale_factors(0), [1.0, 1.0, 1.0])
+
+	def test_collapse_warning_is_emitted_before_results_are_fetched(self) -> None:
+		"""The warning must fire at run() so the user can still cancel; not at result time."""
+		from qiskit.quantum_info import SparsePauliOp
+
+		estimator = self._estimator(scale_factors=[1, 3], folding_method="local")
+
+		qc = QuantumCircuit(2)
+		qc.h(0)
+
+		with warnings.catch_warnings(record=True) as caught:
+			warnings.simplefilter("always")
+			job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=512)
+
+		messages = [str(w.message) for w in caught if w.category is UserWarning]
+		assert any("no extrapolation is possible" in m for m in messages)
+		# The handle is usable for cancellation: ids are available without fetching results.
+		assert job.job_ids()
+
+	def test_partial_collapse_warns_about_reduced_distinct_scales(self) -> None:
+		"""Some (not all) scales collapsing warns that the fit uses duplicated points."""
+		from qiskit.quantum_info import SparsePauliOp
+
+		# One foldable CX: scale 1.05 rounds to 0 folds -> 1.0, colliding with the requested 1.0.
+		estimator = self._estimator(scale_factors=[1, 1.05, 3], folding_method="local")
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+
+		with pytest.warns(UserWarning, match="only 2 distinct achieved scale factor"):
+			job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=512)
+
+		assert np.allclose(job.achieved_scale_factors(0), [1.0, 1.0, 3.0])
+
+	def test_resolvable_scale_factors_do_not_warn(self) -> None:
+		"""A circuit with enough foldable gates to resolve every scale stays silent."""
+		from qiskit.quantum_info import SparsePauliOp
+
+		estimator = self._estimator(scale_factors=[1, 3, 5], folding_method="local")
+
+		qc = QuantumCircuit(2)
+		qc.cx(0, 1)
+
+		with warnings.catch_warnings(record=True) as caught:
+			warnings.simplefilter("always")
+			job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=512)
+
+		user_warnings = [str(w.message) for w in caught if w.category is UserWarning]
+		assert user_warnings == []
+		assert np.allclose(job.achieved_scale_factors(0), [1.0, 3.0, 5.0])
+
+
+class TestCustomExtrapolationReturnShapes:
+	"""``_apply_custom_extrapolation`` normalises the shapes a user callable may return."""
+
+	def test_values_with_explicit_none_errors(self) -> None:
+		"""``(values, None)`` is the natural way to say "no standard errors" and must be accepted."""
+		from fiqci.ems.primitives.fiqci_estimator import _apply_custom_extrapolation
+
+		def my_extrapolation(expectation_values, scales, sigmas=None):
+			return [0.25, -0.5], None
+
+		values, errors = _apply_custom_extrapolation(
+			my_extrapolation, [[0.9, 0.5], [0.7, 0.3]], [1.0, 3.0], [[0.01, 0.01], [0.02, 0.02]]
+		)
+
+		assert values == [0.25, -0.5]
+		assert errors is None
+
+	def test_numpy_values_with_none_errors(self) -> None:
+		"""The ``(values, None)`` form also works when values are a numpy array."""
+		from fiqci.ems.primitives.fiqci_estimator import _apply_custom_extrapolation
+
+		def my_extrapolation(expectation_values, scales, sigmas=None):
+			return np.array([0.25, -0.5]), None
+
+		values, errors = _apply_custom_extrapolation(
+			my_extrapolation, [[0.9, 0.5], [0.7, 0.3]], [1.0, 3.0], [[0.01, 0.01], [0.02, 0.02]]
+		)
+
+		assert values == [0.25, -0.5]
+		assert errors is None
+
+	def test_none_errors_reported_as_no_extrapolation_error_end_to_end(self) -> None:
+		"""A ``(values, None)`` callable leaves the job's extrapolation error unset."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		def my_extrapolation(expectation_values, scales, sigmas=None):
+			return [float(v) for v in expectation_values[0]], None
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[1, 3], extrapolation_method=my_extrapolation)
+
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+
+		job = estimator.run(qc, SparsePauliOp(["ZZ"]), shots=1024)
+
+		assert job.standard_errors(0)["zne_extrapolation_error"] is None
+		assert job.standard_errors(0)["total"] is None
+		assert job.standard_errors(0)["shot_error"] is not None
+
+	@pytest.mark.parametrize(
+		"returned",
+		[
+			pytest.param({"a": 1}, id="dict"),
+			pytest.param(["not", "a", "float"], id="strings"),
+			pytest.param(([0.1], "oops"), id="non-numeric-errors"),
+		],
+	)
+	def test_uninterpretable_return_raises_a_clear_type_error(self, returned) -> None:
+		"""A return value we cannot read as floats names the offending value instead of leaking float()."""
+		from fiqci.ems.primitives.fiqci_estimator import _apply_custom_extrapolation
+
+		def my_extrapolation(expectation_values, scales, sigmas=None):
+			return returned
+
+		with pytest.raises(TypeError, match="must return a sequence of floats"):
+			_apply_custom_extrapolation(my_extrapolation, [[0.9], [0.7]], [1.0, 3.0], [[0.01], [0.02]])
