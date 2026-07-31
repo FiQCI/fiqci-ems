@@ -26,7 +26,6 @@ FiQCI EMS supports two methods for amplifying noise by increasing the effective 
     - This uniformly amplifies noise across all gates.
     - The `fold_gates` parameter is not applicable and will be ignored if set.
 
-(arbitrary-scale-factors)=
 ### Arbitrary scale factors
 
 Odd integers are the only scale factors reachable by *fully* folding every gate. Any other real value ≥ 1 (even integers, fractions) is **approximated** by partial folding:
@@ -153,7 +152,6 @@ estimator.zne(
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
 | `extrapolation_method` | `str \| Callable` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, `"linear"`, or a custom callable `fn(expectation_values, scale_factors[, sigmas]) -> list[float] \| tuple[list[float], list[float]]` (see [Custom extrapolation functions](#custom-extrapolation-functions)). |
 | `extrapolation_degree` | `int \| None` | `None` | Polynomial degree (only for `"polynomial"` extrapolation). |
-| `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
 | `seed` | `int \| None` | `None` | Seed for the random gate sampling used to approximate non-odd-integer scale factors. |
 
 ## Extrapolation Uncertainty
