@@ -455,10 +455,13 @@ class TestCalculateExpectationValues:
 		assert exp_vals[0] == pytest.approx(-1.0)
 
 
-def _const_compute(exp_vals, raw=None):
-	"""Build a compute_fn returning fixed (expectation_values, raw_expectation_values)."""
+def _const_compute(exp_vals, raw=None, errors=None):
+	"""Build a compute_fn returning fixed (expectation_values, raw_expectation_values, standard_errors)."""
 	raw = exp_vals if raw is None else raw
-	return lambda: (exp_vals, raw)
+	errors = (
+		[{"shot_error": v, "zne_extrapolation_error": None, "total": v} for v in exp_vals] if errors is None else errors
+	)
+	return lambda: (exp_vals, raw, errors)
 
 
 class TestFiQCIEstimatorJob:
@@ -494,13 +497,25 @@ class TestFiQCIEstimatorJob:
 		assert collection.observables(0) == obs_list[0]
 		assert collection.observables(1) == obs_list[1]
 
+	def test_standard_errors_returns_all_and_by_index(self) -> None:
+		"""standard_errors() returns the per-pair list; standard_errors(i) returns one pair's dict."""
+		errors = [
+			{"shot_error": [0.01, 0.02], "zne_extrapolation_error": None, "total": [0.01, 0.02]},
+			{"shot_error": [0.03], "zne_extrapolation_error": [0.05], "total": [0.05]},
+		]
+		collection = FiQCIEstimatorJob(Mock(), _const_compute([[0.5, 0.3], [0.1]], errors=errors), Mock())
+
+		assert collection.standard_errors() == errors
+		assert collection.standard_errors(0) == errors[0]
+		assert collection.standard_errors(1) == errors[1]
+
 	def test_computation_is_lazy_and_cached(self) -> None:
 		"""compute_fn runs only on first value access, and exactly once."""
 		calls: list[int] = []
 
 		def compute():
 			calls.append(1)
-			return [[0.5]], [[0.5]]
+			return [[0.5]], [[0.5]], [{"shot_error": [0.01], "zne_extrapolation_error": None, "total": [0.01]}]
 
 		collection = FiQCIEstimatorJob(Mock(), compute, Mock())
 		# Not computed just by constructing.
@@ -509,6 +524,7 @@ class TestFiQCIEstimatorJob:
 		collection.expectation_values()
 		collection.expectation_values()
 		collection.raw_expectation_values()
+		collection.standard_errors()
 		assert len(calls) == 1
 
 	def test_polling_delegates_to_underlying_job(self) -> None:
@@ -520,7 +536,7 @@ class TestFiQCIEstimatorJob:
 
 		def compute():
 			calls.append(1)
-			return [[0.5]], [[0.5]]
+			return [[0.5]], [[0.5]], [{"shot_error": [0.01], "zne_extrapolation_error": None, "total": [0.01]}]
 
 		collection = FiQCIEstimatorJob(job, compute, Mock())
 

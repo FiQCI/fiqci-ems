@@ -1,6 +1,9 @@
-## [WIP] [1.0.0] 3.7.2026
+## [WIP] [1.0.0] 31.7.2026
 
 ## Changed
+- added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
+- https://github.com/FiQCI/fiqci-ems/pull/41
+
 - allow passing a callable `extrapolation_fn(scales, values) -> float` to `.zne()` in addition to using the built-in methods
 - https://github.com/FiQCI/fiqci-ems/pull/40
 
