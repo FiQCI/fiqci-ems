@@ -43,6 +43,27 @@ job.achieved_scale_factors()    # what folding realised (the extrapolation x-axi
 
 Both accessors return a list of lists (one inner list per circuit/observable pair) and take an optional pair index. Pass a `seed` to make the random gate sampling reproducible.
 
+#### When folding cannot separate the scale factors
+
+Since folding is discrete, a circuit with few foldable gates can collapse several *distinct* requested scale factors onto the same achieved value. Extrapolation is then fitting fewer distinct x-values than it has points, which produces an unreliable fit — or, if every scale collapses to a single value, `nan`/`inf` expectation values. The most common cause is local folding on a circuit with **no two-qubit gates at all**, which cannot be folded locally, so every requested scale becomes 1.0.
+
+The estimator cannot detect this before building the circuits, so it warns at `run` — after submission but before any results are fetched, so the run is still cancellable via the returned job handle:
+
+```python
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("error")     # turn the warning into an exception if you prefer
+    job = estimator.run(circuits, observables=observables)
+```
+
+Two distinct warnings are issued per circuit/observable pair:
+
+- *every* requested scale collapsed onto one achieved value — no extrapolation is possible and the returned values will be meaningless. Cancel the job and either switch to `folding_method="global"` (which folds single-qubit gates too), widen the scale factors, or disable ZNE.
+- *some* scales collapsed — the fit uses duplicated points and may be unreliable. Widen the scale factors if that is not intended.
+
+Check `job.achieved_scale_factors()` to see exactly which values collapsed.
+
 The returned job also carries `job.mitigator_options`, a snapshot of the full ZNE configuration (folding/extrapolation settings) in effect at submission, merged with the underlying backend mitigation settings. Unlike `estimator.mitigator_options`, this snapshot is frozen and reports what the run actually used even if you reconfigure the estimator afterwards.
 
 ### Per-circuit scale factors
@@ -112,7 +133,7 @@ estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method=my_lin
 job.standard_errors(0)["zne_extrapolation_error"]  # the errors the callable returned
 ```
 
-The returned `standard_errors` must have one entry per expectation value; a length mismatch raises `ValueError`. The values are surfaced unchanged as the `zne_extrapolation_error` and `total` keys of {meth}`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors`. Callables that take no `sigmas` argument, or return only values, leave both keys `None` — `shot_error` is still measured and reported. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. `extrapolation_method=richardson_extrapolation`) and their propagated errors come through as usual.
+The returned `standard_errors` must have one entry per expectation value; a length mismatch raises `ValueError`. The values are surfaced unchanged as the `zne_extrapolation_error` and `total` keys of {meth}`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors`. Callables that take no `sigmas` argument, or return only values, leave both keys `None` — `shot_error` is still measured and reported. A callable may also return `(values, None)` to report values without standard errors, which is treated the same as returning the values alone. Anything else — a return value that cannot be read as a sequence of floats — raises `TypeError` naming what was returned. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. `extrapolation_method=richardson_extrapolation`) and their propagated errors come through as usual.
 
 ## Usage
 
@@ -147,7 +168,6 @@ estimator.zne(
 |-----------|------|---------|-------------|
 | `enabled` | `bool` | - | Enable or disable ZNE. |
 | `fold_gates` | `list[str] \| None` | `None` | Gate names to fold (local folding only). `None` folds all two-qubit gates. |
-| `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
 | `extrapolation_method` | `str \| Callable` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, `"linear"`, or a custom callable `fn(expectation_values, scale_factors[, sigmas]) -> list[float] \| tuple[list[float], list[float]]` (see [Custom extrapolation functions](#custom-extrapolation-functions)). |
