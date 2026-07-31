@@ -154,10 +154,23 @@ class FiQCIBackend:
 		"""
 		Get current mitigator settings.
 
+		The returned dict is a copy, so mutating it does not change the backend's configuration
+		(use :meth:`rem` / :meth:`dd` / :meth:`pauli_twirl` for that, which validate their input).
+		The nested ``M3IQM`` mitigator under ``rem`` is the live object, not a copy, since it owns
+		the calibration data.
+
 		Returns:
 			A dictionary of current mitigator settings and their values.
 		"""
-		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
+		dd = dict(self._dd)
+		dd["gate_sequences"] = list(self._dd["gate_sequences"])
+		pauli_twirl = dict(self._pauli_twirl)
+		gates_to_twirl = self._pauli_twirl["gates_to_twirl"]
+		# Only copy a materialised collection; list()-ing a user-supplied iterator here would
+		# consume it out from under the next run().
+		if isinstance(gates_to_twirl, (list, tuple)):
+			pauli_twirl["gates_to_twirl"] = list(gates_to_twirl)
+		return {"rem": dict(self._rem), "dd": dd, "pauli_twirl": pauli_twirl}
 
 	def _snapshot_mitigator_options(self) -> dict[str, Any]:
 		"""Freeze the current mitigator settings for attachment to a submitted job.
