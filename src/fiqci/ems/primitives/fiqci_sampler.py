@@ -39,7 +39,11 @@ class FiQCISampler:
 
 	@property
 	def mitigator_options(self) -> dict[str, Any]:
-		"""Get current mitigator settings."""
+		"""Get current mitigator settings.
+
+		The returned dict is a copy, so mutating it does not change the sampler's configuration;
+		use :meth:`rem` / :meth:`dd` / :meth:`pauli_twirl`, which validate their input.
+		"""
 		return {**self.backend.mitigator_options}
 
 	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int | dict[str, int]:
