@@ -1,6 +1,6 @@
 ## [WIP] [1.0.0] 31.7.2026
 
-## Changed
+### Changed
 - added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
 - https://github.com/FiQCI/fiqci-ems/pull/41
 
@@ -31,7 +31,7 @@
 
 ## [0.8.1] 12.6.2026
 
-## Changed
+### Changed
 - fix zero noise extrapolation accepting invalid scale factors
 - fix handling of `extrapolation_degree` when manually setting ZNE options using `.zne()`
 - fix pauli twirling crash on non IQM backends
@@ -39,7 +39,7 @@
 
 ## [0.8.0] 5.6.2026
 
-## Changed
+### Changed
 - `run()` on the backend, sampler, and estimator now returns a lazy job handle immediately instead of blocking until all batches complete and mitigation is applied. Error mitigation, twirl averaging, batch-result combination, and estimator expectation values are computed on the first `result()`/`expectation_values()` call and cached.
 - The handle exposes per-batch `job_id()`s immediately, an aggregated `status()`/`done()`, `job_ids()`, and `partial_results()` for batch-granular access while other batches are still running.
 - `result()` now raises `BatchFailedError` naming the failing batch and the original circuit indices it covered when any batch fails, instead of an opaque error during result combination.
@@ -51,7 +51,7 @@
 
 ## [0.7.2] - 4.6.2026
 
-## Changed
+### Changed
 - Fix `max_batch_size` not being passed down from ems primitives to mthree for calibration job execution.
 
 ## [0.7.1] - 3.6.2026
@@ -64,7 +64,7 @@
 
 ## [0.7.0] - 29.5.2026
 
-## Changed
+### Changed
 - Add support for applying readout error mitigation on circuits with measurements on multiple classical registers
 - Pauli twirling no longer drops the transpiled circuit's `TranspileLayout`; twirled circuits previously lost their layout and could place CZ gates on non-adjacent physical qubits, raising `CircuitValidationError` (more likely with higher `num_twirls`)
 - Fixed result ordering when Pauli twirling is enabled: `result.get_counts()` for a list of circuits is now correctly aligned with the input circuit order (previously a mis-trim could put another circuit's counts in circuit `i`'s slot)
@@ -73,7 +73,7 @@
 
 ## [0.6.1] - 8.5.2026
 
-## Changed
+### Changed
 - Fix for a bug in expectation value calculation
 
 [https://github.com/FiQCI/fiqci-ems/pull/13](https://github.com/FiQCI/fiqci-ems/pull/13)
