@@ -18,6 +18,7 @@ from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
 	get_obs_subcircuits,
 	get_measurement_settings,
+	strip_final_measurements,
 	_get_observable_circuit_index,
 )
 from fiqci.ems.utils import _remove_idle_wires
@@ -286,19 +287,19 @@ class FiQCIEstimator:
 
 			# if lengths match, we pair them elementwise
 			else:
-				obs_circuits = [get_obs_subcircuits([circ], obs, ops) for circ, obs in zip(circuits, observables)]
+				pairs = list(zip(circuits, observables))
 
 		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
-			obs_circuits = [get_obs_subcircuits([circ], observables, ops) for circ in circuits]
+			pairs = [(circ, observables) for circ in circuits]
 
 		# if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
 		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, QuantumCircuit):
-			obs_circuits = [get_obs_subcircuits([circuits], observables, ops)]
+			pairs = [(circuits, observables)]
 		else:
 			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
 
-		num_pairs = len(obs_circuits)
+		num_pairs = len(pairs)
 		if self._zne["enabled"]:
 			logger.info(
 				"FiQCIEstimator.run: %d circuit/observable pair(s); mitigation_level=%d, "
@@ -336,34 +337,41 @@ class FiQCIEstimator:
 				"circuit/observable pair(s) were submitted; provide one scale-factor list per circuit."
 			)
 
-		for i, obs_circ_groups in enumerate(obs_circuits):
-			obs_circs_list = [group[0] for group in obs_circ_groups]
-
-			measurement_settings = get_measurement_settings(
-				observables if isinstance(observables, SparsePauliOp) else observables[i]
-			)
+		for i, (circuit, obs) in enumerate(pairs):
+			measurement_settings = get_measurement_settings(obs)
 			pair_measurement_settings.append(measurement_settings)
-			num_base_circuits += len(obs_circs_list)
+
+			# Fold the bare circuit, before the measurement-basis rotations are appended. Folding
+			# afterwards would count those rotations, so an X/Y group would report a different
+			# foldable-gate count (and so a different achieved scale) than a Z group of the same pair.
+			base_circuit = strip_final_measurements(circuit)
+			scaled_circuits = [base_circuit]
 
 			if self._zne["enabled"]:
 				requested_scales = cast(
 					list[float], self._zne["scale_factors"][i] if zne_nested else self._zne["scale_factors"]
 				)
 				pair_requested_scale_factors.append([float(s) for s in requested_scales])
-				# All measurement-basis subcircuits in a pair share the same foldable-gate count (basis
-				# rotations are single-qubit), so one achieved-scale list applies to the whole pair.
 				pair_scale_factors.append(
 					_achieved_scale_factors(
-						obs_circs_list[0], requested_scales, self._zne["folding_method"], self._zne["fold_gates"]
+						base_circuit, requested_scales, self._zne["folding_method"], self._zne["fold_gates"]
 					)
 				)
-				obs_circs_list = _get_zne_circuits(
-					obs_circs_list,
+				scaled_circuits = _get_zne_circuits(
+					[base_circuit],
 					self._zne["fold_gates"],
 					requested_scales,
 					self._zne["folding_method"],
 					self._zne["seed"],
 				)
+
+			# One measurement-basis subcircuit per (scale, group), flattened scale-major so the
+			# stride _compute() slices by is the number of measurement groups.
+			obs_circ_groups = get_obs_subcircuits(scaled_circuits, obs, ops)
+			num_base_circuits += len(obs_circ_groups)
+			obs_circs_list = [
+				groups[scale_index] for scale_index in range(len(scaled_circuits)) for groups in obs_circ_groups
+			]
 
 			pair_lengths.append(len(obs_circs_list))
 			flat_circuits.extend(obs_circs_list)
