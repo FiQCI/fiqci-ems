@@ -606,3 +606,144 @@ class TestFiQCIEstimatorJob:
 		assert collection.status() == "RUNNING"
 		assert collection.job_ids() == ["x", "y"]
 		assert calls == []
+
+
+def _bell() -> QuantumCircuit:
+	qc = QuantumCircuit(2)
+	qc.h(0)
+	qc.cx(0, 1)
+	return qc
+
+
+class TestTotalCircuitsGenerated:
+	"""The advisory count must match what ``run`` actually submits.
+
+	The measurement-group count depends on the observable, so taking it from ``observables[0]`` and
+	applying it to every circuit under-reported whenever the observables differed per circuit.
+	"""
+
+	def _estimator(self, **zne_kwargs):
+		from qiskit_aer import AerSimulator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		if zne_kwargs:
+			estimator.zne(enabled=True, extrapolation_method="linear", **zne_kwargs)
+		return estimator
+
+	def _submitted_count(self, estimator, circuits, observables) -> int:
+		"""How many circuits actually reach the backend."""
+		import warnings
+
+		from qiskit_aer import AerSimulator
+
+		counts: list[int] = []
+		unpatched = AerSimulator.run
+
+		def spy(backend, submitted, **kwargs):
+			counts.append(len(submitted) if isinstance(submitted, list) else 1)
+			return unpatched(backend, submitted, **kwargs)
+
+		with patch.object(AerSimulator, "run", spy), warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			estimator.run(circuits, observables, shots=64).expectation_values(0)
+		return sum(counts)
+
+	def test_single_observable_scales_with_circuit_count(self) -> None:
+		estimator = self._estimator()
+		obs = SparsePauliOp(["ZZ", "XX"])  # two measurement groups
+
+		assert estimator.total_circuits_generated(1, obs) == 2
+		assert estimator.total_circuits_generated(3, obs) == 6
+
+	def test_differing_observables_are_summed_not_multiplied(self) -> None:
+		"""One group for the first pair plus three for the second is 4, not 2 x 1."""
+		estimator = self._estimator()
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])]
+
+		assert estimator.total_circuits_generated(2, observables) == 4
+
+	def test_prediction_matches_submission_for_differing_observables(self) -> None:
+		estimator = self._estimator()
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])]
+
+		predicted = estimator.total_circuits_generated(2, observables)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], observables)
+
+		assert predicted == actual == 4
+
+	def test_prediction_matches_submission_with_nested_scale_factors(self) -> None:
+		estimator = self._estimator(scale_factors=[[1, 3], [1, 3, 5]])
+		obs = SparsePauliOp(["ZZ", "XX"])
+
+		predicted = estimator.total_circuits_generated(2, obs)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], obs)
+
+		assert predicted == actual == 10  # 2 groups * (2 + 3) scales
+
+	def test_pauli_twirl_multiplies_the_total(self) -> None:
+		estimator = self._estimator()
+		estimator.pauli_twirl(True, num_twirls=2, seed=1)
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX"])]
+
+		predicted = estimator.total_circuits_generated(2, observables)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], observables)
+
+		assert predicted == actual == 9  # (1 + 2 groups) * (2 twirls + 1)
+
+	def test_observable_count_mismatch_raises(self) -> None:
+		estimator = self._estimator()
+
+		with pytest.raises(ValueError, match="observable"):
+			estimator.total_circuits_generated(3, [SparsePauliOp(["ZZ"]), SparsePauliOp(["XX"])])
+
+	def test_nested_scale_factor_count_mismatch_raises(self) -> None:
+		estimator = self._estimator(scale_factors=[[1, 3], [1, 3, 5]])
+
+		with pytest.raises(ValueError, match="scale_factors"):
+			estimator.total_circuits_generated(3, SparsePauliOp(["ZZ"]))
+
+	def test_detailed_collapses_uniform_values_and_lists_varying_ones(self) -> None:
+		estimator = self._estimator()
+
+		uniform = estimator.total_circuits_generated(2, SparsePauliOp(["ZZ", "XX"]), detailed=True)
+		assert uniform["measurement_circuits_per_basis"] == 2
+		assert uniform["total_circuits"] == 4
+
+		varying = estimator.total_circuits_generated(
+			2, [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])], detailed=True
+		)
+		assert varying["measurement_circuits_per_basis"] == [1, 3]
+		assert varying["total_circuits"] == 4
+
+
+class TestMitigationLevelValidation:
+	"""All three interfaces reject a bad level the same way, so callers catch one exception type."""
+
+	@pytest.mark.parametrize("level", [-1, 4, 7])
+	def test_estimator_raises_value_error(self, level: int) -> None:
+		from qiskit_aer import AerSimulator
+
+		with pytest.raises(ValueError, match="mitigation_level must be 0-3"):
+			FiQCIEstimator(AerSimulator(), mitigation_level=level)
+
+	def test_all_interfaces_agree(self) -> None:
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems import FiQCIBackend, FiQCISampler
+
+		for cls in (FiQCIBackend, FiQCISampler, FiQCIEstimator):
+			with pytest.raises(ValueError, match="mitigation_level must be 0-3"):
+				cls(AerSimulator(), mitigation_level=7)
+
+	def test_default_shots_match_across_interfaces(self) -> None:
+		"""A user moving between interfaces should not silently change shot count."""
+		import inspect
+
+		from fiqci.ems import FiQCIBackend, FiQCISampler
+
+		defaults = {
+			cls.__name__: inspect.signature(cls.run).parameters["shots"].default
+			for cls in (FiQCIBackend, FiQCISampler, FiQCIEstimator)
+		}
+
+		assert len(set(defaults.values())) == 1, defaults
