@@ -12,29 +12,6 @@ from mthree.mitigation import _faulty_qubit_checker
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-def _balanced_cal_strings(num_qubits: int) -> list[str]:
-	"""Generate balanced calibration strings for the given number of qubits.
-
-	Balanced calibration strings ensure equal representation of 0 and 1 states
-	across all qubits during calibration.
-
-	Args:
-		num_qubits: Number of qubits to generate calibration strings for.
-
-	Returns:
-		List of balanced calibration bit strings.
-
-	Raises:
-		ValueError: If num_qubits is less than 1.
-	"""
-	if num_qubits < 1:
-		raise ValueError("Number of qubits must be at least 1")
-
-	# Generate all possible bit strings for num_qubits
-	num_strings = 2**num_qubits
-	return [format(i, f"0{num_qubits}b") for i in range(num_strings)]
-
-
 @dataclass
 class _Config:
 	"""Configuration for the backend"""
