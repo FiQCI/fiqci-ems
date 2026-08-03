@@ -206,18 +206,27 @@ class M3IQM(M3Mitigation):
 		Raises:
 			M3Error: Calibration in progress.
 			M3Error: Calibration set ID mismatch.
-			M3Error: Invalid calibration file format.
+			M3Error: Invalid calibration file format, including unparseable JSON or a missing
+				``cals`` entry.
 			FileNotFoundError: Calibration file not found.
 		"""
 		if self._thread:
 			raise M3Error("Calibration currently in progress.")
 
 		with open(cals_file, encoding="utf-8") as fd:
-			loaded_data = orjson.loads(fd.read())
+			try:
+				loaded_data = orjson.loads(fd.read())
+			except orjson.JSONDecodeError as exc:
+				raise M3Error(f"Invalid calibration file {cals_file}: could not be parsed as JSON ({exc}).") from exc
 
-		# Only support dict format with required fields
+		# Only support dict format with required fields. The caller reports the message as-is, so it
+		# has to say what is wrong; reading "cals" unchecked used to surface a bare KeyError('cals').
 		if not isinstance(loaded_data, dict):
-			raise M3Error("Invalid calibration file format. ")
+			raise M3Error(
+				f"Invalid calibration file {cals_file}: expected a JSON object, got {type(loaded_data).__name__}."
+			)
+		if "cals" not in loaded_data:
+			raise M3Error(f"Invalid calibration file {cals_file}: missing the required 'cals' entry.")
 
 		# Load calibration data
 		self.single_qubit_cals = [  # type: ignore[assignment]
