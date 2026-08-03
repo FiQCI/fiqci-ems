@@ -79,6 +79,11 @@ class ModifyMeasurementBasis(TransformationPass):
 		return cloned_dag
 
 
+def strip_final_measurements(circuit: QuantumCircuit) -> QuantumCircuit:
+	"""Remove the circuit's trailing measurements, and any register they leave idle."""
+	return PassManager([RemoveFinalMeasurements()]).run(circuit)
+
+
 def get_obs_subcircuits(
 	subcircuits: list[QuantumCircuit], observable: SparsePauliOp, ops: dict[str, Instruction] | None = None
 ) -> list[dict[int, QuantumCircuit]]:
@@ -102,13 +107,11 @@ def get_obs_subcircuits(
 
 	pms = [PassManager([ModifyMeasurementBasis([setting], ops)]) for setting in measurement_settings]
 
-	remove_meas_pm = PassManager([RemoveFinalMeasurements()])
-
 	obs_subcircuits = []
 	for pm in pms:
 		pm_circs = {}
 		for ind, subcircuit in enumerate(subcircuits):
-			modified_circuit = pm.run(remove_meas_pm.run(subcircuit)).decompose(
+			modified_circuit = pm.run(strip_final_measurements(subcircuit)).decompose(
 				gates_to_decompose=["X-meas", "Y-meas"]
 			)  # Decompose custom measurement
 			if modified_circuit.num_qubits == 0:
