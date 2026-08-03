@@ -63,6 +63,12 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
 - a malformed calibration file now raises `M3Error` naming the file and the problem instead of a bare `KeyError` or `JSONDecodeError`
 - https://github.com/FiQCI/fiqci-ems/pull/42
 
+---
+
+- fix `FiQCIEstimator` silently returning `1.0` for every observable when the input circuit has classical bits not consumed by a final measurement (e.g. `QuantumCircuit(n, m)` without measurements, or a mid-circuit measurement)
+- mid-circuit measurements are no longer overwritten, and a circuit with an existing `meas` register no longer raises `DAGCircuitError`
+- https://github.com/FiQCI/fiqci-ems/pull/43
+
 ## [0.8.1] 12.6.2026
 
 ### Changed
