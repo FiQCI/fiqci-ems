@@ -1,7 +1,7 @@
 """Unit tests for basis_measurement module."""
 
 import pytest
-from qiskit import QuantumCircuit
+from qiskit import ClassicalRegister, QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
 from qiskit.converters import circuit_to_dag
@@ -276,3 +276,77 @@ class TestGetObsSubcircuits:
 		pass_obj = ModifyMeasurementBasis([{0: "W"}])
 		with pytest.raises(ValueError, match="Unsupported measurement basis: W"):
 			pass_obj.run(circuit_to_dag(qc))
+
+
+class TestBasisMeasurementRegisterWiring:
+	"""The basis measurements must land in the pass's own register, not the input circuit's.
+
+	``dag.clbits`` starts with any classical bits the input circuit already had, so indexing it
+	from 0 wrote the measurements into the user's register and left the new one empty, which made
+	every parity read ``+1``.
+	"""
+
+	@staticmethod
+	def _measure_targets(circuit) -> list[tuple[str, int]]:
+		"""``(register_name, index)`` each measurement in ``circuit`` writes to."""
+		targets = []
+		for instruction in circuit.data:
+			if instruction.operation.name == "measure":
+				register, index = circuit.find_bit(instruction.clbits[0]).registers[0]
+				targets.append((register.name, index))
+		return targets
+
+	def _bell_with_creg(self, num_clbits: int) -> QuantumCircuit:
+		qc = QuantumCircuit(2, num_clbits)
+		qc.h(0)
+		qc.cx(0, 1)
+		return qc
+
+	@pytest.mark.parametrize("num_clbits", [1, 2, 5])
+	def test_measures_into_own_register_not_the_input_circuits(self, num_clbits: int) -> None:
+		"""An idle pre-existing register must not absorb the basis measurements."""
+		circuit = get_obs_subcircuits([self._bell_with_creg(num_clbits)], SparsePauliOp(["ZZ"]))[0][0]
+
+		assert self._measure_targets(circuit) == [("meas", 0), ("meas", 1)]
+
+	def test_own_register_is_added_last(self) -> None:
+		"""Being last makes its bits leftmost in the count keys, which the bit positions assume."""
+		circuit = get_obs_subcircuits([self._bell_with_creg(2)], SparsePauliOp(["ZZ"]))[0][0]
+
+		assert [register.name for register in circuit.cregs] == ["c", "meas"]
+
+	def test_mid_circuit_measurement_is_preserved(self) -> None:
+		"""A non-final measurement keeps its own target instead of being overwritten."""
+		qc = QuantumCircuit(2)
+		aux = ClassicalRegister(1, "aux")
+		qc.add_register(aux)
+		qc.h(0)
+		qc.measure(0, aux[0])
+		qc.cx(0, 1)
+
+		circuit = get_obs_subcircuits([qc], SparsePauliOp(["ZZ"]))[0][0]
+
+		assert self._measure_targets(circuit) == [("aux", 0), ("meas", 0), ("meas", 1)]
+
+	def test_existing_meas_register_does_not_collide(self) -> None:
+		"""A surviving register already named 'meas' previously raised DAGCircuitError."""
+		qc = QuantumCircuit(2)
+		qc.add_register(ClassicalRegister(2, "meas"))
+		qc.h(0)
+		qc.cx(0, 1)
+
+		circuit = get_obs_subcircuits([qc], SparsePauliOp(["ZZ"]))[0][0]
+
+		assert self._measure_targets(circuit) == [("meas1", 0), ("meas1", 1)]
+
+	def test_unique_name_skips_every_taken_suffix(self) -> None:
+		"""Naming walks past all taken names rather than stopping at the first suffix."""
+		qc = QuantumCircuit(2)
+		for name in ("meas", "meas1", "meas2"):
+			qc.add_register(ClassicalRegister(1, name))
+		qc.h(0)
+		qc.cx(0, 1)
+
+		circuit = get_obs_subcircuits([qc], SparsePauliOp(["ZZ"]))[0][0]
+
+		assert self._measure_targets(circuit) == [("meas3", 0), ("meas3", 1)]
