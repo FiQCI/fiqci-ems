@@ -17,6 +17,22 @@ Initialize the estimator with an IQM backend, mitigation level, and optional par
 
 For more details see the API reference documentation for :class:`FiQCIEstimator`.
 
+Transpile the circuit with :func:`~iqm.qiskit_iqm.transpile_to_IQM` and map the observables onto the
+transpiled circuit's layout. ``remove_final_rzs=False`` is required: the estimator measures in the X
+and Y bases, and dropping the final RZ gates changes those expectation values.
+
+.. code-block:: python
+
+   from iqm.qiskit_iqm import transpile_to_IQM
+   from qiskit.quantum_info import SparsePauliOp
+
+   tr_qc = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
+
+   observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
+   device_observables = observables.apply_layout(tr_qc.layout)
+
+The examples below use ``tr_qc`` and ``device_observables``.
+
 Mitigation Levels
 -----------------
 
@@ -233,7 +249,7 @@ Running Circuits
 
 .. code-block:: python
 
-   job = estimator.run(qc_transpiled, observables=device_observables, shots=2048, max_batch_size=100)
+   job = estimator.run(tr_qc, observables=device_observables, shots=2048, max_batch_size=100)
 
 ``run`` returns **immediately** with a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob` handle without waiting for results. Polling the underlying job works right away (``job.status()``, ``job.job_ids()``); the expectation values are computed the first time you call ``expectation_values()`` / ``raw_expectation_values()``, and cached.
 
@@ -291,7 +307,7 @@ Standard Errors
 
 .. code-block:: python
 
-   job = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+   job = estimator.run(tr_qc, observables=device_observables, shots=2048)
 
    job.expectation_values(0)   # e.g. [0.92, -0.01, ...]
    job.standard_errors(0)      # {"shot_error": [...], "zne_extrapolation_error": ..., "total": [...]}
