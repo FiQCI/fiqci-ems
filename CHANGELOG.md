@@ -57,6 +57,10 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
 - `_calculate_expectation_values` no longer raises `ZeroDivisionError` for a measurement circuit with no recorded shots. It reports `0.0`, matching `_calculate_shot_errors`
 - ship a PEP 561 `py.typed` marker so the package's type annotations are visible to downstream type checkers
 - add a `seed` argument to `pauli_twirl()` for reproducible twirling, and fix `gates_to_twirl` being silently ignored when passed as a generator
+- fix `total_circuits_generated()` under-reporting when the observables differ per circuit, and raise `ValueError` if a list of observables or per-circuit `scale_factors` does not have one entry per base circuit
+- `FiQCIEstimator` now raises `ValueError` instead of `NotImplementedError` for an unsupported `mitigation_level`, matching `FiQCIBackend` and `FiQCISampler`
+- `FiQCIBackend.run()`'s default `shots` is now 2048 instead of 1024, matching both primitives
+- a malformed calibration file now raises `M3Error` naming the file and the problem instead of a bare `KeyError` or `JSONDecodeError`
 - https://github.com/FiQCI/fiqci-ems/pull/42
 
 ## [0.8.1] 12.6.2026
