@@ -69,6 +69,12 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
 - mid-circuit measurements are no longer overwritten, and a circuit with an existing `meas` register no longer raises `DAGCircuitError`
 - https://github.com/FiQCI/fiqci-ems/pull/43
 
+---
+
+- ZNE now folds the circuit before the measurement-basis rotations are appended, so every measurement group of a pair shares one folded core and one achieved scale factor
+- fixes `folding_method="global"` folding X/Y groups by a different amount than the achieved scale factor used for extrapolation
+- https://github.com/FiQCI/fiqci-ems/pull/44
+
 ## [0.8.1] 12.6.2026
 
 ### Changed
