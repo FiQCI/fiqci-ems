@@ -685,9 +685,14 @@ class FiQCIEstimator:
 		else:
 			self._zne["extrapolation_degree"] = None
 
-	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
-		"""Configure Pauli twirling settings for the estimator."""
-		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
+	def pauli_twirl(
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None, seed: int | None = None
+	) -> None:
+		"""Configure Pauli twirling settings for the estimator.
+
+		``seed`` makes the random twirl selection reproducible for a run.
+		"""
+		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl, seed)
 
 
 class FiQCIEstimatorJob:
