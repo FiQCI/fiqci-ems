@@ -103,8 +103,14 @@ class FiQCIBackend:
 			enabled: bool
 			num_twirls: int
 			gates_to_twirl: Iterable[Gate] | None
+			seed: int | None
 
-		self._pauli_twirl: PauliTwirlSettings = {"enabled": False, "num_twirls": 0, "gates_to_twirl": None}
+		self._pauli_twirl: PauliTwirlSettings = {
+			"enabled": False,
+			"num_twirls": 0,
+			"gates_to_twirl": None,
+			"seed": None,
+		}
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
 		if self._mitigation_level == 0:
@@ -215,7 +221,7 @@ class FiQCIBackend:
 			return total_circuits
 
 	def init_pauli_twirl(
-		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Iterable[Gate] | None = None
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Iterable[Gate] | None = None, seed: int | None = None
 	) -> None:
 		"""
 		Initialize Pauli twirling settings.
@@ -224,11 +230,13 @@ class FiQCIBackend:
 			enabled: Whether Pauli twirling is enabled.
 			num_twirls: Number of twirled circuits to generate per input circuit.
 			gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
+			seed: Seed for the random twirl selection, making a run's twirled circuits reproducible.
 		"""
 
 		self._pauli_twirl["enabled"] = enabled
 		self._pauli_twirl["num_twirls"] = num_twirls
 		self._pauli_twirl["gates_to_twirl"] = gates_to_twirl
+		self._pauli_twirl["seed"] = seed
 
 	def _init_dd(self, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
 		"""Initialize dynamical decoupling settings.
@@ -350,7 +358,9 @@ class FiQCIBackend:
 		if not self._rem["enabled"] or settings_changed:
 			self._init_rem(calibration_shots, calibration_file)
 
-	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
+	def pauli_twirl(
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None, seed: int | None = None
+	) -> None:
 		"""
 		Set Pauli twirling settings for the backend.
 
@@ -358,8 +368,9 @@ class FiQCIBackend:
 			enabled: Whether to enable Pauli twirling.
 			num_twirls: Number of twirled circuits to generate per input circuit (default: 10).
 			gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
+			seed: Seed for the random twirl selection, making a run's twirled circuits reproducible.
 		"""
-		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl)
+		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl, seed)
 
 	def run(
 		self,
@@ -420,6 +431,7 @@ class FiQCIBackend:
 				num_twirls=self._pauli_twirl["num_twirls"],
 				gates_to_twirl=self._pauli_twirl["gates_to_twirl"],
 				backend=self._backend,
+				seed=self._pauli_twirl["seed"],
 			)
 			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
 			logger.info(
