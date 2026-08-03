@@ -594,7 +594,7 @@ class TestEstimatorPauliTwirl:
 		estimator = FiQCIEstimator(mock_backend, mitigation_level=0)
 		estimator.pauli_twirl(enabled=True, num_twirls=7, gates_to_twirl=[CZGate()])
 
-		mock_fiqci_backend.pauli_twirl.assert_called_once_with(True, 7, [CZGate()])
+		mock_fiqci_backend.pauli_twirl.assert_called_once_with(True, 7, [CZGate()], None)
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_estimator_pauli_twirl_disable(self, mock_fiqci_backend_class, mock_backend):
@@ -607,7 +607,7 @@ class TestEstimatorPauliTwirl:
 		estimator = FiQCIEstimator(mock_backend, mitigation_level=0)
 		estimator.pauli_twirl(enabled=False)
 
-		mock_fiqci_backend.pauli_twirl.assert_called_once_with(False, 10, None)
+		mock_fiqci_backend.pauli_twirl.assert_called_once_with(False, 10, None, None)
 
 
 class TestSamplerPauliTwirl:
@@ -631,7 +631,7 @@ class TestSamplerPauliTwirl:
 		sampler = FiQCISampler(mock_backend)
 		sampler.pauli_twirl(enabled=True, num_twirls=5)
 
-		mock_fiqci_backend.pauli_twirl.assert_called_once_with(True, 5, None)
+		mock_fiqci_backend.pauli_twirl.assert_called_once_with(True, 5, None, None)
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
 	def test_sampler_pauli_twirl_disable(self, mock_fiqci_backend_class, mock_backend):
@@ -644,4 +644,95 @@ class TestSamplerPauliTwirl:
 		sampler = FiQCISampler(mock_backend)
 		sampler.pauli_twirl(enabled=False)
 
-		mock_fiqci_backend.pauli_twirl.assert_called_once_with(False, 10, None)
+		mock_fiqci_backend.pauli_twirl.assert_called_once_with(False, 10, None, None)
+
+
+class TestGatesToTwirlIsMaterialised:
+	"""``gates_to_twirl`` is iterated twice, so a one-shot iterable must not be consumed."""
+
+	@staticmethod
+	def _cz_circuit() -> QuantumCircuit:
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cz(0, 1)
+		return qc
+
+	def test_generator_still_twirls(self) -> None:
+		"""A generator used to be exhausted building twirl_set, leaving run() matching nothing."""
+		circuit = self._cz_circuit()
+		gates = (gate for gate in [CZGate()])
+
+		twirled = get_twirled_circuits([circuit], num_twirls=2, gates_to_twirl=gates, backend=None)
+
+		assert len(twirled) == 3
+		# Each twirl sandwiches the CZ between two Pauli instructions, so the gate count grows.
+		assert all(len(c.data) > len(circuit.data) for c in twirled[1:])
+
+	def test_generator_matches_list_behaviour(self) -> None:
+		"""The same gates as a generator and as a list twirl the same number of gates."""
+		circuit = self._cz_circuit()
+
+		from_list = get_twirled_circuits([circuit], num_twirls=2, gates_to_twirl=[CZGate()], backend=None)
+		from_gen = get_twirled_circuits(
+			[circuit], num_twirls=2, gates_to_twirl=(gate for gate in [CZGate()]), backend=None
+		)
+
+		assert [len(c.data) for c in from_gen] == [len(c.data) for c in from_list]
+
+	def test_gates_to_twirl_is_stored_as_a_list(self) -> None:
+		"""The pass keeps its own materialised copy rather than the caller's iterable."""
+		pass_obj = PauliTwirl(gates_to_twirl=(gate for gate in [CZGate(), CXGate()]))
+
+		assert isinstance(pass_obj.gates_to_twirl, list)
+		assert [g.name for g in pass_obj.gates_to_twirl] == ["cz", "cx"]
+
+
+class TestPauliTwirlSeed:
+	"""Twirl selection is driven by an explicit seed rather than the global numpy state."""
+
+	@staticmethod
+	def _circuit() -> QuantumCircuit:
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cz(0, 1)
+		qc.cz(0, 1)
+		qc.cz(0, 1)
+		return qc
+
+	def _fingerprint(self, seed) -> list[str]:
+		twirled = get_twirled_circuits([self._circuit()], num_twirls=4, gates_to_twirl=None, backend=None, seed=seed)
+		return [str(c.data) for c in twirled[1:]]
+
+	def test_same_seed_is_reproducible(self) -> None:
+		assert self._fingerprint(11) == self._fingerprint(11)
+
+	def test_different_seeds_differ(self) -> None:
+		assert self._fingerprint(11) != self._fingerprint(12)
+
+	def test_no_seed_is_random(self) -> None:
+		"""Without a seed the twirls should not repeat run to run."""
+		assert self._fingerprint(None) != self._fingerprint(None)
+
+	def test_global_numpy_seed_no_longer_controls_twirling(self) -> None:
+		"""Twirling uses its own Generator, so np.random.seed() must not make it reproducible."""
+		np.random.seed(1234)
+		first = self._fingerprint(None)
+		np.random.seed(1234)
+		second = self._fingerprint(None)
+
+		assert first != second
+
+	def test_variants_within_a_run_differ(self) -> None:
+		"""One Generator is shared across variants, so each twirl draws different Paulis."""
+		fingerprints = self._fingerprint(7)
+
+		assert len(set(fingerprints)) > 1
+
+	def test_seed_reaches_the_pass_through_the_backend(self) -> None:
+		"""FiQCIBackend.pauli_twirl(seed=...) is stored and reported in the job snapshot."""
+		backend = FiQCIBackend(Mock(num_qubits=5), mitigation_level=0)
+		backend.pauli_twirl(True, num_twirls=3, seed=99)
+
+		assert backend._pauli_twirl["seed"] == 99
+		assert backend.mitigator_options["pauli_twirl"]["seed"] == 99
+		assert backend._snapshot_mitigator_options()["pauli_twirl"]["seed"] == 99
