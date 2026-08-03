@@ -157,7 +157,8 @@ class FiQCIEstimator:
 			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_file)
 			self.zne(enabled=True)
 		else:
-			raise NotImplementedError(f"Unknown mitigation level {mitigation_level}")
+			# Matches FiQCIBackend, so callers catch one exception type across all three interfaces.
+			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
 	@property
 	def mitigator_options(self) -> dict[str, Any]:
@@ -177,43 +178,74 @@ class FiQCIEstimator:
 	) -> int | dict[str, Any]:
 		"""Calculate total circuits generated for a given number of base circuits and observables.
 
-		When ``scale_factors`` is a per-circuit list of lists, each circuit expands by its own count, so
-		the ZNE contribution is the sum of the per-circuit counts (this assumes ``num_base_circuits``
-		matches the number of per-circuit scale-factor lists).
-		"""
-		measurement_settings = get_measurement_settings(
-			observables if isinstance(observables, SparsePauliOp) else observables[0]
-		)
-		num_measurement_circuits = len(measurement_settings)
-		zne_circuits_multiplier: int | list[int] = 1
-		pauli_twirl_circuits_multiplier = 1
+		The number of measurement-basis circuits depends on the observable, and the number of ZNE
+		circuits can depend on the circuit, so the total is summed per circuit/observable pair rather
+		than taken from a single multiplier:
+		``pauli_twirl_multiplier * sum(measurement_groups_i * scale_factors_i)``.
 
+		Args:
+			num_base_circuits: Number of circuits to be submitted.
+			observables: A single ``SparsePauliOp`` used for every circuit, or one per circuit.
+			detailed: Print the breakdown and return it as a dict instead of just the total.
+
+		Returns:
+			The total circuit count, or a dict with the breakdown when ``detailed`` is set. Entries
+			that differ between circuits (measurement groups, ZNE multiplier) are reported as a list.
+
+		Raises:
+			ValueError: If a list of observables or per-circuit scale factors does not have one entry
+				per base circuit.
+		"""
+		if isinstance(observables, SparsePauliOp):
+			per_pair_observables = [observables] * num_base_circuits
+		else:
+			if len(observables) != num_base_circuits:
+				raise ValueError(
+					f"Got {len(observables)} observable(s) for {num_base_circuits} base circuit(s); provide a "
+					"single SparsePauliOp or one per circuit."
+				)
+			per_pair_observables = list(observables)
+
+		# Each observable is measured in as many circuits as it has qubit-wise commuting groups.
+		per_pair_groups = [len(get_measurement_settings(obs)) for obs in per_pair_observables]
+
+		per_pair_scales = [1] * num_base_circuits
 		if self._zne["enabled"]:
 			if _is_nested_scale_factors(self._zne["scale_factors"]):
-				zne_circuits_multiplier = [len(s) for s in cast(list[list[float]], self._zne["scale_factors"])]
+				nested = cast(list[list[float]], self._zne["scale_factors"])
+				if len(nested) != num_base_circuits:
+					raise ValueError(
+						f"Per-circuit scale_factors has {len(nested)} entr(y/ies) but {num_base_circuits} base "
+						"circuit(s) were given; provide one scale-factor list per circuit."
+					)
+				per_pair_scales = [len(scales) for scales in nested]
 			else:
-				zne_circuits_multiplier = len(self._zne["scale_factors"])
+				per_pair_scales = [len(self._zne["scale_factors"])] * num_base_circuits
+
+		pauli_twirl_circuits_multiplier = 1
 		if self.backend._pauli_twirl["enabled"]:
 			pauli_twirl_circuits_multiplier = (
 				self.backend._pauli_twirl["num_twirls"] + 1
 			)  # +1 for the original circuit without twirling
 
-		if isinstance(zne_circuits_multiplier, list):
-			# Per-circuit scale factors: each circuit contributes its own number of ZNE circuits.
-			total_circuits = num_measurement_circuits * sum(zne_circuits_multiplier) * pauli_twirl_circuits_multiplier
-		else:
-			total_circuits = (
-				num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier
-			)
+		total_circuits = pauli_twirl_circuits_multiplier * sum(
+			groups * scales for groups, scales in zip(per_pair_groups, per_pair_scales)
+		)
 
 		if detailed:
+			# Collapse to a scalar when every circuit agrees, so the common case stays readable.
+			measurement_circuits = per_pair_groups[0] if len(set(per_pair_groups)) == 1 else per_pair_groups
+			zne_multiplier = per_pair_scales[0] if len(set(per_pair_scales)) == 1 else per_pair_scales
 			print(
-				f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * circuits for conflicting basis measurements ({num_measurement_circuits}) * ZNE multiplier ({zne_circuits_multiplier}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}). This does not include circuits ran to calibrate readout error mitigation (REM)."
+				f"The total number of circuits is {total_circuits}, calculated as follows: Pauli twirl multiplier "
+				f"({pauli_twirl_circuits_multiplier}) * the sum over {num_base_circuits} circuit/observable pair(s) of "
+				f"circuits for conflicting basis measurements ({measurement_circuits}) * ZNE multiplier "
+				f"({zne_multiplier}). This does not include circuits ran to calibrate readout error mitigation (REM)."
 			)
 			return {
 				"base_circuits": num_base_circuits,
-				"measurement_circuits_per_basis": num_measurement_circuits,
-				"zne_multiplier": zne_circuits_multiplier,
+				"measurement_circuits_per_basis": measurement_circuits,
+				"zne_multiplier": zne_multiplier,
 				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
 				"total_circuits": total_circuits,
 			}
