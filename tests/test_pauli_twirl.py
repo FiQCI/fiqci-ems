@@ -1,5 +1,6 @@
 """Unit tests for Pauli twirling transpiler pass, caching, and integration with backend/estimator."""
 
+import warnings
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -8,7 +9,7 @@ from qiskit import QuantumCircuit
 from qiskit.circuit.library import CZGate, CXGate
 from qiskit.quantum_info import Operator
 
-from iqm.qiskit_iqm import IQMFakeAphrodite
+from iqm.qiskit_iqm import IQMFakeAdonis, IQMFakeAphrodite
 
 from fiqci.ems.transpiler_passes.pauli_twirl import PauliTwirl, get_twirled_circuits, _get_twirl_set, _twirl_set_cache
 from fiqci.ems.backend import BatchedJob, FiQCIBackend, MitigatedJob
@@ -736,3 +737,116 @@ class TestPauliTwirlSeed:
 		assert backend._pauli_twirl["seed"] == 99
 		assert backend.mitigator_options["pauli_twirl"]["seed"] == 99
 		assert backend._snapshot_mitigator_options()["pauli_twirl"]["seed"] == 99
+
+
+class TestResonatorGatesAreNotTwirled:
+	"""A computational resonator accepts no single-qubit gates, so gates touching one can't be twirled.
+
+	Twirling wraps a gate in single-qubit Paulis. On a resonator device every CZ acts on a
+	``(qubit, resonator)`` pair, so twirling one puts a ``prx`` on the resonator and the backend
+	rejects the circuit. MOVE additionally has no unitary at all.
+	"""
+
+	def test_move_gate_is_dropped_from_gates_to_twirl(self) -> None:
+		"""MOVE has no unitary, so computing its twirl set would raise; it is filtered out."""
+		from iqm.qiskit_iqm.move_gate import MoveGate
+
+		with pytest.warns(UserWarning, match="MOVE gates cannot be twirled"):
+			pass_obj = PauliTwirl(gates_to_twirl=[CZGate(), MoveGate()])
+
+		assert [g.name for g in pass_obj.gates_to_twirl] == ["cz"]
+
+	def test_gates_on_skipped_wires_are_left_alone(self) -> None:
+		"""A CZ touching a skipped wire keeps its original form."""
+		qc = QuantumCircuit(3)
+		qc.cz(0, 1)  # twirlable
+		qc.cz(1, 2)  # touches the skipped wire 2
+
+		from qiskit.transpiler import PassManager
+
+		pass_obj = PauliTwirl(gates_to_twirl=[CZGate()], seed=0, skip_wires={2})
+		out = PassManager([pass_obj]).run(qc)
+
+		assert pass_obj.twirled_gate_count == 1
+		# The untouched CZ is still a bare cz on (1, 2).
+		remaining = [tuple(out.find_bit(q).index for q in ins.qubits) for ins in out.data if ins.operation.name == "cz"]
+		assert (1, 2) in remaining
+
+	def test_no_skip_wires_twirls_everything(self) -> None:
+		"""Without skip_wires both gates are twirled, so the skip is what makes the difference."""
+		qc = QuantumCircuit(3)
+		qc.cz(0, 1)
+		qc.cz(1, 2)
+
+		from qiskit.transpiler import PassManager
+
+		pass_obj = PauliTwirl(gates_to_twirl=[CZGate()], seed=0)
+		PassManager([pass_obj]).run(qc)
+
+		assert pass_obj.twirled_gate_count == 2
+
+	def test_resonator_wires_empty_without_resonators(self) -> None:
+		"""Backends with no resonators (and no backend at all) yield no skipped wires."""
+		from fiqci.ems.transpiler_passes.pauli_twirl import _resonator_wires
+
+		qc = QuantumCircuit(3)
+		assert _resonator_wires(None, [qc]) == frozenset()
+		assert _resonator_wires(IQMFakeAdonis(), [qc]) == frozenset()
+
+	def test_resonator_wire_is_detected_on_deneb(self) -> None:
+		"""Deneb's CR1 occupies a wire beyond the qubits once MOVE routing has run."""
+		from iqm.qiskit_iqm import IQMFakeDeneb, transpile_to_IQM
+
+		from fiqci.ems.transpiler_passes.pauli_twirl import _resonator_wires
+
+		backend = IQMFakeDeneb()
+		qc = QuantumCircuit(3)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.cx(1, 2)
+		tr = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
+
+		wires = _resonator_wires(backend, [tr])
+
+		assert wires
+		assert all(backend.index_to_qubit_name(w) in backend.architecture.computational_resonators for w in wires)
+
+	def test_twirling_a_move_routed_circuit_does_not_raise(self) -> None:
+		"""Regression: BasisTranslator used to fail on the `move` gate, which is not in the target."""
+		from iqm.qiskit_iqm import IQMFakeDeneb, transpile_to_IQM
+
+		backend = IQMFakeDeneb()
+		qc = QuantumCircuit(3)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.cx(1, 2)
+		tr = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
+		assert any(ins.operation.name == "move" for ins in tr.data), "expected MOVE routing"
+
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			twirled = get_twirled_circuits([tr], num_twirls=2, gates_to_twirl=None, backend=backend, seed=1)
+
+		assert len(twirled) == 3
+		# MOVE survives untranslated in every generated circuit.
+		assert all(any(ins.operation.name == "move" for ins in c.data) for c in twirled)
+
+	def test_warns_when_nothing_could_be_twirled(self) -> None:
+		"""Submitting extra circuits that carry no mitigation must not be silent."""
+		qc = QuantumCircuit(2)
+		qc.h(0)  # no two-qubit gates at all
+
+		with pytest.warns(UserWarning, match="Pauli twirling matched no gates"):
+			get_twirled_circuits([qc], num_twirls=3, gates_to_twirl=None, backend=None)
+
+	def test_no_warning_when_gates_were_twirled(self) -> None:
+		"""The warning must not fire on a circuit that does get twirled."""
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cz(0, 1)
+
+		with warnings.catch_warnings(record=True) as caught:
+			warnings.simplefilter("always")
+			get_twirled_circuits([qc], num_twirls=3, gates_to_twirl=None, backend=None, seed=2)
+
+		assert [str(w.message) for w in caught if w.category is UserWarning] == []
