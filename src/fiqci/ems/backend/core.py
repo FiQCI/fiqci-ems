@@ -375,7 +375,7 @@ class FiQCIBackend:
 	def run(
 		self,
 		circuits: QuantumCircuit | list[QuantumCircuit],
-		shots: int = 1024,
+		shots: int = 2048,
 		max_batch_size: int = 100,
 		**kwargs: Any,
 	) -> MitigatedJob | BatchedJob:
@@ -388,7 +388,7 @@ class FiQCIBackend:
 
 		Args:
 			circuits: Single quantum circuit or list of circuits to execute.
-			shots: Number of shots. Default is 1024.
+			shots: Number of shots. Default is 2048, matching FiQCISampler and FiQCIEstimator.
 			max_batch_size: Maximum number of circuits per backend job. The (post-twirl) circuit list is
 				flattened and split into batches of this size; the resulting jobs are wrapped so that the
 				returned handle's ``result()`` exposes a single combined Result indexed in submission order
