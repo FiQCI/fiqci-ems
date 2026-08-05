@@ -747,3 +747,50 @@ class TestMitigationLevelValidation:
 		}
 
 		assert len(set(defaults.values())) == 1, defaults
+
+
+class TestFinalMeasurementRejection:
+	"""A measured circuit transpiled for IQM has lost the RZ frame the X/Y bases depend on."""
+
+	def _estimator(self):
+		from qiskit_aer import AerSimulator
+
+		return FiQCIEstimator(AerSimulator(), mitigation_level=0)
+
+	def test_measure_all_is_rejected(self) -> None:
+		circuit = _bell()
+		circuit.measure_all()
+
+		with pytest.raises(ValueError, match="ends in measurement"):
+			self._estimator().run(circuit, SparsePauliOp(["ZZ"]), shots=64)
+
+	def test_partially_measured_circuit_is_rejected(self) -> None:
+		circuit = QuantumCircuit(2, 1)
+		circuit.h(0)
+		circuit.cx(0, 1)
+		circuit.measure(0, 0)
+
+		with pytest.raises(ValueError, match="ends in measurement"):
+			self._estimator().run(circuit, SparsePauliOp(["ZZ"]), shots=64)
+
+	def test_the_offending_circuit_index_is_reported(self) -> None:
+		measured = _bell()
+		measured.measure_all()
+
+		with pytest.raises(ValueError, match="Circuit 1 ends in measurement"):
+			self._estimator().run([_bell(), measured], SparsePauliOp(["ZZ"]), shots=64)
+
+	def test_mid_circuit_measurement_is_still_accepted(self) -> None:
+		circuit = QuantumCircuit(2, 1)
+		circuit.h(0)
+		circuit.measure(0, 0)
+		circuit.cx(0, 1)
+
+		values = self._estimator().run(circuit, SparsePauliOp(["ZZ"]), shots=1024).expectation_values(0)
+
+		assert values[0] == pytest.approx(1.0, abs=0.05)
+
+	def test_unmeasured_circuit_is_accepted(self) -> None:
+		values = self._estimator().run(_bell(), SparsePauliOp(["ZZ"]), shots=1024).expectation_values(0)
+
+		assert values[0] == pytest.approx(1.0, abs=0.05)

@@ -130,18 +130,6 @@ def _bell_with_clbits(num_clbits: int) -> QuantumCircuit:
 	return qc
 
 
-def _bell_with_final_measure() -> QuantumCircuit:
-	qc = _bell_with_clbits(2)
-	qc.measure([0, 1], [0, 1])
-	return qc
-
-
-def _bell_with_measure_all() -> QuantumCircuit:
-	qc = _bell()
-	qc.measure_all()
-	return qc
-
-
 def _bell_with_named_meas_register() -> QuantumCircuit:
 	qc = _bell()
 	qc.add_register(ClassicalRegister(2, "meas"))
@@ -155,8 +143,6 @@ def _bell_with_named_meas_register() -> QuantumCircuit:
 		("idle-creg-equal-width", _bell_with_clbits(2)),
 		("idle-creg-wider-than-qubits", _bell_with_clbits(5)),
 		("idle-creg-narrower-than-qubits", _bell_with_clbits(1)),
-		("final-measure", _bell_with_final_measure()),
-		("measure-all", _bell_with_measure_all()),
 		("creg-already-named-meas", _bell_with_named_meas_register()),
 	],
 )
