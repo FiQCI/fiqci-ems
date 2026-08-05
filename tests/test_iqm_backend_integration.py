@@ -75,6 +75,10 @@ class TestSamplerOnRealDeviceValidation:
 		# Mitigation renormalises, so allow a small deviation rather than requiring exactly SHOTS.
 		assert sum(counts.values()) == pytest.approx(SHOTS, rel=0.02)
 		assert all(set(key.replace(" ", "")) <= {"0", "1"} for key in counts)
+		total = sum(counts.values())
+		probabilities = {key.replace(" ", ""): count / total for key, count in counts.items()}
+		assert probabilities.get("00", 0.0) > 0.3
+		assert probabilities.get("11", 0.0) > 0.3
 
 	def test_untranspiled_circuit_is_rejected(self, backend: IQMFakeAdonis) -> None:
 		"""Guards the tests above: the backend really does validate, so passing them means something."""
