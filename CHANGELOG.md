@@ -76,6 +76,8 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
 - fixes `folding_method="global"` folding X/Y groups by a different amount than the achieved scale factor used for extrapolation
 - `FiQCIEstimator.run()` now rejects circuits ending in measurements, naming the offending circuit index. `transpile_to_IQM` drops the terminal RZ frame of a circuit it sees measurements on even with `remove_final_rzs=False`, which flips X and Y expectation values
 - REM now calibrates any measured qubit it has no calibration for, instead of only calibrating when nothing is calibrated at all. Reusing a `calibration_file` across circuits that measure different qubits previously raised `AttributeError: 'NoneType' object has no attribute 'ravel'` from inside mthree when the uncalibrated qubit was qubit 0
+- Pauli twirling now merges the inserted Paulis into the neighbouring single-qubit gates, instead of leaving them as extra pulses
+- `standard_errors()`'s `shot_error` now counts every twirled variant's shots
 - https://github.com/FiQCI/fiqci-ems/pull/45
 
 ## [0.8.1] 12.6.2026
