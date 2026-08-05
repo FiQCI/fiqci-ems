@@ -585,36 +585,44 @@ class FiQCIBackend:
 		# Get qubit mappings for each circuit
 		qubits_list = [final_measurement_mapping(circuit) for circuit in circuits]
 
-		# Calibrate M3 mitigator if not already done. This is non-blocking (async_cal), so it can
-		# start now and run alongside the circuit jobs; apply_correction (in the callback below)
-		# waits for it to finish if necessary.
-		if self._rem["mitigator"] is not None and self._rem["mitigator"].single_qubit_cals is None:
+		# Calibrate M3 mitigator for every measured qubit it has no calibration for. This is
+		# non-blocking (async_cal), so it can start now and run alongside the circuit jobs;
+		# apply_correction (in the callback below) waits for it to finish if necessary.
+		if self._rem["mitigator"] is not None:
 			all_qubits: set[int] = set()
 			for qubit_mapping in qubits_list:
 				all_qubits.update(qubit_mapping.values())  # type: ignore[arg-type]
 			calibration_qubits = sorted(all_qubits)
 
-			if self._rem["calibration_file"]:
-				logger.info(
-					"Calibrating M3 mitigator for qubits %s with %d shots and saving to %s",
-					calibration_qubits,
-					self._rem["calibration_shots"],
-					self._rem["calibration_file"],
-				)
-			else:
-				logger.info(
-					"Calibrating M3 mitigator for qubits %s with %d shots",
-					calibration_qubits,
-					self._rem["calibration_shots"],
-				)
+			existing_cals = self._rem["mitigator"].single_qubit_cals
+			if existing_cals is not None:
+				# Reused cals (e.g. from calibration_file) can cover only some of the measured qubits.
+				# mthree's own top-up is skipped when the only missing qubit is 0, so select here.
+				calibration_qubits = [
+					qubit for qubit in calibration_qubits if qubit >= len(existing_cals) or existing_cals[qubit] is None
+				]
 
-			assert self._rem["mitigator"] is not None, "Mitigator should be initialized for level 1"
-			self._rem["mitigator"].cals_from_system(
-				calibration_qubits,
-				shots=self._rem["calibration_shots"],
-				cals_file=self._rem["calibration_file"],
-				max_batch_size=max_batch_size,
-			)
+			if calibration_qubits:
+				if self._rem["calibration_file"]:
+					logger.info(
+						"Calibrating M3 mitigator for qubits %s with %d shots and saving to %s",
+						calibration_qubits,
+						self._rem["calibration_shots"],
+						self._rem["calibration_file"],
+					)
+				else:
+					logger.info(
+						"Calibrating M3 mitigator for qubits %s with %d shots",
+						calibration_qubits,
+						self._rem["calibration_shots"],
+					)
+
+				self._rem["mitigator"].cals_from_system(
+					calibration_qubits,
+					shots=self._rem["calibration_shots"],
+					cals_file=self._rem["calibration_file"],
+					max_batch_size=max_batch_size,
+				)
 
 		# Snapshot the mitigator and metadata at submission time. The closure runs later (on the
 		# first result() call), so binding these now keeps the deferred correction consistent with
