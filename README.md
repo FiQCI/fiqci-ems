@@ -49,6 +49,14 @@ uv add fiqci-ems
 
 Requires Python 3.11 or 3.12.
 
+The example notebooks also need `matplotlib`, which Qiskit ships only as an optional extra:
+
+```bash
+uv pip install matplotlib
+#or
+uv add matplotlib
+```
+
 ## Usage
 
 Start by initialising your IQM backend and a quantum circuit.

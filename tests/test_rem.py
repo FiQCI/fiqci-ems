@@ -495,7 +495,7 @@ class TestCalsFromFile:
 		with pytest.raises(M3Error) as excinfo:
 			mitigator.cals_from_file(path)
 
-		assert path in str(excinfo.value)
+		assert path in excinfo.value.args[0]
 
 	def test_valid_file_loads(self, mitigator: M3IQM, tmp_path) -> None:
 		# Each entry is a 2x2 assignment matrix; mthree reads cal[0, 0] and cal[0, 1].

@@ -26,7 +26,6 @@ classifiers = [
 ]
 dependencies = [
     "iqm-client[qiskit]>=34.0.2",
-    "matplotlib>=3.10.7",
     "mthree>=3.0.0",
 ]
 
@@ -82,7 +81,7 @@ dev = [
     "pytest>=9.0.1",
     "pytest-cov>=6.0.0",
     "qiskit-aer>=0.15",
-    "ruff>=0.14.7",
+    "ruff>=0.15.8,<0.16",
 ]
 
 docs = [
@@ -93,6 +92,7 @@ docs = [
     "ipykernel>=7.1.0",
     "ipywidgets>=8.1.8",
     "pylatexenc>=2.10",
+    "matplotlib>=3.10.7",
 ]
 
 [tool.pytest.ini_options]

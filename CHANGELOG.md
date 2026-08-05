@@ -1,4 +1,4 @@
-## [WIP] [1.0.0] 31.7.2026
+## [1.0.0] 31.7.2026
 
 ### Breaking changes
 
@@ -9,6 +9,7 @@ Importing from `fiqci.ems` is unaffected — `FiQCIBackend`, `FiQCISampler`, `Fi
 - `_combine_pauli_ops()` is renamed to the now-public `get_measurement_settings()`
 - `mitigator_options` returns a copy, so mutating it no longer reconfigures a run. Use `rem()` / `dd()` / `pauli_twirl()` / `zne()`, which validate their input
 - ZNE extrapolation now fits against the **achieved** scale factors rather than the requested ones, so expectation values can differ for any scale factor folding cannot reach exactly (anything other than odd integers). Inspect them with `job.achieved_scale_factors()`
+- `FiQCIEstimator.run()` now raises `ValueError` for a circuit that ends in measurements instead of silently discarding them. Pass the unmeasured circuit. Mid-circuit measurements are still supported
 
 See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and behaviour.
 
@@ -68,6 +69,16 @@ See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and 
 - fix `FiQCIEstimator` silently returning `1.0` for every observable when the input circuit has classical bits not consumed by a final measurement (e.g. `QuantumCircuit(n, m)` without measurements, or a mid-circuit measurement)
 - mid-circuit measurements are no longer overwritten, and a circuit with an existing `meas` register no longer raises `DAGCircuitError`
 - https://github.com/FiQCI/fiqci-ems/pull/43
+
+---
+
+- ZNE now folds the circuit before the measurement-basis rotations are appended, so every measurement group of a pair shares one folded core and one achieved scale factor
+- fixes `folding_method="global"` folding X/Y groups by a different amount than the achieved scale factor used for extrapolation
+- `FiQCIEstimator.run()` now rejects circuits ending in measurements, naming the offending circuit index. `transpile_to_IQM` drops the terminal RZ frame of a circuit it sees measurements on even with `remove_final_rzs=False`, which flips X and Y expectation values
+- REM now calibrates any measured qubit it has no calibration for, instead of only calibrating when nothing is calibrated at all. Reusing a `calibration_file` across circuits that measure different qubits previously raised `AttributeError: 'NoneType' object has no attribute 'ravel'` from inside mthree when the uncalibrated qubit was qubit 0
+- Pauli twirling now merges the inserted Paulis into the neighbouring single-qubit gates, instead of leaving them as extra pulses
+- `standard_errors()`'s `shot_error` now counts every twirled variant's shots
+- https://github.com/FiQCI/fiqci-ems/pull/45
 
 ## [0.8.1] 12.6.2026
 

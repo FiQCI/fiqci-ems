@@ -4,14 +4,14 @@ from qiskit.circuit import QuantumRegister, Gate, StandardEquivalenceLibrary
 from qiskit.circuit.library import CZGate
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.basepasses import TransformationPass
-from qiskit.transpiler.passes import BasisTranslator, Decompose
+from qiskit.transpiler.passes import BasisTranslator, Decompose, Optimize1qGatesDecomposition
 from qiskit.quantum_info import Operator, pauli_basis
 
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 
 import numpy as np
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 # Module-level cache: gate name -> list of (pauli_left, pauli_right) pairs.
 # Computed once per gate type and reused across all PauliTwirl instances.
@@ -33,7 +33,7 @@ def _get_twirl_set(gate: Gate) -> list:
 class PauliTwirl(TransformationPass):
 	"""Add Pauli twirls to two-qubit gates."""
 
-	def __init__(self, gates_to_twirl: Optional[Iterable[Gate]] = None, seed=None):
+	def __init__(self, gates_to_twirl: Iterable[Gate] | None = None, seed=None):
 		"""
 		Args:
 		    gates_to_twirl: Gates to twirl. The default behavior is to twirl all
@@ -81,8 +81,8 @@ class PauliTwirl(TransformationPass):
 def get_twirled_circuits(
 	circuits: list[QuantumCircuit],
 	num_twirls: int,
-	gates_to_twirl: Optional[Iterable[Gate]] = None,
-	backend: Optional[IQMBackendBase] = None,
+	gates_to_twirl: Iterable[Gate] | None = None,
+	backend: IQMBackendBase | None = None,
 	seed=None,
 ) -> list[QuantumCircuit]:
 	"""
@@ -114,6 +114,7 @@ def get_twirled_circuits(
 				twirl_pass,
 				Decompose(gates_to_decompose=["pauli"]),
 				BasisTranslator(target_basis=basis_gates, equivalence_library=StandardEquivalenceLibrary),
+				Optimize1qGatesDecomposition(basis=basis_gates),
 			]
 		)
 	else:

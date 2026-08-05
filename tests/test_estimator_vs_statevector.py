@@ -102,6 +102,25 @@ def test_standard_errors_match_shot_noise_and_bound_deviation(estimator: FiQCIEs
 		assert abs(got_v - want_v) <= 5 * se + TOL
 
 
+def test_shot_error_counts_every_twirled_variants_shots() -> None:
+	"""Twirled counts are averaged back to `shots`, so N must be scaled by the group size."""
+	num_twirls = 3
+	circuit = _ghz(2)
+	obs = SparsePauliOp(["ZZ", "XX"])
+
+	estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+	estimator.pauli_twirl(enabled=True, num_twirls=num_twirls, seed=0)
+	job = estimator.run(circuit, obs, shots=SHOTS)
+
+	got = job.expectation_values(0)
+	errors = job.standard_errors(0)
+
+	assert got == pytest.approx(_exact(circuit, obs), abs=TOL)
+	for got_v, se in zip(got, errors["shot_error"]):
+		expected_se = np.sqrt(max(0.0, 1.0 - got_v**2) / (SHOTS * (num_twirls + 1)))
+		assert se == pytest.approx(expected_se, rel=1e-6)
+
+
 def test_standard_errors_with_zne_enabled() -> None:
 	"""With ZNE on, shot_error (at scale 1) and a propagated zne_extrapolation_error are reported."""
 	estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
@@ -130,18 +149,6 @@ def _bell_with_clbits(num_clbits: int) -> QuantumCircuit:
 	return qc
 
 
-def _bell_with_final_measure() -> QuantumCircuit:
-	qc = _bell_with_clbits(2)
-	qc.measure([0, 1], [0, 1])
-	return qc
-
-
-def _bell_with_measure_all() -> QuantumCircuit:
-	qc = _bell()
-	qc.measure_all()
-	return qc
-
-
 def _bell_with_named_meas_register() -> QuantumCircuit:
 	qc = _bell()
 	qc.add_register(ClassicalRegister(2, "meas"))
@@ -155,8 +162,6 @@ def _bell_with_named_meas_register() -> QuantumCircuit:
 		("idle-creg-equal-width", _bell_with_clbits(2)),
 		("idle-creg-wider-than-qubits", _bell_with_clbits(5)),
 		("idle-creg-narrower-than-qubits", _bell_with_clbits(1)),
-		("final-measure", _bell_with_final_measure()),
-		("measure-all", _bell_with_measure_all()),
 		("creg-already-named-meas", _bell_with_named_meas_register()),
 	],
 )

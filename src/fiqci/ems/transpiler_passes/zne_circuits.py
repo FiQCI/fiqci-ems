@@ -7,7 +7,7 @@ from qiskit.transpiler import PassManager
 
 from copy import deepcopy
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 
 def _num_folds(num_gates: int, scale_factor: float) -> int:
@@ -40,7 +40,7 @@ def _achieved_scale_factor(num_gates: int, scale_factor: float, folding_method: 
 
 
 def _count_foldable_gates(
-	circuit: QuantumCircuit, folding_method: str = "local", fold_gates: Optional[Iterable[str]] = None
+	circuit: QuantumCircuit, folding_method: str = "local", fold_gates: Iterable[str] | None = None
 ) -> int:
 	"""Number of gates the folding will act on: all non-barrier gates (global) or foldable 2-qubit gates (local)."""
 	if folding_method == "global":
@@ -59,7 +59,7 @@ def _achieved_scale_factors(
 	circuit: QuantumCircuit,
 	scale_factors: Iterable[float],
 	folding_method: str = "local",
-	fold_gates: Optional[Iterable[str]] = None,
+	fold_gates: Iterable[str] | None = None,
 ) -> list[float]:
 	"""Scale factors actually realised for ``circuit`` when targeting each of ``scale_factors``."""
 	num_gates = _count_foldable_gates(circuit, folding_method, fold_gates)
@@ -70,11 +70,7 @@ class ZNECircuits(TransformationPass):
 	"""A pass to generate circuits for zero-noise extrapolation (ZNE) by folding gates."""
 
 	def __init__(
-		self,
-		fold_gates: Optional[Iterable[str]] = None,
-		scale_factor: float = 1,
-		folding_method: str = "local",
-		seed=None,
+		self, fold_gates: Iterable[str] | None = None, scale_factor: float = 1, folding_method: str = "local", seed=None
 	):
 		"""
 		Initialize the ZNECircuits pass.
@@ -198,10 +194,9 @@ class ZNECircuits(TransformationPass):
 
 def _get_zne_circuits(
 	circuits: list[QuantumCircuit],  # list of QuantumCircuits to generate ZNE circuits from
-	fold_gates: Optional[
-		Iterable[str]
-	] = None,  # list of gate names to fold, if None, all gates two qubit gates will be folded
-	scale_factors: Optional[Iterable[float]] = [1, 3, 5],  # list of at least two real numbers >= 1
+	fold_gates: None
+	| (Iterable[str]) = None,  # list of gate names to fold, if None, all gates two qubit gates will be folded
+	scale_factors: Iterable[float] | None = [1, 3, 5],  # list of at least two real numbers >= 1
 	folding_method: str = "local",  # "local" or "global"
 	seed=None,  # seed for the random gate sampling used to approximate non-odd-integer scale factors
 ) -> list[QuantumCircuit]:

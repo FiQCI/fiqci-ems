@@ -31,6 +31,11 @@ and Y bases, and dropping the final RZ gates changes those expectation values.
    observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
    device_observables = observables.apply_layout(tr_qc.layout)
 
+The circuit must not end in measurements. The estimator appends its own measurement basis, and
+``transpile_to_IQM`` drops the terminal RZ frame of a circuit it sees measurements on even with
+``remove_final_rzs=False``, which flips the X and Y expectation values. ``run()`` raises
+``ValueError`` for such a circuit. Mid-circuit measurements are supported.
+
 The examples below use ``tr_qc`` and ``device_observables``.
 
 Mitigation Levels

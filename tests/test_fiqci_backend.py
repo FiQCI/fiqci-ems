@@ -219,7 +219,7 @@ class TestFiQCIBackend:
 			assert mock_mitigator.cals_from_system.call_count == 1
 
 			# Second run should NOT calibrate again
-			mock_mitigator.single_qubit_cals = [Mock()]  # Simulate already calibrated
+			mock_mitigator.single_qubit_cals = [Mock()] * mock_backend.num_qubits
 			mitigated_backend.run(mock_circuit, shots=1024)
 			# Still only 1 call from first run
 			assert mock_mitigator.cals_from_system.call_count == 1
@@ -938,3 +938,54 @@ class TestMitigatorOptionsIsolation:
 			backend = FiQCIBackend(mock_backend, mitigation_level=1)
 
 		assert backend.mitigator_options["rem"]["mitigator"] is backend._rem["mitigator"]
+
+
+class TestPartialCalibrationCoverage:
+	"""Reused cals can cover only some of the measured qubits, and mthree does not always top up."""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		return backend
+
+	def _run(self, mock_backend: Mock, existing_cals: list | None, mapping: dict) -> Mock:
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure_all()
+
+		with (
+			patch("fiqci.ems.backend.core.M3IQM") as mock_m3iqm_class,
+			patch("fiqci.ems.backend.core.final_measurement_mapping", return_value=mapping),
+		):
+			mitigator = Mock()
+			mitigator.single_qubit_cals = existing_cals
+			mock_m3iqm_class.return_value = mitigator
+
+			FiQCIBackend(mock_backend, mitigation_level=1).run(qc, shots=1024)
+
+		return mitigator
+
+	def test_uncalibrated_qubit_zero_is_calibrated(self, mock_backend: Mock) -> None:
+		"""mthree guards its own top-up with ``any(missing)``, which is False for qubit 0 alone."""
+		mitigator = self._run(mock_backend, [None, object(), object(), None, None], {0: 0, 1: 1})
+
+		mitigator.cals_from_system.assert_called_once()
+		assert mitigator.cals_from_system.call_args.args[0] == [0]
+
+	def test_only_missing_qubits_are_recalibrated(self, mock_backend: Mock) -> None:
+		mitigator = self._run(mock_backend, [object(), None, object(), None, None], {0: 1, 1: 3})
+
+		assert mitigator.cals_from_system.call_args.args[0] == [1, 3]
+
+	def test_covered_qubits_are_not_recalibrated(self, mock_backend: Mock) -> None:
+		mitigator = self._run(mock_backend, [object(), object(), None, None, None], {0: 0, 1: 1})
+
+		mitigator.cals_from_system.assert_not_called()
+
+	def test_uncalibrated_mitigator_calibrates_every_measured_qubit(self, mock_backend: Mock) -> None:
+		mitigator = self._run(mock_backend, None, {0: 2, 1: 4})
+
+		assert mitigator.cals_from_system.call_args.args[0] == [2, 4]
