@@ -4,7 +4,7 @@ from qiskit.circuit import QuantumRegister, Gate, StandardEquivalenceLibrary
 from qiskit.circuit.library import CZGate
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.basepasses import TransformationPass
-from qiskit.transpiler.passes import BasisTranslator, Decompose
+from qiskit.transpiler.passes import BasisTranslator, Decompose, Optimize1qGatesDecomposition
 from qiskit.quantum_info import Operator, pauli_basis
 
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
@@ -114,6 +114,7 @@ def get_twirled_circuits(
 				twirl_pass,
 				Decompose(gates_to_decompose=["pauli"]),
 				BasisTranslator(target_basis=basis_gates, equivalence_library=StandardEquivalenceLibrary),
+				Optimize1qGatesDecomposition(basis=basis_gates),
 			]
 		)
 	else:
