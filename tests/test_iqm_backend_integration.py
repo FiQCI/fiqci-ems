@@ -47,20 +47,14 @@ def transpiled(backend: IQMFakeAdonis) -> QuantumCircuit:
 
 
 @pytest.fixture(scope="module")
-def measured(transpiled: QuantumCircuit, backend: IQMFakeAdonis) -> QuantumCircuit:
-	"""The transpiled circuit with measurements on the qubits it actually uses.
-
-	Measuring every wire would include qubits the circuit never touches, and on resonator devices
-	the resonator wire, which cannot be measured.
-	"""
-	used = sorted(
-		{transpiled.find_bit(q).index for ins in transpiled.data for q in ins.qubits} & set(range(backend.num_qubits))
-	)
+def measured(transpiled: QuantumCircuit) -> QuantumCircuit:
+	"""The transpiled circuit with measurements on the qubits its virtual qubits were mapped onto."""
+	positions = transpiled.layout.final_index_layout()
 	qc = transpiled.copy()
-	creg = ClassicalRegister(len(used), "c")
+	creg = ClassicalRegister(len(positions), "c")
 	qc.add_register(creg)
-	for position, qubit in enumerate(used):
-		qc.measure(qubit, creg[position])
+	for virtual, position in enumerate(positions):
+		qc.measure(qc.qubits[position], creg[virtual])
 	return qc
 
 
