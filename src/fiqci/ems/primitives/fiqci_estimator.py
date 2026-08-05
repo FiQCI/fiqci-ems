@@ -102,6 +102,10 @@ def _apply_custom_extrapolation(
 	return values, errors
 
 
+def _count_measurements(circuit: QuantumCircuit) -> int:
+	return sum(1 for instruction in circuit.data if instruction.operation.name == "measure")
+
+
 def _valid_flat_scale_factors(scale_factors) -> bool:
 	"""True when ``scale_factors`` is a flat list of at least two real numbers >= 1."""
 	return len(scale_factors) >= 2 and all(
@@ -345,7 +349,7 @@ class FiQCIEstimator:
 			# afterwards would count those rotations, so an X/Y group would report a different
 			# foldable-gate count (and so a different achieved scale) than a Z group of the same pair.
 			base_circuit = strip_final_measurements(circuit)
-			if circuit.count_ops().get("measure", 0) != base_circuit.count_ops().get("measure", 0):
+			if _count_measurements(circuit) != _count_measurements(base_circuit):
 				raise ValueError(
 					f"Circuit {i} ends in measurement(s); FiQCIEstimator appends its own measurement basis. "
 					"A circuit transpiled with final measurements has had its terminal RZ frame removed, "
