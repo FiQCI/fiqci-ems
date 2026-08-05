@@ -26,7 +26,6 @@ classifiers = [
 ]
 dependencies = [
     "iqm-client[qiskit]>=34.0.2",
-    "matplotlib>=3.10.7",
     "mthree>=3.0.0",
 ]
 
