@@ -102,6 +102,25 @@ def test_standard_errors_match_shot_noise_and_bound_deviation(estimator: FiQCIEs
 		assert abs(got_v - want_v) <= 5 * se + TOL
 
 
+def test_shot_error_counts_every_twirled_variants_shots() -> None:
+	"""Twirled counts are averaged back to `shots`, so N must be scaled by the group size."""
+	num_twirls = 3
+	circuit = _ghz(2)
+	obs = SparsePauliOp(["ZZ", "XX"])
+
+	estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+	estimator.pauli_twirl(enabled=True, num_twirls=num_twirls, seed=0)
+	job = estimator.run(circuit, obs, shots=SHOTS)
+
+	got = job.expectation_values(0)
+	errors = job.standard_errors(0)
+
+	assert got == pytest.approx(_exact(circuit, obs), abs=TOL)
+	for got_v, se in zip(got, errors["shot_error"]):
+		expected_se = np.sqrt(max(0.0, 1.0 - got_v**2) / (SHOTS * (num_twirls + 1)))
+		assert se == pytest.approx(expected_se, rel=1e-6)
+
+
 def test_standard_errors_with_zne_enabled() -> None:
 	"""With ZNE on, shot_error (at scale 1) and a propagated zne_extrapolation_error are reported."""
 	estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)

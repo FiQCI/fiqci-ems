@@ -23,6 +23,14 @@ def _make_target(num_qubits=5):
 	return target
 
 
+def _make_fiqci_backend_mock() -> Mock:
+	"""A mocked FiQCIBackend carrying the attributes the estimator reads at submission."""
+	backend = Mock()
+	backend.target = _make_target()
+	backend._pauli_twirl = {"enabled": False, "num_twirls": 0}
+	return backend
+
+
 class TestFiQCIEstimator:
 	"""Tests for FiQCIEstimator class."""
 
@@ -80,8 +88,7 @@ class TestFiQCIEstimator:
 		single_observable: SparsePauliOp,
 	) -> None:
 		"""Test that run() delegates to _run()."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
@@ -93,8 +100,7 @@ class TestFiQCIEstimator:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_mismatched_list_lengths_raises_error(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that mismatched list lengths raise ValueError."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
@@ -110,8 +116,7 @@ class TestFiQCIEstimator:
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
 		"""Test run with a single circuit and single observable."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 500, "11": 500}
@@ -138,8 +143,7 @@ class TestFiQCIEstimator:
 		"""
 
 		def make_backend() -> Mock:
-			backend = Mock()
-			backend.target = _make_target()
+			backend = _make_fiqci_backend_mock()
 			job = Mock()
 			res = Mock()
 			res.get_counts.return_value = {"00": 500, "11": 500}
@@ -166,8 +170,7 @@ class TestFiQCIEstimator:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_list_circuits_single_observable(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with list of circuits and a single observable."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = [{"00": 500, "11": 500}, {"00": 500, "11": 500}]
@@ -190,8 +193,7 @@ class TestFiQCIEstimator:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_paired_lists(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with paired lists of circuits and observables."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = [{"00": 500, "11": 500}, {"00": 500, "11": 500}]
@@ -217,8 +219,7 @@ class TestFiQCIEstimator:
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
 		"""Test that default shots is 2048."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 1024, "11": 1024}
@@ -264,8 +265,7 @@ class TestEstimatorBatching:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_flattens_pairs_into_single(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Multiple pairs that should be flattened for batching by FiQCIBackend."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend.run.return_value = self._make_job([{"00": 500, "11": 500}] * 3)
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
@@ -285,8 +285,7 @@ class TestEstimatorBatching:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_default_max_batch_size_is_100(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Default max_batch_size is 100; 50 pairs (50 flat circuits) fit in a single batch."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend.run.return_value = self._make_job([{"00": 500, "11": 500}] * 50)
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
@@ -304,8 +303,7 @@ class TestEstimatorBatching:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_per_pair_counts_assigned_correctly(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Counts returned across batches are sliced back to the correct pair using pair_lengths."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		# Two pairs: pair 0 measures Z (all-zero counts -> +1), pair 1 measures Z (all-one counts -> -1)
 		mock_fiqci_backend.run.return_value = self._make_job([{"00": 1000}, {"11": 1000}])
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
@@ -329,8 +327,7 @@ class TestEstimatorBatching:
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
 		"""The public run() forwards max_batch_size to _run()."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
