@@ -450,6 +450,12 @@ class FiQCIEstimator:
 		zne_extrapolation_method = self._zne["extrapolation_method"]
 		zne_extrapolation_degree = self._zne["extrapolation_degree"]
 
+		# Twirled counts are averaged back down to `shots`, so the recorded total under-counts the
+		# samples the estimate actually rests on by the twirl group size.
+		twirl_group_size = 1
+		if self.backend._pauli_twirl["enabled"]:
+			twirl_group_size = self.backend._pauli_twirl["num_twirls"] + 1
+
 		# Freeze the full ZNE configuration for reporting on the returned job. Copied so later zne()
 		# mutations do not alter what the job reports it ran with. The realised per-pair scale factors
 		# are exposed separately via the job's requested/achieved_scale_factors() accessors.
@@ -495,7 +501,9 @@ class FiQCIEstimator:
 					per_scale_sigmas = []
 					for c in split_counts:
 						zne_expvs.append(self._calculate_expectation_values(c, obs, measurement_settings))
-						per_scale_sigmas.append(self._calculate_shot_errors(c, obs, measurement_settings))
+						per_scale_sigmas.append(
+							self._calculate_shot_errors(c, obs, measurement_settings, twirl_group_size)
+						)
 
 					scales = zne_scale_factors_per_pair[i]
 					if callable(zne_extrapolation_method):
@@ -523,7 +531,7 @@ class FiQCIEstimator:
 					)
 				else:
 					expvs = self._calculate_expectation_values(counts, obs, measurement_settings)
-					shot_err = self._calculate_shot_errors(counts, obs, measurement_settings)
+					shot_err = self._calculate_shot_errors(counts, obs, measurement_settings, twirl_group_size)
 					standard_errors.append({"shot_error": shot_err, "zne_extrapolation_error": None, "total": shot_err})
 
 				expectation_values.append(expvs)
@@ -602,11 +610,15 @@ class FiQCIEstimator:
 		counts: dict[str, int] | list[dict[str, int]],
 		obs: SparsePauliOp,
 		measurement_settings: list[dict[int, str]],
+		twirl_group_size: int = 1,
 	) -> list[float]:
 		"""Per-Pauli-term shot-noise standard error, mirroring ``_calculate_expectation_values``.
 
 		Each ⟨P⟩ is the sample mean of a ±1 random variable over ``N`` shots, so its standard error
 		is ``sqrt((1 - ⟨P⟩²) / N)``. Uncovered terms (no measurement setting) report 0.0.
+
+		``twirl_group_size`` scales ``N``: Pauli-twirled counts are averaged back down to ``shots``,
+		so the recorded total is a factor of the group size below the samples actually taken.
 		"""
 		if not isinstance(counts, list):
 			counts = [counts]
@@ -628,7 +640,7 @@ class FiQCIEstimator:
 							parity *= -1
 					exp_val += parity * count
 				exp_val /= total
-				shot_errors.append(math.sqrt(max(0.0, 1.0 - exp_val**2) / total))
+				shot_errors.append(math.sqrt(max(0.0, 1.0 - exp_val**2) / (total * twirl_group_size)))
 			else:
 				shot_errors.append(0.0)  # No measurement setting covers this observable
 		return shot_errors
@@ -838,7 +850,8 @@ class FiQCIEstimatorJob:
 		a dict of per-Pauli-term standard errors with keys:
 
 		- ``"shot_error"``: statistical SE of the raw measurement, ``sqrt((1 - ⟨P⟩²) / N)`` per term.
-		  When ZNE is enabled this is taken at the unfolded (scale 1) point.
+		  When ZNE is enabled this is taken at the unfolded (scale 1) point. With Pauli twirling, ``N``
+		  counts every twirled variant's shots, not the averaged total.
 		- ``"zne_extrapolation_error"``: SE of the extrapolated value, the per-scale shot errors
 		  propagated through the (linear) extrapolator; ``None`` when ZNE is disabled, or when a
 		  user-defined extrapolation callable reports no standard errors.
