@@ -33,6 +33,13 @@ def _is_nested_scale_factors(scale_factors) -> bool:
 	return len(scale_factors) > 0 and all(isinstance(s, (list, tuple)) for s in scale_factors)
 
 
+def _copy_scale_factors(scale_factors) -> list:
+	"""Copy a flat or per-circuit-nested scale-factor list so callers cannot mutate the original."""
+	if _is_nested_scale_factors(scale_factors):
+		return [list(sub) for sub in scale_factors]
+	return list(scale_factors)
+
+
 def _accepts_sigmas(fn: Callable) -> bool:
 	"""True when ``fn`` can be handed the per-scale shot errors as a ``sigmas`` keyword argument."""
 	try:
@@ -55,8 +62,9 @@ def _apply_custom_extrapolation(
 
 	``sigmas`` is passed only when the callable's signature accepts it, so two-argument extrapolators
 	keep working unchanged. Following the convention of the built-in extrapolators, the callable may
-	return either the zero-noise values alone or a ``(values, standard_errors)`` pair; the errors are
-	``None`` when it reports none.
+	return either the zero-noise values alone, a ``(values, standard_errors)`` pair, or a
+	``(values, None)`` pair to report values without standard errors; the errors are ``None`` in the
+	latter two cases.
 	"""
 	if _accepts_sigmas(fn):
 		result = fn(expectation_values, scales, sigmas=sigmas)
@@ -64,14 +72,27 @@ def _apply_custom_extrapolation(
 		result = fn(expectation_values, scales)
 
 	values, errors = result, None
-	# A (values, errors) pair is a 2-sequence whose entries are themselves sequences, while plain
-	# values are scalars, so the two shapes cannot be confused (not even for two observables).
-	if len(result) == 2 and all(isinstance(part, (list, tuple, np.ndarray)) for part in result):
+	# A (values, errors) pair is a 2-sequence whose first entry is itself a sequence, while plain
+	# values are scalars, so the two shapes cannot be confused (not even for two observables). The
+	# second entry may be None, which is how a callable reports "no standard errors" explicitly.
+	if (
+		len(result) == 2
+		and isinstance(result[0], (list, tuple, np.ndarray))
+		and (result[1] is None or isinstance(result[1], (list, tuple, np.ndarray)))
+	):
 		values, errors = result
 
-	values = [float(v) for v in values]
+	try:
+		values = [float(v) for v in values]
+		if errors is not None:
+			errors = [float(e) for e in errors]
+	except (TypeError, ValueError) as exc:
+		raise TypeError(
+			"Custom extrapolation function must return a sequence of floats (one per observable), "
+			"optionally as a (values, standard_errors) pair; "
+			f"got {result!r}."
+		) from exc
 	if errors is not None:
-		errors = [float(e) for e in errors]
 		if len(errors) != len(values):
 			raise ValueError(
 				"Custom extrapolation function returned "
@@ -136,55 +157,95 @@ class FiQCIEstimator:
 			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_file)
 			self.zne(enabled=True)
 		else:
-			raise NotImplementedError(f"Unknown mitigation level {mitigation_level}")
+			# Matches FiQCIBackend, so callers catch one exception type across all three interfaces.
+			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
 	@property
 	def mitigator_options(self) -> dict[str, Any]:
-		"""Get current mitigator settings."""
-		return {"zne": self._zne, **self.backend.mitigator_options}
+		"""Get current mitigator settings.
+
+		The returned dict is a copy, so mutating it does not change the estimator's configuration;
+		use :meth:`zne` / :meth:`rem` / :meth:`dd` / :meth:`pauli_twirl`, which validate their input.
+		"""
+		zne = dict(self._zne)
+		if self._zne["fold_gates"] is not None:
+			zne["fold_gates"] = list(self._zne["fold_gates"])
+		zne["scale_factors"] = _copy_scale_factors(self._zne["scale_factors"])
+		return {"zne": zne, **self.backend.mitigator_options}
 
 	def total_circuits_generated(
 		self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False
 	) -> int | dict[str, Any]:
 		"""Calculate total circuits generated for a given number of base circuits and observables.
 
-		When ``scale_factors`` is a per-circuit list of lists, each circuit expands by its own count, so
-		the ZNE contribution is the sum of the per-circuit counts (this assumes ``num_base_circuits``
-		matches the number of per-circuit scale-factor lists).
-		"""
-		measurement_settings = get_measurement_settings(
-			observables if isinstance(observables, SparsePauliOp) else observables[0]
-		)
-		num_measurement_circuits = len(measurement_settings)
-		zne_circuits_multiplier: int | list[int] = 1
-		pauli_twirl_circuits_multiplier = 1
+		The number of measurement-basis circuits depends on the observable, and the number of ZNE
+		circuits can depend on the circuit, so the total is summed per circuit/observable pair rather
+		than taken from a single multiplier:
+		``pauli_twirl_multiplier * sum(measurement_groups_i * scale_factors_i)``.
 
+		Args:
+			num_base_circuits: Number of circuits to be submitted.
+			observables: A single ``SparsePauliOp`` used for every circuit, or one per circuit.
+			detailed: Print the breakdown and return it as a dict instead of just the total.
+
+		Returns:
+			The total circuit count, or a dict with the breakdown when ``detailed`` is set. Entries
+			that differ between circuits (measurement groups, ZNE multiplier) are reported as a list.
+
+		Raises:
+			ValueError: If a list of observables or per-circuit scale factors does not have one entry
+				per base circuit.
+		"""
+		if isinstance(observables, SparsePauliOp):
+			per_pair_observables = [observables] * num_base_circuits
+		else:
+			if len(observables) != num_base_circuits:
+				raise ValueError(
+					f"Got {len(observables)} observable(s) for {num_base_circuits} base circuit(s); provide a "
+					"single SparsePauliOp or one per circuit."
+				)
+			per_pair_observables = list(observables)
+
+		# Each observable is measured in as many circuits as it has qubit-wise commuting groups.
+		per_pair_groups = [len(get_measurement_settings(obs)) for obs in per_pair_observables]
+
+		per_pair_scales = [1] * num_base_circuits
 		if self._zne["enabled"]:
 			if _is_nested_scale_factors(self._zne["scale_factors"]):
-				zne_circuits_multiplier = [len(s) for s in cast(list[list[float]], self._zne["scale_factors"])]
+				nested = cast(list[list[float]], self._zne["scale_factors"])
+				if len(nested) != num_base_circuits:
+					raise ValueError(
+						f"Per-circuit scale_factors has {len(nested)} entr(y/ies) but {num_base_circuits} base "
+						"circuit(s) were given; provide one scale-factor list per circuit."
+					)
+				per_pair_scales = [len(scales) for scales in nested]
 			else:
-				zne_circuits_multiplier = len(self._zne["scale_factors"])
+				per_pair_scales = [len(self._zne["scale_factors"])] * num_base_circuits
+
+		pauli_twirl_circuits_multiplier = 1
 		if self.backend._pauli_twirl["enabled"]:
 			pauli_twirl_circuits_multiplier = (
 				self.backend._pauli_twirl["num_twirls"] + 1
 			)  # +1 for the original circuit without twirling
 
-		if isinstance(zne_circuits_multiplier, list):
-			# Per-circuit scale factors: each circuit contributes its own number of ZNE circuits.
-			total_circuits = num_measurement_circuits * sum(zne_circuits_multiplier) * pauli_twirl_circuits_multiplier
-		else:
-			total_circuits = (
-				num_base_circuits * num_measurement_circuits * zne_circuits_multiplier * pauli_twirl_circuits_multiplier
-			)
+		total_circuits = pauli_twirl_circuits_multiplier * sum(
+			groups * scales for groups, scales in zip(per_pair_groups, per_pair_scales)
+		)
 
 		if detailed:
+			# Collapse to a scalar when every circuit agrees, so the common case stays readable.
+			measurement_circuits = per_pair_groups[0] if len(set(per_pair_groups)) == 1 else per_pair_groups
+			zne_multiplier = per_pair_scales[0] if len(set(per_pair_scales)) == 1 else per_pair_scales
 			print(
-				f"The total number of circuits is {total_circuits}, calculated as follows: base circuits ({num_base_circuits}) * circuits for conflicting basis measurements ({num_measurement_circuits}) * ZNE multiplier ({zne_circuits_multiplier}) * Pauli twirl multiplier ({pauli_twirl_circuits_multiplier}). This does not include circuits ran to calibrate readout error mitigation (REM)."
+				f"The total number of circuits is {total_circuits}, calculated as follows: Pauli twirl multiplier "
+				f"({pauli_twirl_circuits_multiplier}) * the sum over {num_base_circuits} circuit/observable pair(s) of "
+				f"circuits for conflicting basis measurements ({measurement_circuits}) * ZNE multiplier "
+				f"({zne_multiplier}). This does not include circuits ran to calibrate readout error mitigation (REM)."
 			)
 			return {
 				"base_circuits": num_base_circuits,
-				"measurement_circuits_per_basis": num_measurement_circuits,
-				"zne_multiplier": zne_circuits_multiplier,
+				"measurement_circuits_per_basis": measurement_circuits,
+				"zne_multiplier": zne_multiplier,
 				"pauli_twirl_multiplier": pauli_twirl_circuits_multiplier,
 				"total_circuits": total_circuits,
 			}
@@ -316,6 +377,31 @@ class FiQCIEstimator:
 					"Requested ZNE scale factors are not all exactly reachable by folding; extrapolation uses "
 					f"the achieved values {pair_scale_factors}. Access them via the job's achieved_scale_factors()."
 				)
+
+			# Folding is discrete, so distinct requests can collapse onto the same achieved factor (most
+			# often when a circuit has too few foldable gates to resolve them, e.g. no two-qubit gates at
+			# all under local folding, where every request collapses to 1.0). Extrapolation then has
+			# fewer distinct x-values than it needs and will produce nan/inf or a meaningless fit. The
+			# circuits have already been submitted at this point, so warn loudly here rather than at
+			# result time: the run is still cancellable via the returned job handle.
+			for i, achieved in enumerate(pair_scale_factors):
+				num_distinct = len(np.unique(np.round(achieved, 12)))
+				if num_distinct < 2:
+					warnings.warn(
+						f"ZNE for circuit/observable pair {i} collapsed every requested scale factor "
+						f"{pair_requested_scale_factors[i]} onto the single achieved value {achieved[0]}, so no "
+						"extrapolation is possible and the returned expectation values will be meaningless "
+						"(nan/inf or a degenerate fit). This usually means the circuit has too few foldable "
+						"gates (a circuit with no two-qubit gates cannot be folded locally at all). Cancel the "
+						"job and either use 'global' folding, widen the scale factors, or disable ZNE."
+					)
+				elif num_distinct < len(achieved):
+					warnings.warn(
+						f"ZNE for circuit/observable pair {i} has only {num_distinct} distinct achieved scale "
+						f"factor(s) for {len(achieved)} requested ({achieved}); folding cannot resolve them on "
+						"this circuit. The extrapolation is fitted to the duplicated points and may be "
+						"unreliable. Cancel the job and widen the scale factors if this is not intended."
+					)
 
 		if self._zne["enabled"]:
 			logger.info(
@@ -473,6 +559,12 @@ class FiQCIEstimator:
 			obs_info = _get_observable_circuit_index(pauli, measurement_settings)
 			if obs_info["circuit_index"] is not None:
 				circuit_counts = counts[obs_info["circuit_index"]]
+				total = sum(circuit_counts.values())
+				if total == 0:
+					# No shots recorded for this measurement circuit; there is nothing to average
+					# over. Report 0.0 rather than dividing by zero (matches _calculate_shot_errors).
+					expectation_values.append(0.0)
+					continue
 				# Calculate expectation value from counts
 				exp_val = 0
 				for bitstring, count in circuit_counts.items():
@@ -481,7 +573,7 @@ class FiQCIEstimator:
 						if bitstring[idx] == "1":
 							parity *= -1
 					exp_val += parity * count
-				exp_val /= sum(circuit_counts.values())
+				exp_val /= total
 				expectation_values.append(exp_val)
 			else:
 				expectation_values.append(0)  # No measurement setting covers this observable
@@ -625,9 +717,14 @@ class FiQCIEstimator:
 		else:
 			self._zne["extrapolation_degree"] = None
 
-	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
-		"""Configure Pauli twirling settings for the estimator."""
-		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
+	def pauli_twirl(
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None, seed: int | None = None
+	) -> None:
+		"""Configure Pauli twirling settings for the estimator.
+
+		``seed`` makes the random twirl selection reproducible for a run.
+		"""
+		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl, seed)
 
 
 class FiQCIEstimatorJob:

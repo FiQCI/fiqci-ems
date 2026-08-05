@@ -102,19 +102,24 @@ Computes expectation values of Pauli observables directly from circuits:
 
 ```python
 from fiqci.ems import FiQCIEstimator
+from iqm.qiskit_iqm import transpile_to_IQM
 from qiskit.quantum_info import SparsePauliOp
 
 # Using mitigation_level
 estimator = FiQCIEstimator(backend, mitigation_level=1)
 
+# Transpile for the backend. remove_final_rzs=False is required: the estimator measures in the X and
+# Y bases, and dropping the final RZ gates changes those expectation values.
+tr_qc = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
+
 # Define observables
 observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
 
 # Map observables to transpiled layout
-device_observables = observables.apply_layout(qc_transpiled.layout)
+device_observables = observables.apply_layout(tr_qc.layout)
 
 # Execute the job
-job_collection = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+job_collection = estimator.run(tr_qc, observables=device_observables, shots=2048)
 
 # Get expectation values
 evs = job_collection.expectation_values()

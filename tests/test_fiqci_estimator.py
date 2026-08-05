@@ -454,6 +454,69 @@ class TestCalculateExpectationValues:
 		assert len(exp_vals) == 1
 		assert exp_vals[0] == pytest.approx(-1.0)
 
+	@pytest.mark.parametrize("counts", [pytest.param([{}], id="empty-dict"), pytest.param([{"0": 0}], id="all-zero")])
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_zero_total_counts_report_zero_instead_of_dividing_by_zero(
+		self, mock_fiqci_backend_class: Mock, counts: list[dict[str, int]]
+	) -> None:
+		"""A measurement circuit with no recorded shots reports 0.0, matching _calculate_shot_errors."""
+		mock_backend = Mock()
+		mock_fiqci_backend_class.return_value = Mock()
+
+		estimator = FiQCIEstimator(mock_backend)
+
+		obs = SparsePauliOp.from_list([("IZ", 1.0)])
+		measurement_settings = [{0: "Z"}]
+
+		assert estimator._calculate_expectation_values(counts, obs, measurement_settings) == [0.0]
+		assert estimator._calculate_shot_errors(counts, obs, measurement_settings) == [0.0]
+
+
+class TestEstimatorMitigatorOptionsIsolation:
+	"""``FiQCIEstimator.mitigator_options`` hands out a copy of the live ZNE settings."""
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_mutating_returned_zne_dict_does_not_change_settings(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Reassigning entries of the returned ``zne`` dict leaves the estimator's settings intact."""
+		mock_fiqci_backend_class.return_value = Mock(mitigator_options={})
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[1, 3], fold_gates=["cz"], folding_method="local")
+
+		options = estimator.mitigator_options
+		options["zne"]["enabled"] = "clobbered"
+		options["zne"]["folding_method"] = "clobbered"
+
+		assert estimator._zne["enabled"] is True
+		assert estimator._zne["folding_method"] == "local"
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_mutating_nested_zne_lists_does_not_change_settings(self, mock_fiqci_backend_class: Mock) -> None:
+		"""``scale_factors`` and ``fold_gates`` are copied too, not just the outer dict."""
+		mock_fiqci_backend_class.return_value = Mock(mitigator_options={})
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[1, 3], fold_gates=["cz"])
+
+		options = estimator.mitigator_options
+		options["zne"]["scale_factors"].append(99)
+		options["zne"]["fold_gates"].append("clobbered")
+
+		assert estimator._zne["scale_factors"] == [1, 3]
+		assert estimator._zne["fold_gates"] == ["cz"]
+
+	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
+	def test_nested_per_circuit_scale_factor_sublists_are_copied(self, mock_fiqci_backend_class: Mock) -> None:
+		"""Per-circuit scale factors are a list of lists; the sublists must be copied as well."""
+		mock_fiqci_backend_class.return_value = Mock(mitigator_options={})
+
+		estimator = FiQCIEstimator(Mock())
+		estimator.zne(enabled=True, scale_factors=[[1, 3], [1, 3, 5]])
+
+		estimator.mitigator_options["zne"]["scale_factors"][0].append(99)
+
+		assert estimator._zne["scale_factors"] == [[1, 3], [1, 3, 5]]
+
 
 def _const_compute(exp_vals, raw=None, errors=None):
 	"""Build a compute_fn returning fixed (expectation_values, raw_expectation_values, standard_errors)."""
@@ -543,3 +606,144 @@ class TestFiQCIEstimatorJob:
 		assert collection.status() == "RUNNING"
 		assert collection.job_ids() == ["x", "y"]
 		assert calls == []
+
+
+def _bell() -> QuantumCircuit:
+	qc = QuantumCircuit(2)
+	qc.h(0)
+	qc.cx(0, 1)
+	return qc
+
+
+class TestTotalCircuitsGenerated:
+	"""The advisory count must match what ``run`` actually submits.
+
+	The measurement-group count depends on the observable, so taking it from ``observables[0]`` and
+	applying it to every circuit under-reported whenever the observables differed per circuit.
+	"""
+
+	def _estimator(self, **zne_kwargs):
+		from qiskit_aer import AerSimulator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		if zne_kwargs:
+			estimator.zne(enabled=True, extrapolation_method="linear", **zne_kwargs)
+		return estimator
+
+	def _submitted_count(self, estimator, circuits, observables) -> int:
+		"""How many circuits actually reach the backend."""
+		import warnings
+
+		from qiskit_aer import AerSimulator
+
+		counts: list[int] = []
+		unpatched = AerSimulator.run
+
+		def spy(backend, submitted, **kwargs):
+			counts.append(len(submitted) if isinstance(submitted, list) else 1)
+			return unpatched(backend, submitted, **kwargs)
+
+		with patch.object(AerSimulator, "run", spy), warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			estimator.run(circuits, observables, shots=64).expectation_values(0)
+		return sum(counts)
+
+	def test_single_observable_scales_with_circuit_count(self) -> None:
+		estimator = self._estimator()
+		obs = SparsePauliOp(["ZZ", "XX"])  # two measurement groups
+
+		assert estimator.total_circuits_generated(1, obs) == 2
+		assert estimator.total_circuits_generated(3, obs) == 6
+
+	def test_differing_observables_are_summed_not_multiplied(self) -> None:
+		"""One group for the first pair plus three for the second is 4, not 2 x 1."""
+		estimator = self._estimator()
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])]
+
+		assert estimator.total_circuits_generated(2, observables) == 4
+
+	def test_prediction_matches_submission_for_differing_observables(self) -> None:
+		estimator = self._estimator()
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])]
+
+		predicted = estimator.total_circuits_generated(2, observables)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], observables)
+
+		assert predicted == actual == 4
+
+	def test_prediction_matches_submission_with_nested_scale_factors(self) -> None:
+		estimator = self._estimator(scale_factors=[[1, 3], [1, 3, 5]])
+		obs = SparsePauliOp(["ZZ", "XX"])
+
+		predicted = estimator.total_circuits_generated(2, obs)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], obs)
+
+		assert predicted == actual == 10  # 2 groups * (2 + 3) scales
+
+	def test_pauli_twirl_multiplies_the_total(self) -> None:
+		estimator = self._estimator()
+		estimator.pauli_twirl(True, num_twirls=2, seed=1)
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX"])]
+
+		predicted = estimator.total_circuits_generated(2, observables)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], observables)
+
+		assert predicted == actual == 9  # (1 + 2 groups) * (2 twirls + 1)
+
+	def test_observable_count_mismatch_raises(self) -> None:
+		estimator = self._estimator()
+
+		with pytest.raises(ValueError, match="observable"):
+			estimator.total_circuits_generated(3, [SparsePauliOp(["ZZ"]), SparsePauliOp(["XX"])])
+
+	def test_nested_scale_factor_count_mismatch_raises(self) -> None:
+		estimator = self._estimator(scale_factors=[[1, 3], [1, 3, 5]])
+
+		with pytest.raises(ValueError, match="scale_factors"):
+			estimator.total_circuits_generated(3, SparsePauliOp(["ZZ"]))
+
+	def test_detailed_collapses_uniform_values_and_lists_varying_ones(self) -> None:
+		estimator = self._estimator()
+
+		uniform = estimator.total_circuits_generated(2, SparsePauliOp(["ZZ", "XX"]), detailed=True)
+		assert uniform["measurement_circuits_per_basis"] == 2
+		assert uniform["total_circuits"] == 4
+
+		varying = estimator.total_circuits_generated(
+			2, [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])], detailed=True
+		)
+		assert varying["measurement_circuits_per_basis"] == [1, 3]
+		assert varying["total_circuits"] == 4
+
+
+class TestMitigationLevelValidation:
+	"""All three interfaces reject a bad level the same way, so callers catch one exception type."""
+
+	@pytest.mark.parametrize("level", [-1, 4, 7])
+	def test_estimator_raises_value_error(self, level: int) -> None:
+		from qiskit_aer import AerSimulator
+
+		with pytest.raises(ValueError, match="mitigation_level must be 0-3"):
+			FiQCIEstimator(AerSimulator(), mitigation_level=level)
+
+	def test_all_interfaces_agree(self) -> None:
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems import FiQCIBackend, FiQCISampler
+
+		for cls in (FiQCIBackend, FiQCISampler, FiQCIEstimator):
+			with pytest.raises(ValueError, match="mitigation_level must be 0-3"):
+				cls(AerSimulator(), mitigation_level=7)
+
+	def test_default_shots_match_across_interfaces(self) -> None:
+		"""A user moving between interfaces should not silently change shot count."""
+		import inspect
+
+		from fiqci.ems import FiQCIBackend, FiQCISampler
+
+		defaults = {
+			cls.__name__: inspect.signature(cls.run).parameters["shots"].default
+			for cls in (FiQCIBackend, FiQCISampler, FiQCIEstimator)
+		}
+
+		assert len(set(defaults.values())) == 1, defaults

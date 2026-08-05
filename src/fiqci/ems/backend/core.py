@@ -103,8 +103,14 @@ class FiQCIBackend:
 			enabled: bool
 			num_twirls: int
 			gates_to_twirl: Iterable[Gate] | None
+			seed: int | None
 
-		self._pauli_twirl: PauliTwirlSettings = {"enabled": False, "num_twirls": 0, "gates_to_twirl": None}
+		self._pauli_twirl: PauliTwirlSettings = {
+			"enabled": False,
+			"num_twirls": 0,
+			"gates_to_twirl": None,
+			"seed": None,
+		}
 
 		# Initialize mitigator for level 1 (readout error mitigation using M3)
 		if self._mitigation_level == 0:
@@ -154,29 +160,23 @@ class FiQCIBackend:
 		"""
 		Get current mitigator settings.
 
+		The returned dict is a copy, so mutating it does not change the backend's configuration
+		(use :meth:`rem` / :meth:`dd` / :meth:`pauli_twirl` for that, which validate their input).
+		The nested ``M3IQM`` mitigator under ``rem`` is the live object, not a copy, since it owns
+		the calibration data.
+
 		Returns:
 			A dictionary of current mitigator settings and their values.
 		"""
-		return {"rem": self._rem, "dd": self._dd, "pauli_twirl": self._pauli_twirl}
-
-	def _snapshot_mitigator_options(self) -> dict[str, Any]:
-		"""Freeze the current mitigator settings for attachment to a submitted job.
-
-		Unlike :attr:`mitigator_options` (which reflects the backend's live, mutable settings),
-		the returned dict is a copy taken at submission time, so a job can faithfully report the
-		configuration it actually ran with even if the backend's settings are later mutated. The
-		live ``M3IQM`` mitigator is intentionally omitted.
-		"""
-		return {
-			"mitigation_level": self._mitigation_level,
-			"rem": {
-				"enabled": self._rem["enabled"],
-				"calibration_shots": self._rem["calibration_shots"],
-				"calibration_file": self._rem["calibration_file"],
-			},
-			"dd": {"enabled": self._dd["enabled"], "gate_sequences": list(self._dd["gate_sequences"])},
-			"pauli_twirl": dict(self._pauli_twirl),
-		}
+		dd = dict(self._dd)
+		dd["gate_sequences"] = list(self._dd["gate_sequences"])
+		pauli_twirl = dict(self._pauli_twirl)
+		gates_to_twirl = self._pauli_twirl["gates_to_twirl"]
+		# Only copy a materialised collection; list()-ing a user-supplied iterator here would
+		# consume it out from under the next run().
+		if isinstance(gates_to_twirl, (list, tuple)):
+			pauli_twirl["gates_to_twirl"] = list(gates_to_twirl)
+		return {"rem": dict(self._rem), "dd": dd, "pauli_twirl": pauli_twirl}
 
 	def _snapshot_mitigator_options(self) -> dict[str, Any]:
 		"""Freeze the current mitigator settings for attachment to a submitted job.
@@ -221,7 +221,7 @@ class FiQCIBackend:
 			return total_circuits
 
 	def init_pauli_twirl(
-		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Iterable[Gate] | None = None
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: Iterable[Gate] | None = None, seed: int | None = None
 	) -> None:
 		"""
 		Initialize Pauli twirling settings.
@@ -230,11 +230,13 @@ class FiQCIBackend:
 			enabled: Whether Pauli twirling is enabled.
 			num_twirls: Number of twirled circuits to generate per input circuit.
 			gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
+			seed: Seed for the random twirl selection, making a run's twirled circuits reproducible.
 		"""
 
 		self._pauli_twirl["enabled"] = enabled
 		self._pauli_twirl["num_twirls"] = num_twirls
 		self._pauli_twirl["gates_to_twirl"] = gates_to_twirl
+		self._pauli_twirl["seed"] = seed
 
 	def _init_dd(self, gate_sequences: list[DDGateSequenceEntry] | None = None) -> None:
 		"""Initialize dynamical decoupling settings.
@@ -356,7 +358,9 @@ class FiQCIBackend:
 		if not self._rem["enabled"] or settings_changed:
 			self._init_rem(calibration_shots, calibration_file)
 
-	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
+	def pauli_twirl(
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None, seed: int | None = None
+	) -> None:
 		"""
 		Set Pauli twirling settings for the backend.
 
@@ -364,13 +368,14 @@ class FiQCIBackend:
 			enabled: Whether to enable Pauli twirling.
 			num_twirls: Number of twirled circuits to generate per input circuit (default: 10).
 			gates_to_twirl: Optional list of gates to twirl, if None, all two-qubit basis gates will be twirled.
+			seed: Seed for the random twirl selection, making a run's twirled circuits reproducible.
 		"""
-		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl)
+		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl, seed)
 
 	def run(
 		self,
 		circuits: QuantumCircuit | list[QuantumCircuit],
-		shots: int = 1024,
+		shots: int = 2048,
 		max_batch_size: int = 100,
 		**kwargs: Any,
 	) -> MitigatedJob | BatchedJob:
@@ -383,7 +388,7 @@ class FiQCIBackend:
 
 		Args:
 			circuits: Single quantum circuit or list of circuits to execute.
-			shots: Number of shots. Default is 1024.
+			shots: Number of shots. Default is 2048, matching FiQCISampler and FiQCIEstimator.
 			max_batch_size: Maximum number of circuits per backend job. The (post-twirl) circuit list is
 				flattened and split into batches of this size; the resulting jobs are wrapped so that the
 				returned handle's ``result()`` exposes a single combined Result indexed in submission order
@@ -426,6 +431,7 @@ class FiQCIBackend:
 				num_twirls=self._pauli_twirl["num_twirls"],
 				gates_to_twirl=self._pauli_twirl["gates_to_twirl"],
 				backend=self._backend,
+				seed=self._pauli_twirl["seed"],
 			)
 			twirl_group_size = self._pauli_twirl["num_twirls"] + 1
 			logger.info(

@@ -12,29 +12,6 @@ from mthree.mitigation import _faulty_qubit_checker
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-def _balanced_cal_strings(num_qubits: int) -> list[str]:
-	"""Generate balanced calibration strings for the given number of qubits.
-
-	Balanced calibration strings ensure equal representation of 0 and 1 states
-	across all qubits during calibration.
-
-	Args:
-		num_qubits: Number of qubits to generate calibration strings for.
-
-	Returns:
-		List of balanced calibration bit strings.
-
-	Raises:
-		ValueError: If num_qubits is less than 1.
-	"""
-	if num_qubits < 1:
-		raise ValueError("Number of qubits must be at least 1")
-
-	# Generate all possible bit strings for num_qubits
-	num_strings = 2**num_qubits
-	return [format(i, f"0{num_qubits}b") for i in range(num_strings)]
-
-
 @dataclass
 class _Config:
 	"""Configuration for the backend"""
@@ -229,18 +206,27 @@ class M3IQM(M3Mitigation):
 		Raises:
 			M3Error: Calibration in progress.
 			M3Error: Calibration set ID mismatch.
-			M3Error: Invalid calibration file format.
+			M3Error: Invalid calibration file format, including unparseable JSON or a missing
+				``cals`` entry.
 			FileNotFoundError: Calibration file not found.
 		"""
 		if self._thread:
 			raise M3Error("Calibration currently in progress.")
 
 		with open(cals_file, encoding="utf-8") as fd:
-			loaded_data = orjson.loads(fd.read())
+			try:
+				loaded_data = orjson.loads(fd.read())
+			except orjson.JSONDecodeError as exc:
+				raise M3Error(f"Invalid calibration file {cals_file}: could not be parsed as JSON ({exc}).") from exc
 
-		# Only support dict format with required fields
+		# Only support dict format with required fields. The caller reports the message as-is, so it
+		# has to say what is wrong; reading "cals" unchecked used to surface a bare KeyError('cals').
 		if not isinstance(loaded_data, dict):
-			raise M3Error("Invalid calibration file format. ")
+			raise M3Error(
+				f"Invalid calibration file {cals_file}: expected a JSON object, got {type(loaded_data).__name__}."
+			)
+		if "cals" not in loaded_data:
+			raise M3Error(f"Invalid calibration file {cals_file}: missing the required 'cals' entry.")
 
 		# Load calibration data
 		self.single_qubit_cals = [  # type: ignore[assignment]

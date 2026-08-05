@@ -39,7 +39,11 @@ class FiQCISampler:
 
 	@property
 	def mitigator_options(self) -> dict[str, Any]:
-		"""Get current mitigator settings."""
+		"""Get current mitigator settings.
+
+		The returned dict is a copy, so mutating it does not change the sampler's configuration;
+		use :meth:`rem` / :meth:`dd` / :meth:`pauli_twirl`, which validate their input.
+		"""
 		return {**self.backend.mitigator_options}
 
 	def total_circuits_generated(self, num_base_circuits: int, detailed: bool = False) -> int | dict[str, int]:
@@ -100,6 +104,11 @@ class FiQCISampler:
 		"""
 		self.backend.dd(enabled, gate_sequences)
 
-	def pauli_twirl(self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None) -> None:
-		"""Configure Pauli twirling settings for the estimator."""
-		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl)
+	def pauli_twirl(
+		self, enabled: bool, num_twirls: int = 10, gates_to_twirl: list | None = None, seed: int | None = None
+	) -> None:
+		"""Configure Pauli twirling settings for the sampler.
+
+		``seed`` makes the random twirl selection reproducible for a run.
+		"""
+		self.backend.pauli_twirl(enabled, num_twirls, gates_to_twirl, seed)

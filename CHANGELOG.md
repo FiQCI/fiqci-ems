@@ -1,21 +1,41 @@
 ## [WIP] [1.0.0] 31.7.2026
 
-## Changed
+### Breaking changes
+
+Importing from `fiqci.ems` is unaffected — `FiQCIBackend`, `FiQCISampler`, `FiQCIEstimator` and `BatchFailedError` are still exported from there. The rest only affects code reaching into submodules or mutating settings dicts directly.
+
+- the `fiqci.ems.fiqci_backend` module was split into the `fiqci.ems.backend` package and no longer exists. `BatchedJob`, `MitigatedJob`, `PartialBatch` and `BatchFailedError` now come from `fiqci.ems.backend`
+- `get_obs_subcircuits(subcircuits, measurement_settings, ops)` now takes the observable instead of the measurement settings: `get_obs_subcircuits(subcircuits, observable, ops)`, and derives the settings itself
+- `_combine_pauli_ops()` is renamed to the now-public `get_measurement_settings()`
+- `mitigator_options` returns a copy, so mutating it no longer reconfigures a run. Use `rem()` / `dd()` / `pauli_twirl()` / `zne()`, which validate their input
+- ZNE extrapolation now fits against the **achieved** scale factors rather than the requested ones, so expectation values can differ for any scale factor folding cannot reach exactly (anything other than odd integers). Inspect them with `job.achieved_scale_factors()`
+
+See the [docs](https://fiqci.fi/fiqci-ems/docs/) for the current interfaces and behaviour.
+
+### Changed
 - added a `standard_errors()` method to `FiQCIEstimator` that lazily calculates and returns shot noise and ZNE fit errors
 - https://github.com/FiQCI/fiqci-ems/pull/41
+
+---
 
 - allow passing a callable `extrapolation_fn(scales, values) -> float` to `.zne()` in addition to using the built-in methods
   - a callable that accepts a `sigmas` keyword argument is given the per-scale shot standard errors and may return `(values, standard_errors)`, which are reported via `standard_errors()` like the built-in extrapolators' propagated errors
   - fixes `expectation_values()` raising `UnboundLocalError` when a callable extrapolation method was used
 - https://github.com/FiQCI/fiqci-ems/pull/40
 
+---
+
 - migrate `combine_pauli_ops` to use Qiskit's `Paulilist.group_qubit_wise_commuting`
 - `get_obs_subcircuits` now directly takes observables as an argument and handles calling `get_measurement_settings` inside the function
 - https://github.com/FiQCI/fiqci-ems/pull/38
 
+---
+
 - refactor monolithic `fiqci_backend` into a `backend` module
   - split into `core.py`, `counts.py`, and `jobs.py`
 - https://github.com/FiQCI/fiqci-ems/pull/37
+
+---
 
 - Zero noise extrapolation now supports any >=1 floats as scale factors
   - If exact given value cannot be reached, and approximation is used (fractional folding). If exact values is not achieved log a warning
@@ -23,15 +43,29 @@
   - this allows the user to pass circuit specific scale factors
 - fix bug in folding method handling
 - expose `requested_scale_factors()` and `achieved_scale_factors` in `FiQCIEstimatorJob`
-  - allow the user to view per job used scale factors even if estimator config changed 
+  - allow the user to view per job used scale factors even if estimator config changed
 - expose `mitigator_options` on the returned job handles (`BatchedJob`/`MitigatedJob`, and `FiQCIEstimatorJob`)
   - a frozen snapshot of the mitigation settings (`mitigation_level`, `rem`, `dd`, `pauli_twirl`, plus `zne` on the estimator job) in effect at submission, so the user can inspect what a run actually used even after the backend/estimator config is mutated
   - unlike the live, mutable `mitigator_options` property on the backend/estimator, the job's snapshot never changes; the live M3 mitigator object is omitted from the REM entry
 - https://github.com/FiQCI/fiqci-ems/pull/39
 
+---
+
+- warn at `run()` when discrete folding collapses distinct ZNE scale factors onto the same achieved value
+- `mitigator_options` on `FiQCIBackend`, `FiQCISampler` and `FiQCIEstimator` now returns a copy
+- a custom `extrapolation_method` may now return `(values, None)` to report values without standard errors
+- `_calculate_expectation_values` no longer raises `ZeroDivisionError` for a measurement circuit with no recorded shots. It reports `0.0`, matching `_calculate_shot_errors`
+- ship a PEP 561 `py.typed` marker so the package's type annotations are visible to downstream type checkers
+- add a `seed` argument to `pauli_twirl()` for reproducible twirling, and fix `gates_to_twirl` being silently ignored when passed as a generator
+- fix `total_circuits_generated()` under-reporting when the observables differ per circuit, and raise `ValueError` if a list of observables or per-circuit `scale_factors` does not have one entry per base circuit
+- `FiQCIEstimator` now raises `ValueError` instead of `NotImplementedError` for an unsupported `mitigation_level`, matching `FiQCIBackend` and `FiQCISampler`
+- `FiQCIBackend.run()`'s default `shots` is now 2048 instead of 1024, matching both primitives
+- a malformed calibration file now raises `M3Error` naming the file and the problem instead of a bare `KeyError` or `JSONDecodeError`
+- https://github.com/FiQCI/fiqci-ems/pull/42
+
 ## [0.8.1] 12.6.2026
 
-## Changed
+### Changed
 - fix zero noise extrapolation accepting invalid scale factors
 - fix handling of `extrapolation_degree` when manually setting ZNE options using `.zne()`
 - fix pauli twirling crash on non IQM backends
@@ -39,7 +73,7 @@
 
 ## [0.8.0] 5.6.2026
 
-## Changed
+### Changed
 - `run()` on the backend, sampler, and estimator now returns a lazy job handle immediately instead of blocking until all batches complete and mitigation is applied. Error mitigation, twirl averaging, batch-result combination, and estimator expectation values are computed on the first `result()`/`expectation_values()` call and cached.
 - The handle exposes per-batch `job_id()`s immediately, an aggregated `status()`/`done()`, `job_ids()`, and `partial_results()` for batch-granular access while other batches are still running.
 - `result()` now raises `BatchFailedError` naming the failing batch and the original circuit indices it covered when any batch fails, instead of an opaque error during result combination.
@@ -51,7 +85,7 @@
 
 ## [0.7.2] - 4.6.2026
 
-## Changed
+### Changed
 - Fix `max_batch_size` not being passed down from ems primitives to mthree for calibration job execution.
 
 ## [0.7.1] - 3.6.2026
@@ -64,7 +98,7 @@
 
 ## [0.7.0] - 29.5.2026
 
-## Changed
+### Changed
 - Add support for applying readout error mitigation on circuits with measurements on multiple classical registers
 - Pauli twirling no longer drops the transpiled circuit's `TranspileLayout`; twirled circuits previously lost their layout and could place CZ gates on non-adjacent physical qubits, raising `CircuitValidationError` (more likely with higher `num_twirls`)
 - Fixed result ordering when Pauli twirling is enabled: `result.get_counts()` for a list of circuits is now correctly aligned with the input circuit order (previously a mis-trim could put another circuit's counts in circuit `i`'s slot)
@@ -73,7 +107,7 @@
 
 ## [0.6.1] - 8.5.2026
 
-## Changed
+### Changed
 - Fix for a bug in expectation value calculation
 
 [https://github.com/FiQCI/fiqci-ems/pull/13](https://github.com/FiQCI/fiqci-ems/pull/13)

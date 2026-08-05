@@ -11,7 +11,7 @@ from mthree.exceptions import M3Error
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV2
 
-from fiqci.ems.mitigators.rem import M3IQM, _balanced_cal_strings
+from fiqci.ems.mitigators.rem import M3IQM
 
 
 def _make_counts_job(counts: dict[str, int]) -> Mock:
@@ -29,46 +29,6 @@ def _make_counts_job(counts: dict[str, int]) -> Mock:
 	mock_job.result.return_value = mock_result
 	mock_job.job_id.return_value = "test-job-id"
 	return mock_job
-
-
-class TestBalancedCalStrings:
-	"""Tests for _balanced_cal_strings function."""
-
-	def test__balanced_cal_strings_single_qubit_generates_correct_strings(self) -> None:
-		"""Test that single qubit generates ['0', '1']."""
-		result = _balanced_cal_strings(1)
-		assert result == ["0", "1"]
-
-	def test__balanced_cal_strings_two_qubits_generates_correct_strings(self) -> None:
-		"""Test that two qubits generate all 4 combinations."""
-		result = _balanced_cal_strings(2)
-		assert result == ["00", "01", "10", "11"]
-
-	def test__balanced_cal_strings_three_qubits_generates_correct_strings(self) -> None:
-		"""Test that three qubits generate all 8 combinations."""
-		result = _balanced_cal_strings(3)
-		assert result == ["000", "001", "010", "011", "100", "101", "110", "111"]
-
-	def test__balanced_cal_strings_zero_qubits_raises_error(self) -> None:
-		"""Test that zero qubits raises ValueError."""
-		with pytest.raises(ValueError, match="Number of qubits must be at least 1"):
-			_balanced_cal_strings(0)
-
-	def test__balanced_cal_strings_negative_qubits_raises_error(self) -> None:
-		"""Test that negative qubits raises ValueError."""
-		with pytest.raises(ValueError, match="Number of qubits must be at least 1"):
-			_balanced_cal_strings(-1)
-
-	def test__balanced_cal_strings_length_is_power_of_two(self) -> None:
-		"""Test that result length is 2^num_qubits."""
-		for num_qubits in [1, 2, 3, 4, 5]:
-			result = _balanced_cal_strings(num_qubits)
-			assert len(result) == 2**num_qubits
-
-	def test__balanced_cal_strings_all_unique(self) -> None:
-		"""Test that all strings are unique."""
-		result = _balanced_cal_strings(4)
-		assert len(result) == len(set(result))
 
 
 class TestM3IQM:
@@ -244,7 +204,6 @@ class TestM3IQM:
 		mock_circuit = Mock(spec=QuantumCircuit)
 		with (
 			patch("mthree.circuits._marg_meas_states", return_value=[mock_circuit]),
-			patch("fiqci.ems.mitigators.rem._balanced_cal_strings", return_value=["00", "01", "10", "11"]),
 			patch("mthree.circuits.balanced_cal_circuits", return_value=[mock_circuit]),
 			patch("mthree.circuits._tensor_meas_states", return_value=[mock_circuit]),
 			patch("mthree.mitigation._job_thread"),
@@ -255,14 +214,6 @@ class TestM3IQM:
 
 class TestIntegration:
 	"""Integration tests for REM module."""
-
-	def test__balanced_cal_strings_used_in_m3iqm_workflow(self) -> None:
-		"""Test that _balanced_cal_strings integrates correctly with M3IQM."""
-		# This tests that the function signature and return type are compatible
-		strings = _balanced_cal_strings(2)
-		assert all(isinstance(s, str) for s in strings)
-		assert all(len(s) == 2 for s in strings)
-		assert all(c in "01" for s in strings for c in s)
 
 	def test_mitigation_reduces_errors_on_bell_state(self) -> None:
 		"""Test that mitigation actually reduces errors on a Bell state.
@@ -492,3 +443,82 @@ class TestCalibrationMaxBatchSize:
 
 		# Should remain unchanged
 		assert m3iqm.system_info["max_circuits"] == original_max_circuits
+
+
+class TestCalsFromFile:
+	"""A malformed calibration file must be reported as M3Error with a usable message.
+
+	``_init_rem`` catches the exception and logs ``str(e)`` verbatim, so the message is the whole
+	explanation the user gets. Reading ``loaded_data["cals"]`` unchecked surfaced ``KeyError('cals')``,
+	which logs as just ``'cals'``.
+	"""
+
+	@pytest.fixture
+	def mitigator(self) -> Iterator[M3IQM]:
+		instance = M3IQM.__new__(M3IQM)
+		instance._thread = None
+		instance._job_error = None  # read by mthree's _faulty_qubit_checker on the success path
+		instance.single_qubit_cals = None
+		instance.cal_timestamp = None
+		instance.cal_shots = None
+		instance._calibrated_qubits = None
+		instance.backend = Mock(spec=BackendV2)
+		yield instance
+
+	def _write(self, tmp_path, content: str) -> str:
+		path = tmp_path / "cals.json"
+		path.write_text(content)
+		return str(path)
+
+	def test_missing_cals_entry_raises_m3error(self, mitigator: M3IQM, tmp_path) -> None:
+		path = self._write(tmp_path, '{"timestamp": 1, "shots": 1000}')
+
+		with pytest.raises(M3Error, match="missing the required 'cals' entry"):
+			mitigator.cals_from_file(path)
+
+	def test_non_object_json_raises_m3error(self, mitigator: M3IQM, tmp_path) -> None:
+		path = self._write(tmp_path, "[1, 2, 3]")
+
+		with pytest.raises(M3Error, match="expected a JSON object"):
+			mitigator.cals_from_file(path)
+
+	def test_unparseable_json_raises_m3error(self, mitigator: M3IQM, tmp_path) -> None:
+		path = self._write(tmp_path, "this is not json")
+
+		with pytest.raises(M3Error, match="could not be parsed as JSON"):
+			mitigator.cals_from_file(path)
+
+	def test_error_messages_name_the_file(self, mitigator: M3IQM, tmp_path) -> None:
+		"""The logged message is all the user sees, so it has to identify the file."""
+		path = self._write(tmp_path, '{"timestamp": 1}')
+
+		with pytest.raises(M3Error) as excinfo:
+			mitigator.cals_from_file(path)
+
+		assert path in str(excinfo.value)
+
+	def test_valid_file_loads(self, mitigator: M3IQM, tmp_path) -> None:
+		# Each entry is a 2x2 assignment matrix; mthree reads cal[0, 0] and cal[0, 1].
+		path = self._write(
+			tmp_path, '{"cals": [[[0.95, 0.05], [0.05, 0.95]], null], "timestamp": 7, "shots": 512, "qubits": [0, 1]}'
+		)
+
+		mitigator.cals_from_file(path, validate_calibration_set=False)
+
+		assert mitigator.cal_timestamp == 7
+		assert mitigator.cal_shots == 512
+		assert mitigator._calibrated_qubits == [0, 1]
+		assert mitigator.single_qubit_cals[1] is None
+		assert np.allclose(mitigator.single_qubit_cals[0], [[0.95, 0.05], [0.05, 0.95]])
+		assert mitigator.faulty_qubits == []
+
+	def test_calibration_in_progress_raises(self, mitigator: M3IQM, tmp_path) -> None:
+		mitigator._thread = threading.Thread(target=lambda: None)
+		path = self._write(tmp_path, '{"cals": []}')
+
+		with pytest.raises(M3Error, match="Calibration currently in progress"):
+			mitigator.cals_from_file(path)
+
+	def test_missing_file_raises_file_not_found(self, mitigator: M3IQM, tmp_path) -> None:
+		with pytest.raises(FileNotFoundError):
+			mitigator.cals_from_file(str(tmp_path / "does-not-exist.json"))
