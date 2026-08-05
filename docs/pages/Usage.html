@@ -415,19 +415,24 @@ Estimator</label><div class="sd-tab-content docutils">
 <p class="rubric"><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator" title="fiqci.ems.FiQCIEstimator"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code></a> - expectation values</p>
 <p>Computes expectation values of Pauli observables directly from circuits:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fiqci.ems</span><span class="w"> </span><span class="kn">import</span> <span class="n">FiQCIEstimator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">transpile_to_IQM</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">qiskit.quantum_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparsePauliOp</span>
 
 <span class="c1"># Using mitigation_level</span>
 <span class="n">estimator</span> <span class="o">=</span> <span class="n">FiQCIEstimator</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calibration_file</span><span class="o">=</span><span class="s2">&quot;cals.json&quot;</span><span class="p">)</span>
 
+<span class="c1"># Transpile for the backend. remove_final_rzs=False is required: the estimator measures in</span>
+<span class="c1"># the X and Y bases, and dropping the final RZ gates changes those expectation values.</span>
+<span class="n">tr_qc</span> <span class="o">=</span> <span class="n">transpile_to_IQM</span><span class="p">(</span><span class="n">qc</span><span class="p">,</span> <span class="n">backend</span><span class="p">,</span> <span class="n">remove_final_rzs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">optimization_level</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
 <span class="c1"># Define observables</span>
 <span class="n">observables</span> <span class="o">=</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_list</span><span class="p">([(</span><span class="s2">&quot;ZZ&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IX&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
 
 <span class="c1"># Map observables to transpiled layout</span>
-<span class="n">device_observables</span> <span class="o">=</span> <span class="n">observables</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+<span class="n">device_observables</span> <span class="o">=</span> <span class="n">observables</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">tr_qc</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
 
 <span class="c1"># Execute the job</span>
-<span class="n">estimator_job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
+<span class="n">estimator_job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
 
 <span class="c1"># Get expectation values</span>
 <span class="n">evs</span> <span class="o">=</span> <span class="n">estimator_job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">()</span>

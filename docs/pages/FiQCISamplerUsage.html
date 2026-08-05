@@ -538,6 +538,10 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sampler</span><span class="o">.</span><span class="n">mitigator_options</span>
 </pre></div>
 </div>
+<p>The returned dictionary is a <strong>copy</strong>, so mutating it does not reconfigure the sampler; use
+<a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.rem" title="fiqci.ems.FiQCISampler.rem"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rem()</span></code></a> / <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.dd" title="fiqci.ems.FiQCISampler.dd"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dd()</span></code></a> /
+<a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCISampler.pauli_twirl" title="fiqci.ems.FiQCISampler.pauli_twirl"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pauli_twirl()</span></code></a> for that, which validate their input. The live <code class="docutils literal notranslate"><span class="pre">M3IQM</span></code>
+mitigator under <code class="docutils literal notranslate"><span class="pre">rem</span></code> is shared by reference rather than copied, since it owns the calibration data.</p>
 </section>
 <section id="counting-circuits">
 <h2>Counting Circuits<a class="headerlink" href="#counting-circuits" title="Link to this heading">#</a></h2>

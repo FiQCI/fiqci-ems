@@ -10,6 +10,7 @@ fiqci.ems.transpiler\_passes.basis\_measurement
    
       get_measurement_settings
       get_obs_subcircuits
+      strip_final_measurements
    
    .. rubric:: Classes
 

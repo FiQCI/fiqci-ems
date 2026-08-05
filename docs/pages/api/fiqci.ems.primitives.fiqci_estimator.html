@@ -427,15 +427,35 @@ eliminating the need for manual post-processing of measurement counts.</p>
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.mitigator_options">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">mitigator_options</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.mitigator_options" title="Link to this definition">#</a></dt>
 <dd><p>Get current mitigator settings.</p>
+<p>The returned dict is a copy, so mutating it does not change the estimator’s configuration;
+use <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.zne"><code class="xref py py-meth docutils literal notranslate"><span class="pre">zne()</span></code></a> / <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.rem" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.rem"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rem()</span></code></a> / <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.dd" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.dd"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dd()</span></code></a> / <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pauli_twirl()</span></code></a>, which validate their input.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.total_circuits_generated">
 <span class="sig-name descname"><span class="pre">total_circuits_generated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_base_circuits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observables</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SparsePauliOp</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">SparsePauliOp</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detailed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.total_circuits_generated" title="Link to this definition">#</a></dt>
 <dd><p>Calculate total circuits generated for a given number of base circuits and observables.</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">scale_factors</span></code> is a per-circuit list of lists, each circuit expands by its own count, so
-the ZNE contribution is the sum of the per-circuit counts (this assumes <code class="docutils literal notranslate"><span class="pre">num_base_circuits</span></code>
-matches the number of per-circuit scale-factor lists).</p>
+<p>The number of measurement-basis circuits depends on the observable, and the number of ZNE
+circuits can depend on the circuit, so the total is summed per circuit/observable pair rather
+than taken from a single multiplier:
+<code class="docutils literal notranslate"><span class="pre">pauli_twirl_multiplier</span> <span class="pre">*</span> <span class="pre">sum(measurement_groups_i</span> <span class="pre">*</span> <span class="pre">scale_factors_i)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_base_circuits</strong> – Number of circuits to be submitted.</p></li>
+<li><p><strong>observables</strong> – A single <code class="docutils literal notranslate"><span class="pre">SparsePauliOp</span></code> used for every circuit, or one per circuit.</p></li>
+<li><p><strong>detailed</strong> – Print the breakdown and return it as a dict instead of just the total.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The total circuit count, or a dict with the breakdown when <code class="docutils literal notranslate"><span class="pre">detailed</span></code> is set. Entries
+that differ between circuits (measurement groups, ZNE multiplier) are reported as a list.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If a list of observables or per-circuit scale factors does not have one entry
+    per base circuit.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -518,8 +538,9 @@ errors are surfaced as the <code class="docutils literal notranslate"><span clas
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl">
-<span class="sig-name descname"><span class="pre">pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">pauli_twirl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_twirls</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gates_to_twirl</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator.pauli_twirl" title="Link to this definition">#</a></dt>
 <dd><p>Configure Pauli twirling settings for the estimator.</p>
+<p><code class="docutils literal notranslate"><span class="pre">seed</span></code> makes the random twirl selection reproducible for a run.</p>
 </dd></dl>
 
 </dd></dl>
@@ -595,7 +616,8 @@ settings), surfaced via <a class="reference internal" href="#fiqci.ems.primitive
 a dict of per-Pauli-term standard errors with keys:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;shot_error&quot;</span></code>: statistical SE of the raw measurement, <code class="docutils literal notranslate"><span class="pre">sqrt((1</span> <span class="pre">-</span> <span class="pre">⟨P⟩²)</span> <span class="pre">/</span> <span class="pre">N)</span></code> per term.
-When ZNE is enabled this is taken at the unfolded (scale 1) point.</p></li>
+When ZNE is enabled this is taken at the unfolded (scale 1) point. With Pauli twirling, <code class="docutils literal notranslate"><span class="pre">N</span></code>
+counts every twirled variant’s shots, not the averaged total.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;zne_extrapolation_error&quot;</span></code>: SE of the extrapolated value, the per-scale shot errors
 propagated through the (linear) extrapolator; <code class="docutils literal notranslate"><span class="pre">None</span></code> when ZNE is disabled, or when a
 user-defined extrapolation callable reports no standard errors.</p></li>

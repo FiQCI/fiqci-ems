@@ -346,7 +346,10 @@
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-zero-noise-extrapolation">What is Zero Noise Extrapolation?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#circuit-folding-methods">Circuit Folding Methods</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arbitrary-scale-factors">Arbitrary scale factors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arbitrary-scale-factors">Arbitrary scale factors</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#when-folding-cannot-separate-the-scale-factors">When folding cannot separate the scale factors</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-circuit-scale-factors">Per-circuit scale factors</a></li>
 </ul>
 </li>
@@ -422,7 +425,25 @@
 </pre></div>
 </div>
 <p>Both accessors return a list of lists (one inner list per circuit/observable pair) and take an optional pair index. Pass a <code class="docutils literal notranslate"><span class="pre">seed</span></code> to make the random gate sampling reproducible.</p>
+<section id="when-folding-cannot-separate-the-scale-factors">
+<h4>When folding cannot separate the scale factors<a class="headerlink" href="#when-folding-cannot-separate-the-scale-factors" title="Link to this heading">#</a></h4>
+<p>Since folding is discrete, a circuit with few foldable gates can collapse several <em>distinct</em> requested scale factors onto the same achieved value. Extrapolation is then fitting fewer distinct x-values than it has points, which produces an unreliable fit — or, if every scale collapses to a single value, <code class="docutils literal notranslate"><span class="pre">nan</span></code>/<code class="docutils literal notranslate"><span class="pre">inf</span></code> expectation values. The most common cause is local folding on a circuit with <strong>no two-qubit gates at all</strong>, which cannot be folded locally, so every requested scale becomes 1.0.</p>
+<p>The estimator cannot detect this before building the circuits, so it warns at <code class="docutils literal notranslate"><span class="pre">run</span></code> — after submission but before any results are fetched, so the run is still cancellable via the returned job handle:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span>     <span class="c1"># turn the warning into an exception if you prefer</span>
+    <span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">circuits</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">observables</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Two distinct warnings are issued per circuit/observable pair:</p>
+<ul class="simple">
+<li><p><em>every</em> requested scale collapsed onto one achieved value — no extrapolation is possible and the returned values will be meaningless. Cancel the job and either switch to <code class="docutils literal notranslate"><span class="pre">folding_method=&quot;global&quot;</span></code> (which folds single-qubit gates too), widen the scale factors, or disable ZNE.</p></li>
+<li><p><em>some</em> scales collapsed — the fit uses duplicated points and may be unreliable. Widen the scale factors if that is not intended.</p></li>
+</ul>
+<p>Check <code class="docutils literal notranslate"><span class="pre">job.achieved_scale_factors()</span></code> to see exactly which values collapsed.</p>
 <p>The returned job also carries <code class="docutils literal notranslate"><span class="pre">job.mitigator_options</span></code>, a snapshot of the full ZNE configuration (folding/extrapolation settings) in effect at submission, merged with the underlying backend mitigation settings. Unlike <code class="docutils literal notranslate"><span class="pre">estimator.mitigator_options</span></code>, this snapshot is frozen and reports what the run actually used even if you reconfigure the estimator afterwards.</p>
+</section>
 </section>
 <section id="per-circuit-scale-factors">
 <h3>Per-circuit scale factors<a class="headerlink" href="#per-circuit-scale-factors" title="Link to this heading">#</a></h3>
@@ -484,7 +505,7 @@
 <span class="n">job</span><span class="o">.</span><span class="n">standard_errors</span><span class="p">(</span><span class="mi">0</span><span class="p">)[</span><span class="s2">&quot;zne_extrapolation_error&quot;</span><span class="p">]</span>  <span class="c1"># the errors the callable returned</span>
 </pre></div>
 </div>
-<p>The returned <code class="docutils literal notranslate"><span class="pre">standard_errors</span></code> must have one entry per expectation value; a length mismatch raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. The values are surfaced unchanged as the <code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code> and <code class="docutils literal notranslate"><span class="pre">total</span></code> keys of <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a>. Callables that take no <code class="docutils literal notranslate"><span class="pre">sigmas</span></code> argument, or return only values, leave both keys <code class="docutils literal notranslate"><span class="pre">None</span></code> — <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> is still measured and reported. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. <code class="docutils literal notranslate"><span class="pre">extrapolation_method=richardson_extrapolation</span></code>) and their propagated errors come through as usual.</p>
+<p>The returned <code class="docutils literal notranslate"><span class="pre">standard_errors</span></code> must have one entry per expectation value; a length mismatch raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. The values are surfaced unchanged as the <code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code> and <code class="docutils literal notranslate"><span class="pre">total</span></code> keys of <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a>. Callables that take no <code class="docutils literal notranslate"><span class="pre">sigmas</span></code> argument, or return only values, leave both keys <code class="docutils literal notranslate"><span class="pre">None</span></code> — <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> is still measured and reported. A callable may also return <code class="docutils literal notranslate"><span class="pre">(values,</span> <span class="pre">None)</span></code> to report values without standard errors, which is treated the same as returning the values alone. Anything else — a return value that cannot be read as a sequence of floats — raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> naming what was returned. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. <code class="docutils literal notranslate"><span class="pre">extrapolation_method=richardson_extrapolation</span></code>) and their propagated errors come through as usual.</p>
 </section>
 </section>
 </section>
@@ -539,27 +560,22 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5]</span></code></p></td>
 <td><p>Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scale_factors</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">list[float]</span> <span class="pre">|</span> <span class="pre">list[list[float]]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">3,</span> <span class="pre">5]</span></code></p></td>
-<td><p>Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">folding_method</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">folding_method</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;local&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;global&quot;</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_method</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_method</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span> <span class="pre">|</span> <span class="pre">Callable</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;exponential&quot;</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&quot;exponential&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;richardson&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;polynomial&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>, or a custom callable <code class="docutils literal notranslate"><span class="pre">fn(expectation_values,</span> <span class="pre">scale_factors[,</span> <span class="pre">sigmas])</span> <span class="pre">-&gt;</span> <span class="pre">list[float]</span> <span class="pre">|</span> <span class="pre">tuple[list[float],</span> <span class="pre">list[float]]</span></code> (see <a class="reference internal" href="#custom-extrapolation-functions">Custom extrapolation functions</a>).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_degree</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">extrapolation_degree</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Polynomial degree (only for <code class="docutils literal notranslate"><span class="pre">&quot;polynomial&quot;</span></code> extrapolation).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p>Seed for the random gate sampling used to approximate non-odd-integer scale factors.</p></td>
@@ -650,7 +666,10 @@
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-zero-noise-extrapolation">What is Zero Noise Extrapolation?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#circuit-folding-methods">Circuit Folding Methods</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arbitrary-scale-factors">Arbitrary scale factors</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arbitrary-scale-factors">Arbitrary scale factors</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#when-folding-cannot-separate-the-scale-factors">When folding cannot separate the scale factors</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#per-circuit-scale-factors">Per-circuit scale factors</a></li>
 </ul>
 </li>

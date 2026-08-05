@@ -17,6 +17,27 @@ Initialize the estimator with an IQM backend, mitigation level, and optional par
 
 For more details see the API reference documentation for :class:`FiQCIEstimator`.
 
+Transpile the circuit with :func:`~iqm.qiskit_iqm.transpile_to_IQM` and map the observables onto the
+transpiled circuit's layout. ``remove_final_rzs=False`` is required: the estimator measures in the X
+and Y bases, and dropping the final RZ gates changes those expectation values.
+
+.. code-block:: python
+
+   from iqm.qiskit_iqm import transpile_to_IQM
+   from qiskit.quantum_info import SparsePauliOp
+
+   tr_qc = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
+
+   observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
+   device_observables = observables.apply_layout(tr_qc.layout)
+
+The circuit must not end in measurements. The estimator appends its own measurement basis, and
+``transpile_to_IQM`` drops the terminal RZ frame of a circuit it sees measurements on even with
+``remove_final_rzs=False``, which flips the X and Y expectation values. ``run()`` raises
+``ValueError`` for such a circuit. Mid-circuit measurements are supported.
+
+The examples below use ``tr_qc`` and ``device_observables``.
+
 Mitigation Levels
 -----------------
 
@@ -209,6 +230,12 @@ Use the :attr:`~fiqci.ems.FiQCIEstimator.mitigator_options` property to view cur
 
    estimator.mitigator_options
 
+The returned dictionary is a **copy**, so mutating it does not reconfigure the estimator; use
+:meth:`~fiqci.ems.FiQCIEstimator.zne` / :meth:`~fiqci.ems.FiQCIEstimator.rem` /
+:meth:`~fiqci.ems.FiQCIEstimator.dd` / :meth:`~fiqci.ems.FiQCIEstimator.pauli_twirl` for that, which
+validate their input. The live ``M3IQM`` mitigator under ``rem`` is shared by reference rather than
+copied, since it owns the calibration data.
+
 Counting Circuits
 -----------------
 
@@ -227,7 +254,7 @@ Running Circuits
 
 .. code-block:: python
 
-   job = estimator.run(qc_transpiled, observables=device_observables, shots=2048, max_batch_size=100)
+   job = estimator.run(tr_qc, observables=device_observables, shots=2048, max_batch_size=100)
 
 ``run`` returns **immediately** with a :class:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob` handle without waiting for results. Polling the underlying job works right away (``job.status()``, ``job.job_ids()``); the expectation values are computed the first time you call ``expectation_values()`` / ``raw_expectation_values()``, and cached.
 
@@ -285,7 +312,7 @@ Standard Errors
 
 .. code-block:: python
 
-   job = estimator.run(qc_transpiled, observables=device_observables, shots=2048)
+   job = estimator.run(tr_qc, observables=device_observables, shots=2048)
 
    job.expectation_values(0)   # e.g. [0.92, -0.01, ...]
    job.standard_errors(0)      # {"shot_error": [...], "zne_extrapolation_error": ..., "total": [...]}

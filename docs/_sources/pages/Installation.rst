@@ -11,6 +11,14 @@ Installation
 
 Requires Python 3.11 or 3.12.
 
+The example notebooks also need ``matplotlib``, which Qiskit ships only as an optional extra:
+
+.. code-block:: bash
+
+    uv pip install matplotlib
+    # or
+    uv add matplotlib
+
 Verifying the installation
 --------------------------
 

@@ -385,6 +385,23 @@
 </pre></div>
 </div>
 <p>For more details see the API reference documentation for <code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code>.</p>
+<p>Transpile the circuit with <code class="xref py py-func docutils literal notranslate"><span class="pre">transpile_to_IQM()</span></code> and map the observables onto the
+transpiled circuit’s layout. <code class="docutils literal notranslate"><span class="pre">remove_final_rzs=False</span></code> is required: the estimator measures in the X
+and Y bases, and dropping the final RZ gates changes those expectation values.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">transpile_to_IQM</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">qiskit.quantum_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparsePauliOp</span>
+
+<span class="n">tr_qc</span> <span class="o">=</span> <span class="n">transpile_to_IQM</span><span class="p">(</span><span class="n">qc</span><span class="p">,</span> <span class="n">backend</span><span class="p">,</span> <span class="n">remove_final_rzs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">optimization_level</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="n">observables</span> <span class="o">=</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_list</span><span class="p">([(</span><span class="s2">&quot;ZZ&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IX&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+<span class="n">device_observables</span> <span class="o">=</span> <span class="n">observables</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">tr_qc</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The circuit must not end in measurements. The estimator appends its own measurement basis, and
+<code class="docutils literal notranslate"><span class="pre">transpile_to_IQM</span></code> drops the terminal RZ frame of a circuit it sees measurements on even with
+<code class="docutils literal notranslate"><span class="pre">remove_final_rzs=False</span></code>, which flips the X and Y expectation values. <code class="docutils literal notranslate"><span class="pre">run()</span></code> raises
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for such a circuit. Mid-circuit measurements are supported.</p>
+<p>The examples below use <code class="docutils literal notranslate"><span class="pre">tr_qc</span></code> and <code class="docutils literal notranslate"><span class="pre">device_observables</span></code>.</p>
 </section>
 <section id="mitigation-levels">
 <h2>Mitigation Levels<a class="headerlink" href="#mitigation-levels" title="Link to this heading">#</a></h2>
@@ -599,6 +616,11 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">mitigator_options</span>
 </pre></div>
 </div>
+<p>The returned dictionary is a <strong>copy</strong>, so mutating it does not reconfigure the estimator; use
+<a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.zne" title="fiqci.ems.FiQCIEstimator.zne"><code class="xref py py-meth docutils literal notranslate"><span class="pre">zne()</span></code></a> / <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.rem" title="fiqci.ems.FiQCIEstimator.rem"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rem()</span></code></a> /
+<a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.dd" title="fiqci.ems.FiQCIEstimator.dd"><code class="xref py py-meth docutils literal notranslate"><span class="pre">dd()</span></code></a> / <a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.pauli_twirl" title="fiqci.ems.FiQCIEstimator.pauli_twirl"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pauli_twirl()</span></code></a> for that, which
+validate their input. The live <code class="docutils literal notranslate"><span class="pre">M3IQM</span></code> mitigator under <code class="docutils literal notranslate"><span class="pre">rem</span></code> is shared by reference rather than
+copied, since it owns the calibration data.</p>
 </section>
 <section id="counting-circuits">
 <h2>Counting Circuits<a class="headerlink" href="#counting-circuits" title="Link to this heading">#</a></h2>
@@ -611,7 +633,7 @@
 <section id="running-circuits">
 <h2>Running Circuits<a class="headerlink" href="#running-circuits" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="api/fiqci.ems.html#fiqci.ems.FiQCIEstimator.run" title="fiqci.ems.FiQCIEstimator.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a> accepts a <code class="docutils literal notranslate"><span class="pre">max_batch_size</span></code> parameter (default <code class="docutils literal notranslate"><span class="pre">100</span></code>) that controls how many circuits are sent to the backend in a single job. All measurement-basis subcircuits across every circuit/observable pair (and every ZNE scale factor) are flattened and split into batches of this size, then re-combined transparently.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span> <span class="n">max_batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span> <span class="n">max_batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">run</span></code> returns <strong>immediately</strong> with a <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimatorJob</span></code></a> handle without waiting for results. Polling the underlying job works right away (<code class="docutils literal notranslate"><span class="pre">job.status()</span></code>, <code class="docutils literal notranslate"><span class="pre">job.job_ids()</span></code>); the expectation values are computed the first time you call <code class="docutils literal notranslate"><span class="pre">expectation_values()</span></code> / <code class="docutils literal notranslate"><span class="pre">raw_expectation_values()</span></code>, and cached.</p>
@@ -673,7 +695,7 @@
 <section id="standard-errors">
 <h3>Standard Errors<a class="headerlink" href="#standard-errors" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a> reports the uncertainty of each expectation value, computed lazily and cached alongside the values. It mirrors the shape of <code class="docutils literal notranslate"><span class="pre">expectation_values</span></code>: one entry per circuit/observable pair, each a dict of per-Pauli-term standard errors.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">qc_transpiled</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
 
 <span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># e.g. [0.92, -0.01, ...]</span>
 <span class="n">job</span><span class="o">.</span><span class="n">standard_errors</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>      <span class="c1"># {&quot;shot_error&quot;: [...], &quot;zne_extrapolation_error&quot;: ..., &quot;total&quot;: [...]}</span>
