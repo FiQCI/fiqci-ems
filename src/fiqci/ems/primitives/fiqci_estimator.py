@@ -345,6 +345,12 @@ class FiQCIEstimator:
 			# afterwards would count those rotations, so an X/Y group would report a different
 			# foldable-gate count (and so a different achieved scale) than a Z group of the same pair.
 			base_circuit = strip_final_measurements(circuit)
+			if circuit.count_ops().get("measure", 0) != base_circuit.count_ops().get("measure", 0):
+				raise ValueError(
+					f"Circuit {i} ends in measurement(s); FiQCIEstimator appends its own measurement basis. "
+					"A circuit transpiled with final measurements has had its terminal RZ frame removed, "
+					"which flips X and Y expectation values. Pass the unmeasured circuit."
+				)
 			scaled_circuits = [base_circuit]
 
 			if self._zne["enabled"]:
