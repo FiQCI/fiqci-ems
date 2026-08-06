@@ -1,5 +1,8 @@
 ## [WIP] [1.0.1] 6.8.2026
 
+Changes to enable EMS usage on IQM star based devices.
+
+### Changed
 - ZNE now works on devices with computational resonators. Both folding methods previously raised `CircuitError: inverse() not implemented for move` on any circuit transpiled for a resonator device, making estimator mitigation level 3 unusable there
 - local folding leaves MOVE gates alone unless `fold_gates` names `"move"` explicitly, and MOVE no longer counts towards the foldable-gate total used for the achieved scale factors. Global folding inverts the whole circuit and so still folds MOVE
 - Pauli twirling now works on devices with computational resonators. A resonator accepts no single-qubit gates, so the resonator half of each twirl pair is commuted out of the MOVE sandwich onto the qubit whose state the resonator is holding: `I`/`Z` pass through freely, `X`/`Y` pick up a `Z` on the far qubit of every gate they cross. Previously such gates could not be twirled at all
