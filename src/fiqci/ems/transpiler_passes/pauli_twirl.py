@@ -3,8 +3,9 @@ import warnings
 
 from qiskit import QuantumCircuit
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.circuit import QuantumRegister, Gate, StandardEquivalenceLibrary
-from qiskit.circuit.library import CZGate
+from qiskit.circuit import Qubit, QuantumRegister, Gate, StandardEquivalenceLibrary
+from qiskit.circuit.library import CZGate, XGate, YGate, ZGate
+from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler.passes import BasisTranslator, Decompose, Optimize1qGatesDecomposition
@@ -15,7 +16,8 @@ from iqm.qiskit_iqm.move_gate import MoveGate
 
 import numpy as np
 
-from collections.abc import Iterable
+from collections import defaultdict
+from collections.abc import Callable, Iterable
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -23,6 +25,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 # (``Operator(MoveGate())`` raises), so it can be neither twirled nor translated to the backend's
 # Qiskit target basis, which does not list it. It is passed through untouched.
 _MOVE_GATE_NAME = MoveGate().name
+
+_PAULI_GATES: dict[str, Callable[[], Gate]] = {"X": XGate, "Y": YGate, "Z": ZGate}
 
 # Module-level cache: gate name -> list of (pauli_left, pauli_right) pairs.
 # Computed once per gate type and reused across all PauliTwirl instances.
@@ -44,9 +48,7 @@ def _get_twirl_set(gate: Gate) -> list:
 class PauliTwirl(TransformationPass):
 	"""Add Pauli twirls to two-qubit gates."""
 
-	def __init__(
-		self, gates_to_twirl: Iterable[Gate] | None = None, seed=None, skip_wires: Iterable[int] | None = None
-	):
+	def __init__(self, gates_to_twirl: Iterable[Gate] | None = None, seed=None):
 		"""
 		Args:
 		    gates_to_twirl: Gates to twirl. The default behavior is to twirl all
@@ -54,10 +56,6 @@ class PauliTwirl(TransformationPass):
 		    seed: Seed or numpy Generator for the random twirl selection. Passing an existing
 		        Generator shares its state (and is returned unchanged by ``np.random.default_rng``),
 		        so a single Generator can drive many twirls reproducibly.
-		    skip_wires: Circuit qubit indices that must not receive twirling gates. Twirling wraps a
-		        gate in single-qubit Paulis, so a gate acting on a computational resonator cannot be
-		        twirled: the resonator accepts no single-qubit gates. Gates touching these wires are
-		        left untouched.
 		"""
 		if gates_to_twirl is None:
 			gates_to_twirl = [CZGate()]
@@ -73,24 +71,25 @@ class PauliTwirl(TransformationPass):
 		self.twirl_set = {gate.name: _get_twirl_set(gate) for gate in self.gates_to_twirl}
 		self._twirling_gate_classes = tuple(gate.base_class for gate in self.gates_to_twirl)
 		self._rng = np.random.default_rng(seed)
-		self._skip_wires = frozenset(skip_wires) if skip_wires is not None else frozenset()
 		#: Number of gates twirled by the most recent :meth:`run`.
 		self.twirled_gate_count = 0
 		super().__init__()
 
+	def _draw_twirl_pair(self, gate_name: str) -> tuple:
+		twirl_set = self.twirl_set[gate_name]
+		return twirl_set[self._rng.integers(0, len(twirl_set))]
+
 	def run(self, dag: DAGCircuit) -> DAGCircuit:
-		# collect all nodes in DAG and proceed if it is to be twirled
 		self.twirled_gate_count = 0
+		if dag.named_nodes(_MOVE_GATE_NAME):
+			return self._twirl_through_resonators(dag)
+
+		# collect all nodes in DAG and proceed if it is to be twirled
 		for node in dag.op_nodes():
 			if not isinstance(node.op, self._twirling_gate_classes):
 				continue
 
-			if self._skip_wires and any(dag.find_bit(qubit).index in self._skip_wires for qubit in node.qargs):
-				continue
-
-			# random integer to select Pauli twirl pair
-			pauli_index = self._rng.integers(0, len(self.twirl_set[node.op.name]))
-			twirl_pair = self.twirl_set[node.op.name][pauli_index]
+			twirl_pair = self._draw_twirl_pair(node.op.name)
 
 			# instantiate mini_dag and attach quantum register
 			mini_dag = DAGCircuit()
@@ -108,33 +107,122 @@ class PauliTwirl(TransformationPass):
 
 		return dag
 
+	def _find_move_sandwiches(self, circuit: QuantumCircuit, resonators: set[Qubit]) -> list[dict]:
+		"""Locate each MOVE pair and the twirlable gates it encloses.
 
-def _resonator_wires(backend: IQMBackendBase | None, circuits: list[QuantumCircuit]) -> frozenset[int]:
-	"""Circuit qubit indices that are computational resonators rather than qubits.
+		A sandwich is usable only if every operation on the resonator wire between the two MOVEs is a
+		gate we know how to commute a Pauli through, i.e. one of ``gates_to_twirl``. Anything else
+		(another two-qubit gate, a stray single-qubit gate) disqualifies the sandwich and its gates
+		are left untwirled rather than guessed at.
+		"""
+		sandwiches: list[dict] = []
+		for resonator in resonators:
+			opened_at: int | None = None
+			moved_qubit: Qubit | None = None
+			enclosed: list[tuple[int, Qubit]] = []
+			usable = True
+			for index, instruction in enumerate(circuit.data):
+				if resonator not in instruction.qubits:
+					continue
+				name = instruction.operation.name
+				if name == _MOVE_GATE_NAME:
+					if opened_at is None:
+						partners = [qubit for qubit in instruction.qubits if qubit is not resonator]
+						opened_at, moved_qubit, enclosed, usable = index, partners[0] if partners else None, [], True
+					else:
+						if usable and enclosed and moved_qubit is not None:
+							sandwiches.append(
+								{"open": opened_at, "close": index, "moved": moved_qubit, "gates": enclosed}
+							)
+						opened_at = None
+				elif opened_at is None or name == "barrier":
+					continue
+				elif isinstance(instruction.operation, self._twirling_gate_classes) and len(instruction.qubits) == 2:
+					partners = [qubit for qubit in instruction.qubits if qubit is not resonator]
+					enclosed.append((index, partners[0]))
+				else:
+					usable = False
+		return sandwiches
 
-	After MOVE routing a resonator occupies a wire of the circuit, and two-qubit gates act on
-	``(qubit, resonator)`` pairs. Such gates cannot be twirled, because a resonator accepts no
-	single-qubit gates. Returns an empty set for backends without resonators.
-	"""
-	architecture = getattr(backend, "architecture", None)
-	declared = getattr(architecture, "computational_resonators", None)
-	# Duck-typed and mocked backends may expose anything here, so only trust a real collection.
-	if not isinstance(declared, (list, tuple, set, frozenset)):
-		return frozenset()
-	resonator_names = {name for name in declared if isinstance(name, str)}
-	if not resonator_names:
-		return frozenset()
+	def _twirl_through_resonators(self, dag: DAGCircuit) -> DAGCircuit:
+		"""Twirl a MOVE-routed circuit by propagating resonator-side Paulis out of the sandwich.
 
-	width = max((circuit.num_qubits for circuit in circuits), default=0)
-	wires = set()
-	for index in range(width):
-		try:
-			name = backend.index_to_qubit_name(index)  # type: ignore[union-attr]
-		except Exception:  # pragma: no cover - defensive: index outside the backend's mapping
-			continue
-		if name in resonator_names:
-			wires.add(index)
-	return frozenset(wires)
+		A resonator holds the state of the qubit that was moved into it, so a Pauli applied to the
+		resonator is the same Pauli applied to that qubit before the MOVE (or after the closing MOVE
+		for the trailing half of the pair). Getting it there means commuting it past the other gates
+		of the sandwich: ``I``/``Z`` pass freely, while ``X``/``Y`` pick up a ``Z`` on the far qubit of
+		every gate they cross. The qubit half of each twirl pair stays where it always was, next to
+		the gate.
+		"""
+		circuit = dag_to_circuit(dag)
+		# IQM requires MOVE to be applied as [qubit, resonator], so the circuit itself identifies the
+		# resonator wires. Deriving them here rather than from the backend's component list avoids
+		# having to map circuit wires to physical qubits, which only agree when the layout is trivial.
+		resonators = {
+			instruction.qubits[1]
+			for instruction in circuit.data
+			if instruction.operation.name == _MOVE_GATE_NAME and len(instruction.qubits) == 2
+		}
+
+		enclosed_at: dict[int, tuple[dict, int]] = {}
+		for sandwich in self._find_move_sandwiches(circuit, resonators):
+			for position, (index, _partner) in enumerate(sandwich["gates"]):
+				enclosed_at[index] = (sandwich, position)
+
+		# Paulis to emit around instruction i, keyed by the index of the instruction they attach to.
+		before: dict[int, list[tuple[Qubit, str]]] = defaultdict(list)
+		after: dict[int, list[tuple[Qubit, str]]] = defaultdict(list)
+
+		for index, instruction in enumerate(circuit.data):
+			if not isinstance(instruction.operation, self._twirling_gate_classes):
+				continue
+			touches_resonator = any(qubit in resonators for qubit in instruction.qubits)
+			if touches_resonator and index not in enclosed_at:
+				continue  # nowhere safe to put the resonator-side Paulis; leave the gate alone
+
+			left, right = self._draw_twirl_pair(instruction.operation.name)
+			# Qiskit Pauli labels are little-endian, so the last character belongs to qargs[0].
+			left_labels = {instruction.qubits[0]: left.to_label()[-1], instruction.qubits[1]: left.to_label()[-2]}
+			right_labels = {instruction.qubits[0]: right.to_label()[-1], instruction.qubits[1]: right.to_label()[-2]}
+
+			if not touches_resonator:
+				for qubit in instruction.qubits:
+					before[index].append((qubit, left_labels[qubit]))
+					after[index].append((qubit, right_labels[qubit]))
+				self.twirled_gate_count += 1
+				continue
+
+			sandwich, position = enclosed_at[index]
+			resonator = next(qubit for qubit in instruction.qubits if qubit in resonators)
+			partner = next(qubit for qubit in instruction.qubits if qubit is not resonator)
+			before[index].append((partner, left_labels[partner]))
+			after[index].append((partner, right_labels[partner]))
+
+			# The left Pauli travels backwards to the opening MOVE, the right one forwards to the
+			# closing MOVE, each landing on the moved qubit just outside the sandwich.
+			left_resonator, right_resonator = left_labels[resonator], right_labels[resonator]
+			if left_resonator != "I":
+				before[sandwich["open"]].append((sandwich["moved"], left_resonator))
+				if left_resonator in ("X", "Y"):
+					for crossed_index, crossed_partner in sandwich["gates"][:position]:
+						before[crossed_index].append((crossed_partner, "Z"))
+			if right_resonator != "I":
+				after[sandwich["close"]].append((sandwich["moved"], right_resonator))
+				if right_resonator in ("X", "Y"):
+					for crossed_index, crossed_partner in sandwich["gates"][position + 1 :]:
+						after[crossed_index].append((crossed_partner, "Z"))
+			self.twirled_gate_count += 1
+
+		twirled = circuit.copy_empty_like()
+		for index, instruction in enumerate(circuit.data):
+			for qubit, label in before[index]:
+				if label != "I":
+					twirled.append(_PAULI_GATES[label](), [qubit])
+			twirled.append(instruction)
+			for qubit, label in after[index]:
+				if label != "I":
+					twirled.append(_PAULI_GATES[label](), [qubit])
+		return circuit_to_dag(twirled)
 
 
 def get_twirled_circuits(
@@ -163,7 +251,7 @@ def get_twirled_circuits(
 	twirled_circuits = []
 
 	# One pass instance for every circuit and twirl, so its Generator advances across them all.
-	twirl_pass = PauliTwirl(gates_to_twirl=gates_to_twirl, seed=seed, skip_wires=_resonator_wires(backend, circuits))
+	twirl_pass = PauliTwirl(gates_to_twirl=gates_to_twirl, seed=seed)
 
 	if backend is not None:
 		names = {getattr(i[0], "name", None) for i in backend.target.instructions}
@@ -204,8 +292,8 @@ def get_twirled_circuits(
 			f"Pauli twirling matched no gates, so {num_twirls} extra circuit(s) per input will be "
 			"submitted with no mitigation applied. Either the circuit contains none of the gates "
 			f"being twirled ({[gate.name for gate in twirl_pass.gates_to_twirl]}), or every candidate "
-			"gate acts on a computational resonator, which cannot be twirled. Disable Pauli twirling "
-			"to avoid spending the extra shots."
+			"gate sits in a MOVE sandwich that also holds operations a twirl Pauli cannot be commuted "
+			"through. Disable Pauli twirling to avoid spending the extra shots."
 		)
 
 	return twirled_circuits
