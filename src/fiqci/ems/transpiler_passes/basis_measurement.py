@@ -29,10 +29,25 @@ class ModifyMeasurementBasis(TransformationPass):
 		self.ops = ops
 		super().__init__()
 
+	@staticmethod
+	def _unique_creg_name(dag: DAGCircuit, base: str = "meas") -> str:
+		"""First unused ``meas``, ``meas1``, … name, since ``add_creg`` rejects a duplicate."""
+		existing = set(dag.cregs)
+		if base not in existing:
+			return base
+		suffix = 1
+		while f"{base}{suffix}" in existing:
+			suffix += 1
+		return f"{base}{suffix}"
+
 	def run(self, dag: DAGCircuit) -> DAGCircuit:
 		cloned_dag = deepcopy(dag)
 
-		cloned_dag.add_creg(ClassicalRegister(len(self.measurement_settings[0]), name="meas"))
+		# Added last so its bits are leftmost in the result keys, and measured into directly:
+		# cloned_dag.clbits starts with the input circuit's own bits, so indexing that from 0
+		# would write into the user's register and leave this one empty.
+		meas_reg = ClassicalRegister(len(self.measurement_settings[0]), name=self._unique_creg_name(cloned_dag))
+		cloned_dag.add_creg(meas_reg)
 
 		clbit_index = 0
 
@@ -43,9 +58,7 @@ class ModifyMeasurementBasis(TransformationPass):
 						cloned_dag.apply_operation_back(self.ops["X-meas"], [cloned_dag.qubits[qubit]])
 					else:
 						cloned_dag.apply_operation_back(HGate(), [cloned_dag.qubits[qubit]])
-					cloned_dag.apply_operation_back(
-						Measure(), [cloned_dag.qubits[qubit]], [cloned_dag.clbits[clbit_index]]
-					)
+					cloned_dag.apply_operation_back(Measure(), [cloned_dag.qubits[qubit]], [meas_reg[clbit_index]])
 					clbit_index += 1
 				elif basis == "Y":
 					if self.ops and "Y-meas" in self.ops:
@@ -53,14 +66,10 @@ class ModifyMeasurementBasis(TransformationPass):
 					else:
 						cloned_dag.apply_operation_back(SdgGate(), [cloned_dag.qubits[qubit]])
 						cloned_dag.apply_operation_back(HGate(), [cloned_dag.qubits[qubit]])
-					cloned_dag.apply_operation_back(
-						Measure(), [cloned_dag.qubits[qubit]], [cloned_dag.clbits[clbit_index]]
-					)
+					cloned_dag.apply_operation_back(Measure(), [cloned_dag.qubits[qubit]], [meas_reg[clbit_index]])
 					clbit_index += 1
 				elif basis == "Z":
-					cloned_dag.apply_operation_back(
-						Measure(), [cloned_dag.qubits[qubit]], [cloned_dag.clbits[clbit_index]]
-					)
+					cloned_dag.apply_operation_back(Measure(), [cloned_dag.qubits[qubit]], [meas_reg[clbit_index]])
 					clbit_index += 1
 					# No change needed for Z-basis measurement
 					pass
@@ -68,6 +77,11 @@ class ModifyMeasurementBasis(TransformationPass):
 					raise ValueError(f"Unsupported measurement basis: {basis}")
 
 		return cloned_dag
+
+
+def strip_final_measurements(circuit: QuantumCircuit) -> QuantumCircuit:
+	"""Remove the circuit's trailing measurements, and any register they leave idle."""
+	return PassManager([RemoveFinalMeasurements()]).run(circuit)
 
 
 def get_obs_subcircuits(
@@ -93,13 +107,11 @@ def get_obs_subcircuits(
 
 	pms = [PassManager([ModifyMeasurementBasis([setting], ops)]) for setting in measurement_settings]
 
-	remove_meas_pm = PassManager([RemoveFinalMeasurements()])
-
 	obs_subcircuits = []
 	for pm in pms:
 		pm_circs = {}
 		for ind, subcircuit in enumerate(subcircuits):
-			modified_circuit = pm.run(remove_meas_pm.run(subcircuit)).decompose(
+			modified_circuit = pm.run(strip_final_measurements(subcircuit)).decompose(
 				gates_to_decompose=["X-meas", "Y-meas"]
 			)  # Decompose custom measurement
 			if modified_circuit.num_qubits == 0:

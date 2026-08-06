@@ -23,6 +23,14 @@ def _make_target(num_qubits=5):
 	return target
 
 
+def _make_fiqci_backend_mock() -> Mock:
+	"""A mocked FiQCIBackend carrying the attributes the estimator reads at submission."""
+	backend = Mock()
+	backend.target = _make_target()
+	backend._pauli_twirl = {"enabled": False, "num_twirls": 0}
+	return backend
+
+
 class TestFiQCIEstimator:
 	"""Tests for FiQCIEstimator class."""
 
@@ -80,8 +88,7 @@ class TestFiQCIEstimator:
 		single_observable: SparsePauliOp,
 	) -> None:
 		"""Test that run() delegates to _run()."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
@@ -93,8 +100,7 @@ class TestFiQCIEstimator:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_mismatched_list_lengths_raises_error(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test that mismatched list lengths raise ValueError."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
@@ -110,8 +116,7 @@ class TestFiQCIEstimator:
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
 		"""Test run with a single circuit and single observable."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 500, "11": 500}
@@ -138,8 +143,7 @@ class TestFiQCIEstimator:
 		"""
 
 		def make_backend() -> Mock:
-			backend = Mock()
-			backend.target = _make_target()
+			backend = _make_fiqci_backend_mock()
 			job = Mock()
 			res = Mock()
 			res.get_counts.return_value = {"00": 500, "11": 500}
@@ -166,8 +170,7 @@ class TestFiQCIEstimator:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_list_circuits_single_observable(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with list of circuits and a single observable."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = [{"00": 500, "11": 500}, {"00": 500, "11": 500}]
@@ -190,8 +193,7 @@ class TestFiQCIEstimator:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_paired_lists(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Test run with paired lists of circuits and observables."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = [{"00": 500, "11": 500}, {"00": 500, "11": 500}]
@@ -217,8 +219,7 @@ class TestFiQCIEstimator:
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
 		"""Test that default shots is 2048."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_job = Mock()
 		mock_result = Mock()
 		mock_result.get_counts.return_value = {"00": 1024, "11": 1024}
@@ -264,8 +265,7 @@ class TestEstimatorBatching:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_flattens_pairs_into_single(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Multiple pairs that should be flattened for batching by FiQCIBackend."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend.run.return_value = self._make_job([{"00": 500, "11": 500}] * 3)
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
@@ -285,8 +285,7 @@ class TestEstimatorBatching:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_default_max_batch_size_is_100(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Default max_batch_size is 100; 50 pairs (50 flat circuits) fit in a single batch."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend.run.return_value = self._make_job([{"00": 500, "11": 500}] * 50)
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
@@ -304,8 +303,7 @@ class TestEstimatorBatching:
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
 	def test_run_per_pair_counts_assigned_correctly(self, mock_fiqci_backend_class: Mock, mock_backend: Mock) -> None:
 		"""Counts returned across batches are sliced back to the correct pair using pair_lengths."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		# Two pairs: pair 0 measures Z (all-zero counts -> +1), pair 1 measures Z (all-one counts -> -1)
 		mock_fiqci_backend.run.return_value = self._make_job([{"00": 1000}, {"11": 1000}])
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
@@ -329,8 +327,7 @@ class TestEstimatorBatching:
 		self, mock_fiqci_backend_class: Mock, mock_backend: Mock, mock_circuit: QuantumCircuit
 	) -> None:
 		"""The public run() forwards max_batch_size to _run()."""
-		mock_fiqci_backend = Mock()
-		mock_fiqci_backend.target = _make_target()
+		mock_fiqci_backend = _make_fiqci_backend_mock()
 		mock_fiqci_backend_class.return_value = mock_fiqci_backend
 
 		estimator = FiQCIEstimator(mock_backend)
@@ -606,3 +603,191 @@ class TestFiQCIEstimatorJob:
 		assert collection.status() == "RUNNING"
 		assert collection.job_ids() == ["x", "y"]
 		assert calls == []
+
+
+def _bell() -> QuantumCircuit:
+	qc = QuantumCircuit(2)
+	qc.h(0)
+	qc.cx(0, 1)
+	return qc
+
+
+class TestTotalCircuitsGenerated:
+	"""The advisory count must match what ``run`` actually submits.
+
+	The measurement-group count depends on the observable, so taking it from ``observables[0]`` and
+	applying it to every circuit under-reported whenever the observables differed per circuit.
+	"""
+
+	def _estimator(self, **zne_kwargs):
+		from qiskit_aer import AerSimulator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		if zne_kwargs:
+			estimator.zne(enabled=True, extrapolation_method="linear", **zne_kwargs)
+		return estimator
+
+	def _submitted_count(self, estimator, circuits, observables) -> int:
+		"""How many circuits actually reach the backend."""
+		import warnings
+
+		from qiskit_aer import AerSimulator
+
+		counts: list[int] = []
+		unpatched = AerSimulator.run
+
+		def spy(backend, submitted, **kwargs):
+			counts.append(len(submitted) if isinstance(submitted, list) else 1)
+			return unpatched(backend, submitted, **kwargs)
+
+		with patch.object(AerSimulator, "run", spy), warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			estimator.run(circuits, observables, shots=64).expectation_values(0)
+		return sum(counts)
+
+	def test_single_observable_scales_with_circuit_count(self) -> None:
+		estimator = self._estimator()
+		obs = SparsePauliOp(["ZZ", "XX"])  # two measurement groups
+
+		assert estimator.total_circuits_generated(1, obs) == 2
+		assert estimator.total_circuits_generated(3, obs) == 6
+
+	def test_differing_observables_are_summed_not_multiplied(self) -> None:
+		"""One group for the first pair plus three for the second is 4, not 2 x 1."""
+		estimator = self._estimator()
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])]
+
+		assert estimator.total_circuits_generated(2, observables) == 4
+
+	def test_prediction_matches_submission_for_differing_observables(self) -> None:
+		estimator = self._estimator()
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])]
+
+		predicted = estimator.total_circuits_generated(2, observables)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], observables)
+
+		assert predicted == actual == 4
+
+	def test_prediction_matches_submission_with_nested_scale_factors(self) -> None:
+		estimator = self._estimator(scale_factors=[[1, 3], [1, 3, 5]])
+		obs = SparsePauliOp(["ZZ", "XX"])
+
+		predicted = estimator.total_circuits_generated(2, obs)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], obs)
+
+		assert predicted == actual == 10  # 2 groups * (2 + 3) scales
+
+	def test_pauli_twirl_multiplies_the_total(self) -> None:
+		estimator = self._estimator()
+		estimator.pauli_twirl(True, num_twirls=2, seed=1)
+		observables = [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX"])]
+
+		predicted = estimator.total_circuits_generated(2, observables)
+		actual = self._submitted_count(estimator, [_bell(), _bell()], observables)
+
+		assert predicted == actual == 9  # (1 + 2 groups) * (2 twirls + 1)
+
+	def test_observable_count_mismatch_raises(self) -> None:
+		estimator = self._estimator()
+
+		with pytest.raises(ValueError, match="observable"):
+			estimator.total_circuits_generated(3, [SparsePauliOp(["ZZ"]), SparsePauliOp(["XX"])])
+
+	def test_nested_scale_factor_count_mismatch_raises(self) -> None:
+		estimator = self._estimator(scale_factors=[[1, 3], [1, 3, 5]])
+
+		with pytest.raises(ValueError, match="scale_factors"):
+			estimator.total_circuits_generated(3, SparsePauliOp(["ZZ"]))
+
+	def test_detailed_collapses_uniform_values_and_lists_varying_ones(self) -> None:
+		estimator = self._estimator()
+
+		uniform = estimator.total_circuits_generated(2, SparsePauliOp(["ZZ", "XX"]), detailed=True)
+		assert uniform["measurement_circuits_per_basis"] == 2
+		assert uniform["total_circuits"] == 4
+
+		varying = estimator.total_circuits_generated(
+			2, [SparsePauliOp(["ZZ"]), SparsePauliOp(["ZZ", "XX", "YY"])], detailed=True
+		)
+		assert varying["measurement_circuits_per_basis"] == [1, 3]
+		assert varying["total_circuits"] == 4
+
+
+class TestMitigationLevelValidation:
+	"""All three interfaces reject a bad level the same way, so callers catch one exception type."""
+
+	@pytest.mark.parametrize("level", [-1, 4, 7])
+	def test_estimator_raises_value_error(self, level: int) -> None:
+		from qiskit_aer import AerSimulator
+
+		with pytest.raises(ValueError, match="mitigation_level must be 0-3"):
+			FiQCIEstimator(AerSimulator(), mitigation_level=level)
+
+	def test_all_interfaces_agree(self) -> None:
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems import FiQCIBackend, FiQCISampler
+
+		for cls in (FiQCIBackend, FiQCISampler, FiQCIEstimator):
+			with pytest.raises(ValueError, match="mitigation_level must be 0-3"):
+				cls(AerSimulator(), mitigation_level=7)
+
+	def test_default_shots_match_across_interfaces(self) -> None:
+		"""A user moving between interfaces should not silently change shot count."""
+		import inspect
+
+		from fiqci.ems import FiQCIBackend, FiQCISampler
+
+		defaults = {
+			cls.__name__: inspect.signature(cls.run).parameters["shots"].default
+			for cls in (FiQCIBackend, FiQCISampler, FiQCIEstimator)
+		}
+
+		assert len(set(defaults.values())) == 1, defaults
+
+
+class TestFinalMeasurementRejection:
+	"""A measured circuit transpiled for IQM has lost the RZ frame the X/Y bases depend on."""
+
+	def _estimator(self):
+		from qiskit_aer import AerSimulator
+
+		return FiQCIEstimator(AerSimulator(), mitigation_level=0)
+
+	def test_measure_all_is_rejected(self) -> None:
+		circuit = _bell()
+		circuit.measure_all()
+
+		with pytest.raises(ValueError, match="ends in measurement"):
+			self._estimator().run(circuit, SparsePauliOp(["ZZ"]), shots=64)
+
+	def test_partially_measured_circuit_is_rejected(self) -> None:
+		circuit = QuantumCircuit(2, 1)
+		circuit.h(0)
+		circuit.cx(0, 1)
+		circuit.measure(0, 0)
+
+		with pytest.raises(ValueError, match="ends in measurement"):
+			self._estimator().run(circuit, SparsePauliOp(["ZZ"]), shots=64)
+
+	def test_the_offending_circuit_index_is_reported(self) -> None:
+		measured = _bell()
+		measured.measure_all()
+
+		with pytest.raises(ValueError, match="Circuit 1 ends in measurement"):
+			self._estimator().run([_bell(), measured], SparsePauliOp(["ZZ"]), shots=64)
+
+	def test_mid_circuit_measurement_is_still_accepted(self) -> None:
+		circuit = QuantumCircuit(2, 1)
+		circuit.h(0)
+		circuit.measure(0, 0)
+		circuit.cx(0, 1)
+
+		values = self._estimator().run(circuit, SparsePauliOp(["ZZ"]), shots=1024).expectation_values(0)
+
+		assert values[0] == pytest.approx(1.0, abs=0.05)
+
+	def test_unmeasured_circuit_is_accepted(self) -> None:
+		values = self._estimator().run(_bell(), SparsePauliOp(["ZZ"]), shots=1024).expectation_values(0)
+
+		assert values[0] == pytest.approx(1.0, abs=0.05)

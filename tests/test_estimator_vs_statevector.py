@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from qiskit import QuantumCircuit
+from qiskit import ClassicalRegister, QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp, Statevector
 from qiskit_aer import AerSimulator
 
@@ -102,6 +102,25 @@ def test_standard_errors_match_shot_noise_and_bound_deviation(estimator: FiQCIEs
 		assert abs(got_v - want_v) <= 5 * se + TOL
 
 
+def test_shot_error_counts_every_twirled_variants_shots() -> None:
+	"""Twirled counts are averaged back to `shots`, so N must be scaled by the group size."""
+	num_twirls = 3
+	circuit = _ghz(2)
+	obs = SparsePauliOp(["ZZ", "XX"])
+
+	estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+	estimator.pauli_twirl(enabled=True, num_twirls=num_twirls, seed=0)
+	job = estimator.run(circuit, obs, shots=SHOTS)
+
+	got = job.expectation_values(0)
+	errors = job.standard_errors(0)
+
+	assert got == pytest.approx(_exact(circuit, obs), abs=TOL)
+	for got_v, se in zip(got, errors["shot_error"]):
+		expected_se = np.sqrt(max(0.0, 1.0 - got_v**2) / (SHOTS * (num_twirls + 1)))
+		assert se == pytest.approx(expected_se, rel=1e-6)
+
+
 def test_standard_errors_with_zne_enabled() -> None:
 	"""With ZNE on, shot_error (at scale 1) and a propagated zne_extrapolation_error are reported."""
 	estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
@@ -121,3 +140,64 @@ def test_standard_errors_with_zne_enabled() -> None:
 	# Extrapolation amplifies variance, so the zero-noise SE exceeds the raw scale-1 shot SE.
 	for raw_se, ext_se in zip(errors["shot_error"], errors["zne_extrapolation_error"]):
 		assert ext_se >= raw_se
+
+
+def _bell_with_clbits(num_clbits: int) -> QuantumCircuit:
+	qc = QuantumCircuit(2, num_clbits)
+	qc.h(0)
+	qc.cx(0, 1)
+	return qc
+
+
+def _bell_with_named_meas_register() -> QuantumCircuit:
+	qc = _bell()
+	qc.add_register(ClassicalRegister(2, "meas"))
+	return qc
+
+
+@pytest.mark.parametrize(
+	"name, circuit",
+	[
+		("no-creg", _bell()),
+		("idle-creg-equal-width", _bell_with_clbits(2)),
+		("idle-creg-wider-than-qubits", _bell_with_clbits(5)),
+		("idle-creg-narrower-than-qubits", _bell_with_clbits(1)),
+		("creg-already-named-meas", _bell_with_named_meas_register()),
+	],
+)
+def test_extra_classical_registers_do_not_corrupt_expectation_values(
+	estimator: FiQCIEstimator,
+	name: str,
+	circuit: QuantumCircuit,
+	obs: SparsePauliOp = SparsePauliOp(["ZZ", "IZ", "ZI"]),
+) -> None:
+	"""Classical bits the input circuit already carries must not shift the measured bit positions.
+
+	The basis measurements used to be written into the input circuit's register, leaving the
+	pass's own register all zeros, so every parity read ``+1`` and each observable came back as
+	``1.0`` regardless of the state.
+	"""
+	got = estimator.run(circuit, obs, shots=SHOTS).expectation_values(0)
+	want = _exact(_bell(), obs)
+
+	assert got == pytest.approx(want, abs=TOL), f"{name}: got={got}, want={want}"
+
+
+def test_mid_circuit_measurement_keeps_its_own_result(estimator: FiQCIEstimator) -> None:
+	"""A non-final measurement must survive and still agree with the basis measurement."""
+	qc = QuantumCircuit(2)
+	aux = ClassicalRegister(1, "aux")
+	qc.add_register(aux)
+	qc.h(0)
+	qc.measure(0, aux[0])
+	qc.cx(0, 1)
+
+	# Measuring q0 then copying it onto q1 leaves a 50/50 mix of |00> and |11>.
+	obs = SparsePauliOp(["ZZ", "IZ", "ZI"])
+	job = estimator.run(qc, obs, shots=SHOTS)
+
+	assert job.expectation_values(0) == pytest.approx([1.0, 0.0, 0.0], abs=TOL)
+	# Keys are "<meas bits> <aux bit>"; aux must track the basis measurement, not be overwritten.
+	for key in job.result().get_counts(0):
+		meas_bits, aux_bit = key.split(" ")
+		assert set(meas_bits) == {aux_bit}

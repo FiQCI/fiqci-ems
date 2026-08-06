@@ -1267,3 +1267,129 @@ class TestCustomExtrapolationReturnShapes:
 
 		with pytest.raises(TypeError, match="must return a sequence of floats"):
 			_apply_custom_extrapolation(my_extrapolation, [[0.9], [0.7]], [1.0, 3.0], [[0.01], [0.02]])
+
+
+def _ghz(num_qubits: int) -> QuantumCircuit:
+	qc = QuantumCircuit(num_qubits)
+	qc.h(0)
+	for qubit in range(num_qubits - 1):
+		qc.cx(qubit, qubit + 1)
+	return qc
+
+
+class TestZNEFoldsBeforeBasisRotations:
+	"""Folding runs on the bare circuit, so a pair's achieved scale is basis-independent.
+
+	Global folding counts every non-measurement gate, so folding the finished measurement-basis
+	subcircuits made an X/Y group fold by a different amount than the Z group of the same pair,
+	while a single achieved-scale list (the first group's) was reported and extrapolated against.
+	"""
+
+	def _submitted_gate_counts(self, circuit, obs, scales, folding_method) -> list[int]:
+		"""Non-measurement gate count of every submitted circuit, in submission order.
+
+		The estimator flattens scale-major, so index ``s * num_groups + g`` is scale ``s`` of
+		measurement group ``g``.
+		"""
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		counts: list[int] = []
+		unpatched = AerSimulator.run
+
+		def spy(backend, circuits, **kwargs):
+			for candidate in circuits if isinstance(circuits, list) else [circuits]:
+				counts.append(sum(1 for ins in candidate.data if ins.operation.name not in ("measure", "barrier")))
+			return unpatched(backend, circuits, **kwargs)
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=scales, folding_method=folding_method, extrapolation_method="linear", seed=3
+		)
+		with patch.object(AerSimulator, "run", spy), warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			estimator.run(circuit, obs, shots=64).expectation_values(0)
+		return counts
+
+	@pytest.mark.parametrize("folding_method", ["local", "global"])
+	@pytest.mark.parametrize("scales", [[1, 3, 5], [1, 2, 3.5]])
+	def test_every_group_of_a_pair_shares_one_folded_core(self, folding_method: str, scales: list) -> None:
+		"""Each group's gate count grows by the same amount per scale: one shared folded core."""
+		from qiskit.quantum_info import SparsePauliOp
+
+		obs = SparsePauliOp(["ZZZ", "XXX", "YYY"])  # 3 groups, differing rotation overhead
+		num_groups = 3
+
+		counts = self._submitted_gate_counts(_ghz(3), obs, scales, folding_method)
+		assert len(counts) == num_groups * len(scales)
+
+		# Growth over the unfolded circuit comes purely from the folded core, so it must not
+		# depend on which basis a group measures in.
+		for scale_index in range(len(scales)):
+			growth = {
+				counts[scale_index * num_groups + group] - counts[group]  # vs the same group at scale 1
+				for group in range(num_groups)
+			}
+			assert len(growth) == 1, f"scale index {scale_index}: per-group growth diverged: {growth}"
+
+	def test_achieved_scales_do_not_depend_on_the_observable_bases(self) -> None:
+		"""The same circuit reports the same achieved scales whatever bases the observable needs.
+
+		Both observables have a single measurement group, so the group whose gate count used to be
+		measured differs: all-Z adds no rotations, all-X adds one per qubit.
+		"""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		achieved = []
+		for obs in (SparsePauliOp(["ZZZ"]), SparsePauliOp(["XXX"])):
+			estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+			estimator.zne(enabled=True, scale_factors=[1, 2, 3.5], folding_method="global", seed=3)
+			with warnings.catch_warnings():
+				warnings.simplefilter("ignore")
+				achieved.append(estimator.run(_ghz(3), obs, shots=64).achieved_scale_factors(0))
+
+		# 3 foldable gates in the bare circuit either way.
+		assert np.allclose(achieved[0], achieved[1]), achieved
+		assert np.allclose(achieved[0], [1.0, 1 + 2 * 2 / 3, 3 + 2 * 1 / 3])
+
+	def test_local_folding_achieved_scales_track_two_qubit_gates_only(self) -> None:
+		"""Local folding is unaffected: 3 CX gates, so scale 2 lands on (3 + 2*3)/3 rounding."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(enabled=True, scale_factors=[1, 2, 4], folding_method="local", seed=3)
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			job = estimator.run(_ghz(4), SparsePauliOp(["ZZZZ", "XXXX"]), shots=64)
+
+		# 3 CX gates, and round() is banker's: scale 2 -> round(1.5)=2 folds -> 7/3;
+		# scale 4 -> round(4.5)=4 folds -> 11/3. Basis rotations are single-qubit, so they never count.
+		assert np.allclose(job.achieved_scale_factors(0), [1.0, 7 / 3, 11 / 3])
+
+	@pytest.mark.parametrize("folding_method", ["local", "global"])
+	@pytest.mark.parametrize("scales", [[1, 3, 5], [1, 2, 3.5]])
+	def test_noiseless_values_stay_exact_and_group_aligned(self, folding_method: str, scales: list) -> None:
+		"""Verify the circuit ordering is consistent between `_run` and `_compute`."""
+		from qiskit.quantum_info import SparsePauliOp
+		from qiskit_aer import AerSimulator
+
+		from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator
+
+		estimator = FiQCIEstimator(AerSimulator(), mitigation_level=0)
+		estimator.zne(
+			enabled=True, scale_factors=scales, folding_method=folding_method, extrapolation_method="linear", seed=3
+		)
+		# Distinct values per basis, so a group mix-up cannot pass unnoticed.
+		obs = SparsePauliOp(["ZZ", "XX", "YY"])
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			values = estimator.run(_ghz(2), obs, shots=16384).expectation_values(0)
+
+		assert values == pytest.approx([1.0, 1.0, -1.0], abs=0.05)

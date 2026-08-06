@@ -44,20 +44,9 @@ logging.getLogger('qiskit').setLevel(logging.WARNING)
 Pre-commit hooks will run automatically on `git commit`. To run manually on all files:
 
 ```bash
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
-### Formatting and Linting with Ruff
-
-Format code:
-```bash
-ruff format src/ tests/
-```
-
-Lint and auto-fix issues:
-```bash
-ruff check --fix src/ tests/
-```
 
 ### Type Checking with Pyrefly
 Run type checking:
@@ -67,7 +56,7 @@ uv run pyrefly check
 
 Or if pyrefly is in your PATH:
 ```bash
-pyrefly check
+uv run pyrefly check
 ```
 
 ## Run the Tests

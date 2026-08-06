@@ -7,7 +7,7 @@ from qiskit.circuit import QuantumRegister, Gate, StandardEquivalenceLibrary
 from qiskit.circuit.library import CZGate
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.basepasses import TransformationPass
-from qiskit.transpiler.passes import BasisTranslator, Decompose
+from qiskit.transpiler.passes import BasisTranslator, Decompose, Optimize1qGatesDecomposition
 from qiskit.quantum_info import Operator, pauli_basis
 
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
@@ -15,7 +15,7 @@ from iqm.qiskit_iqm.move_gate import MoveGate
 
 import numpy as np
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class PauliTwirl(TransformationPass):
 	"""Add Pauli twirls to two-qubit gates."""
 
 	def __init__(
-		self, gates_to_twirl: Optional[Iterable[Gate]] = None, seed=None, skip_wires: Optional[Iterable[int]] = None
+		self, gates_to_twirl: Iterable[Gate] | None = None, seed=None, skip_wires: Iterable[int] | None = None
 	):
 		"""
 		Args:
@@ -109,7 +109,7 @@ class PauliTwirl(TransformationPass):
 		return dag
 
 
-def _resonator_wires(backend: Optional[IQMBackendBase], circuits: list[QuantumCircuit]) -> frozenset[int]:
+def _resonator_wires(backend: IQMBackendBase | None, circuits: list[QuantumCircuit]) -> frozenset[int]:
 	"""Circuit qubit indices that are computational resonators rather than qubits.
 
 	After MOVE routing a resonator occupies a wire of the circuit, and two-qubit gates act on
@@ -140,8 +140,8 @@ def _resonator_wires(backend: Optional[IQMBackendBase], circuits: list[QuantumCi
 def get_twirled_circuits(
 	circuits: list[QuantumCircuit],
 	num_twirls: int,
-	gates_to_twirl: Optional[Iterable[Gate]] = None,
-	backend: Optional[IQMBackendBase] = None,
+	gates_to_twirl: Iterable[Gate] | None = None,
+	backend: IQMBackendBase | None = None,
 	seed=None,
 ) -> list[QuantumCircuit]:
 	"""
@@ -179,6 +179,7 @@ def get_twirled_circuits(
 				twirl_pass,
 				Decompose(gates_to_decompose=["pauli"]),
 				BasisTranslator(target_basis=sorted(basis_gates), equivalence_library=StandardEquivalenceLibrary),
+				Optimize1qGatesDecomposition(basis=basis_gates),
 			]
 		)
 	else:

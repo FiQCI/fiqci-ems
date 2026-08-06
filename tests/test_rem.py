@@ -443,3 +443,82 @@ class TestCalibrationMaxBatchSize:
 
 		# Should remain unchanged
 		assert m3iqm.system_info["max_circuits"] == original_max_circuits
+
+
+class TestCalsFromFile:
+	"""A malformed calibration file must be reported as M3Error with a usable message.
+
+	``_init_rem`` catches the exception and logs ``str(e)`` verbatim, so the message is the whole
+	explanation the user gets. Reading ``loaded_data["cals"]`` unchecked surfaced ``KeyError('cals')``,
+	which logs as just ``'cals'``.
+	"""
+
+	@pytest.fixture
+	def mitigator(self) -> Iterator[M3IQM]:
+		instance = M3IQM.__new__(M3IQM)
+		instance._thread = None
+		instance._job_error = None  # read by mthree's _faulty_qubit_checker on the success path
+		instance.single_qubit_cals = None
+		instance.cal_timestamp = None
+		instance.cal_shots = None
+		instance._calibrated_qubits = None
+		instance.backend = Mock(spec=BackendV2)
+		yield instance
+
+	def _write(self, tmp_path, content: str) -> str:
+		path = tmp_path / "cals.json"
+		path.write_text(content)
+		return str(path)
+
+	def test_missing_cals_entry_raises_m3error(self, mitigator: M3IQM, tmp_path) -> None:
+		path = self._write(tmp_path, '{"timestamp": 1, "shots": 1000}')
+
+		with pytest.raises(M3Error, match="missing the required 'cals' entry"):
+			mitigator.cals_from_file(path)
+
+	def test_non_object_json_raises_m3error(self, mitigator: M3IQM, tmp_path) -> None:
+		path = self._write(tmp_path, "[1, 2, 3]")
+
+		with pytest.raises(M3Error, match="expected a JSON object"):
+			mitigator.cals_from_file(path)
+
+	def test_unparseable_json_raises_m3error(self, mitigator: M3IQM, tmp_path) -> None:
+		path = self._write(tmp_path, "this is not json")
+
+		with pytest.raises(M3Error, match="could not be parsed as JSON"):
+			mitigator.cals_from_file(path)
+
+	def test_error_messages_name_the_file(self, mitigator: M3IQM, tmp_path) -> None:
+		"""The logged message is all the user sees, so it has to identify the file."""
+		path = self._write(tmp_path, '{"timestamp": 1}')
+
+		with pytest.raises(M3Error) as excinfo:
+			mitigator.cals_from_file(path)
+
+		assert path in excinfo.value.args[0]
+
+	def test_valid_file_loads(self, mitigator: M3IQM, tmp_path) -> None:
+		# Each entry is a 2x2 assignment matrix; mthree reads cal[0, 0] and cal[0, 1].
+		path = self._write(
+			tmp_path, '{"cals": [[[0.95, 0.05], [0.05, 0.95]], null], "timestamp": 7, "shots": 512, "qubits": [0, 1]}'
+		)
+
+		mitigator.cals_from_file(path, validate_calibration_set=False)
+
+		assert mitigator.cal_timestamp == 7
+		assert mitigator.cal_shots == 512
+		assert mitigator._calibrated_qubits == [0, 1]
+		assert mitigator.single_qubit_cals[1] is None
+		assert np.allclose(mitigator.single_qubit_cals[0], [[0.95, 0.05], [0.05, 0.95]])
+		assert mitigator.faulty_qubits == []
+
+	def test_calibration_in_progress_raises(self, mitigator: M3IQM, tmp_path) -> None:
+		mitigator._thread = threading.Thread(target=lambda: None)
+		path = self._write(tmp_path, '{"cals": []}')
+
+		with pytest.raises(M3Error, match="Calibration currently in progress"):
+			mitigator.cals_from_file(path)
+
+	def test_missing_file_raises_file_not_found(self, mitigator: M3IQM, tmp_path) -> None:
+		with pytest.raises(FileNotFoundError):
+			mitigator.cals_from_file(str(tmp_path / "does-not-exist.json"))
