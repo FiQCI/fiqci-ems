@@ -20,11 +20,33 @@ FiQCI EMS supports two methods for amplifying noise by increasing the effective 
 
 - **Local folding**: Local folding replaces individual two-qubit gates $G$ with $G G G$ (for scale factor 3), $G G G G G$ (for scale factor 5), and so on. Each gate is repeated `scale_factor` times in place.
     - Only two-qubit gates are folded (single-qubit gate errors are typically negligible).
-    - The `fold_gates` parameter can restrict folding to specific gate names. If `None`, all two-qubit gates are folded.
+    - The `fold_gates` parameter can restrict folding to specific gate names. If `None`, all two-qubit gates are folded, except MOVE (see [Devices with computational resonators](#devices-with-computational-resonators)).
 
 - **Global folding**: Global folding appends the entire circuit and its inverse in alternating sequence. For a circuit $C$ with scale factor 3, the result is $C C^\dagger C$, and for scale factor 5: $C C^\dagger C C^\dagger C$.
     - This uniformly amplifies noise across all gates.
     - The `fold_gates` parameter is not applicable and will be ignored if set.
+
+### Devices with computational resonators
+
+On Deneb-class devices, `transpile_to_IQM` routes two-qubit interactions through a computational
+resonator, inserting MOVE gates that transfer a qubit's state into the resonator and back. MOVE is
+handled specially by folding.
+
+Qiskit cannot invert a MOVE gate: it is deliberately defined without a decomposition so the
+transpiler cannot break it apart, which also makes `inverse()` raise. FiQCI EMS substitutes an
+internal self-inverse subclass during folding. This is exact rather than an approximation — MOVE is
+an involution on its invariant subspace, so `MOVE MOVE` is the identity and `MOVE MOVE MOVE` is
+equivalent to a single MOVE. The substituted gate keeps the MOVE name and type, so the circuit still
+passes IQM's MOVE-sandwich validation.
+
+**Local folding does not fold MOVE gates by default.** Folding a MOVE adds extra state transfers but
+does not scale how long the state sits in the resonator, which is where the dominant error is, so the
+noise would not be amplified by the requested scale factor. Only the CZ gates are folded, and MOVE is
+excluded from the foldable-gate count used to compute the achieved scale factors. Pass
+`fold_gates=["move"]` to fold MOVE anyway.
+
+**Global folding always folds MOVE**, since it inverts the whole circuit and cannot hold individual
+gates back. Prefer local folding on resonator devices unless you specifically want MOVE amplified.
 
 ### Arbitrary scale factors
 
@@ -167,7 +189,7 @@ estimator.zne(
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `enabled` | `bool` | - | Enable or disable ZNE. |
-| `fold_gates` | `list[str] \| None` | `None` | Gate names to fold (local folding only). `None` folds all two-qubit gates. |
+| `fold_gates` | `list[str] \| None` | `None` | Gate names to fold (local folding only). `None` folds all two-qubit gates except MOVE. |
 | `scale_factors` | `list[float] \| list[list[float]]` | `[1, 3, 5]` | Real numbers ≥ 1 specifying the noise scale levels (odd integers fold exactly; other values are approximated). At least two are required. May be a list of lists to give each submitted circuit its own scale factors. |
 | `folding_method` | `str` | `"local"` | `"local"` or `"global"`. |
 | `extrapolation_method` | `str \| Callable` | `"exponential"` | `"exponential"`, `"richardson"`, `"polynomial"`, `"linear"`, or a custom callable `fn(expectation_values, scale_factors[, sigmas]) -> list[float] \| tuple[list[float], list[float]]` (see [Custom extrapolation functions](#custom-extrapolation-functions)). |
