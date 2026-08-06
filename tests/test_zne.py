@@ -1393,3 +1393,113 @@ class TestZNEFoldsBeforeBasisRotations:
 			values = estimator.run(_ghz(2), obs, shots=16384).expectation_values(0)
 
 		assert values == pytest.approx([1.0, 1.0, -1.0], abs=0.05)
+
+
+class TestComputationalResonatorFolding:
+	"""Folding circuits that route through a computational resonator (Deneb-class devices)."""
+
+	@pytest.fixture
+	def backend(self):
+		from iqm.qiskit_iqm import IQMFakeDeneb
+
+		return IQMFakeDeneb()
+
+	@pytest.fixture
+	def transpiled(self, backend):
+		from iqm.qiskit_iqm import transpile_to_IQM
+
+		circuit = QuantumCircuit(3)
+		circuit.h(0)
+		circuit.cz(0, 1)
+		circuit.cz(1, 2)
+		circuit.measure_all()
+		transpiled = transpile_to_IQM(circuit, backend)
+		assert transpiled.count_ops()["move"] == 2, "fixture must exercise MOVE gates"
+		return transpiled
+
+	def test_move_gate_cannot_be_inverted_by_qiskit(self) -> None:
+		"""The reason SelfInverseMoveGate exists: plain MoveGate.inverse() raises."""
+		from qiskit.circuit.exceptions import CircuitError
+		from iqm.qiskit_iqm.move_gate import MoveGate
+
+		with pytest.raises(CircuitError):
+			MoveGate().inverse()
+
+	def test_move_unitary_is_an_involution(self) -> None:
+		"""Substituting MOVE for its own inverse is only valid because MOVE squares to the identity."""
+		from iqm.qiskit_iqm.move_gate import MOVE_GATE_UNITARY
+
+		unitary = np.asarray(MOVE_GATE_UNITARY)
+		assert np.allclose(unitary @ unitary, np.eye(len(unitary)))
+
+	def test_self_inverse_move_gate_is_its_own_inverse(self) -> None:
+		from fiqci.ems.transpiler_passes.zne_circuits import SelfInverseMoveGate
+
+		gate = SelfInverseMoveGate()
+		assert isinstance(gate.inverse(), SelfInverseMoveGate)
+
+	def test_self_inverse_move_gate_passes_as_a_move_gate(self) -> None:
+		"""Name and type must survive so IQM serialisation and validation see an ordinary MOVE."""
+		from iqm.qiskit_iqm.move_gate import MoveGate
+		from fiqci.ems.transpiler_passes.zne_circuits import SelfInverseMoveGate
+
+		gate = SelfInverseMoveGate()
+		assert gate.name == MoveGate().name
+		assert isinstance(gate, MoveGate)
+
+	@pytest.mark.parametrize("folding_method", ["local", "global"])
+	@pytest.mark.parametrize("scale", [3, 5])
+	def test_folding_does_not_raise_on_move_circuits(self, transpiled, folding_method: str, scale: int) -> None:
+		"""Regression: both folding methods used to raise CircuitError on any MOVE-routed circuit."""
+		folded = _get_zne_circuits([transpiled], scale_factors=[scale], folding_method=folding_method, seed=1)
+		assert len(folded) == 1
+
+	@pytest.mark.parametrize("folding_method", ["local", "global"])
+	@pytest.mark.parametrize("scale", [1, 3, 5])
+	def test_folded_circuits_pass_iqm_move_validation(
+		self, backend, transpiled, folding_method: str, scale: int
+	) -> None:
+		from iqm.iqm_client import MoveGateValidationMode
+		from iqm.qiskit_iqm.iqm_circuit_validation import validate_circuit
+
+		folded = _get_zne_circuits([transpiled], scale_factors=[scale], folding_method=folding_method, seed=1)[0]
+		folded._layout = transpiled._layout
+		validate_circuit(folded, backend, validate_moves=MoveGateValidationMode.STRICT)
+
+	def test_local_folding_leaves_move_count_untouched(self, transpiled) -> None:
+		"""MOVE is excluded by default, so only the CZ count scales."""
+		for scale, expected_cz in ((1, 2), (3, 6), (5, 10)):
+			folded = _get_zne_circuits([transpiled], scale_factors=[scale], folding_method="local", seed=1)[0]
+			counts = folded.count_ops()
+			assert counts["move"] == 2
+			assert counts["cz"] == expected_cz
+
+	def test_local_folding_folds_move_when_named_explicitly(self, transpiled) -> None:
+		folded = _get_zne_circuits(
+			[transpiled], fold_gates=["move"], scale_factors=[3], folding_method="local", seed=1
+		)[0]
+		assert folded.count_ops()["move"] == 6
+		assert folded.count_ops()["cz"] == 2
+
+	def test_global_folding_scales_move_along_with_everything_else(self, transpiled) -> None:
+		"""Global folding inverts the whole circuit, so MOVE cannot be held back."""
+		folded = _get_zne_circuits([transpiled], scale_factors=[3], folding_method="global", seed=1)[0]
+		counts = folded.count_ops()
+		assert counts["move"] == 6
+		assert counts["cz"] == 6
+
+	def test_move_excluded_from_the_local_foldable_count(self, transpiled) -> None:
+		"""The achieved scale factor must be computed over the gates that actually get folded."""
+		from fiqci.ems.transpiler_passes.zne_circuits import _count_foldable_gates
+
+		assert _count_foldable_gates(transpiled, "local") == 2  # two CZ, both MOVEs excluded
+		assert _count_foldable_gates(transpiled, "local", fold_gates=["move"]) == 2
+		assert _count_foldable_gates(transpiled, "global") == 5  # 2 CZ + 2 MOVE + 1 r
+
+	def test_folded_move_circuit_still_produces_the_right_distribution(self, backend, transpiled) -> None:
+		"""Folding is only sound if it leaves the ideal unitary alone; MOVE^3 == MOVE."""
+		folded = _get_zne_circuits([transpiled], scale_factors=[3], folding_method="local", seed=1)[0]
+		folded._layout = transpiled._layout
+		counts = backend.run(folded, shots=4096).result().get_counts()
+		# h(0) then two CZs on |0..0>: only qubit 0 is in superposition.
+		assert (counts.get("000", 0) + counts.get("001", 0)) / 4096 > 0.85
