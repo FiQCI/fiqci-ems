@@ -148,7 +148,7 @@ class FiQCIEstimator:
 
 		self._zne: ZNESettings = {
 			"enabled": mitigation_level == 3,
-			"fold_gates": None,  # if None, fold all gates. Otherwise, should be a list of gate names to fold (e.g. ["cx", "cz"])
+			"fold_gates": None,  # if None, fold every two-qubit gate except MOVE. Otherwise, a list of gate names (e.g. ["cx", "cz"])
 			"scale_factors": [1, 3, 5],  # any real numbers >= 1
 			"folding_method": "local",  # global or local folding
 			"extrapolation_method": "exponential",  # exponential, richardson, linear, polynomial
@@ -702,6 +702,11 @@ class FiQCIEstimator:
 		then return a ``(values, standard_errors)`` pair instead of just the values. Those standard
 		errors are surfaced as the ``"zne_extrapolation_error"`` / ``"total"`` entries of
 		:meth:`FiQCIEstimatorJob.standard_errors`; callables that return only values leave both ``None``.
+
+		On devices with computational resonators, local folding leaves MOVE gates alone unless
+		``fold_gates`` names ``"move"`` explicitly: folding MOVE adds state transfers without scaling
+		how long the state sits in the resonator, so its noise would not scale by the requested factor.
+		Global folding inverts the whole circuit and therefore always folds MOVE too.
 		"""
 		if not callable(extrapolation_method) and extrapolation_method not in [
 			"exponential",
