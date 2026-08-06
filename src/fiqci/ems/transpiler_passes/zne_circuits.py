@@ -5,9 +5,46 @@ from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler import PassManager
 
+from iqm.qiskit_iqm.move_gate import MoveGate
+
 from copy import deepcopy
 
 from collections.abc import Iterable
+
+_MOVE_GATE_NAME = MoveGate().name
+
+
+class SelfInverseMoveGate(MoveGate):
+	"""A :class:`MoveGate` that reports itself as its own inverse.
+
+	``MoveGate`` is deliberately left without a definition so the transpiler cannot decompose it,
+	which also makes ``inverse()`` raise. Folding needs an inverse, and MOVE is an involution on its
+	invariant subspace: its off-diagonal entries are an undefined phase and that phase's reciprocal,
+	so ``MOVE MOVE`` is the identity whatever the phase happens to be. Subclassing keeps the gate's
+	name and type, so IQM serialisation and MOVE-sandwich validation see an ordinary MOVE.
+	"""
+
+	def inverse(self, annotated: bool = False) -> "SelfInverseMoveGate":
+		return SelfInverseMoveGate()
+
+
+def _is_locally_foldable(name: str, num_qubits: int, fold_gates: set[str] | None) -> bool:
+	"""Whether local folding acts on a gate. Shared so counting and folding cannot drift apart."""
+	if num_qubits != 2 or name == "barrier":
+		return False
+	if fold_gates is not None:
+		return name in fold_gates
+	# Folding MOVE adds state transfers but does not scale how long the state sits in the resonator,
+	# where the dominant error is, so the noise would not scale by the requested factor. It is only
+	# folded when named explicitly. Global folding inverts the whole circuit and so always folds it.
+	return name != _MOVE_GATE_NAME
+
+
+def _replace_moves_with_self_inverse(dag: DAGCircuit) -> None:
+	"""Swap MOVE gates in place for :class:`SelfInverseMoveGate` so folding can invert them."""
+	for node in dag.op_nodes():
+		if node.op.name == _MOVE_GATE_NAME and not isinstance(node.op, SelfInverseMoveGate):
+			dag.substitute_node(node, SelfInverseMoveGate(), inplace=True)
 
 
 def _num_folds(num_gates: int, scale_factor: float) -> int:
@@ -46,13 +83,7 @@ def _count_foldable_gates(
 	if folding_method == "global":
 		return sum(1 for instr in circuit.data if instr.operation.name not in ("measure", "barrier"))
 	fold_set = set(fold_gates) if fold_gates is not None else None
-	return sum(
-		1
-		for instr in circuit.data
-		if len(instr.qubits) == 2
-		and instr.operation.name != "barrier"
-		and (fold_set is None or instr.operation.name in fold_set)
-	)
+	return sum(1 for instr in circuit.data if _is_locally_foldable(instr.operation.name, len(instr.qubits), fold_set))
 
 
 def _achieved_scale_factors(
@@ -76,7 +107,9 @@ class ZNECircuits(TransformationPass):
 		Initialize the ZNECircuits pass.
 
 		Args:
-		    fold_gates: An optional iterable of gate names to fold. If None, all gates will be folded.
+		    fold_gates: An optional iterable of gate names to fold. If None, every two-qubit gate is
+		        folded except MOVE, which is only folded when named explicitly. Ignored by global
+		        folding, which folds the whole circuit including MOVE.
 		    scale_factor: The factor by which to scale the noise. Any real number >= 1. Non-odd-integer
 		        values are approximated by partially folding a randomly-sampled subset of gates.
 		    folding_method: The method to use for folding gates ("local" or "global").
@@ -105,6 +138,8 @@ class ZNECircuits(TransformationPass):
 		if self.scale_factor <= 1:
 			return cloned_dag  # Original circuit, nothing to fold
 
+		_replace_moves_with_self_inverse(cloned_dag)
+
 		if self.folding_method == "local":
 			return self._run_local(cloned_dag)
 		elif self.folding_method == "global":
@@ -118,9 +153,7 @@ class ZNECircuits(TransformationPass):
 		foldable = [
 			node
 			for node in cloned_dag.op_nodes()
-			if node.num_qubits == 2
-			and node.op.name != "barrier"
-			and (self.fold_gates is None or node.name in self.fold_gates)
+			if _is_locally_foldable(node.op.name, node.num_qubits, self.fold_gates)
 		]
 		num_gates = len(foldable)
 		if num_gates == 0:
@@ -204,7 +237,9 @@ def _get_zne_circuits(
 
 	Args:
 	    circuits: The input QuantumCircuit to transform.
-	    fold_gates: An optional iterable of gate names to fold. If None, all gates will be folded.
+	    fold_gates: An optional iterable of gate names to fold. If None, every two-qubit gate is folded
+	        except MOVE, which is only folded when named explicitly. Ignored by global folding, which
+	        folds the whole circuit including MOVE.
 	    scale_factors: An optional iterable of real scale factors (>= 1) for folding. If None, defaults
 	        to [1, 3, 5]. Non-odd-integer values are approximated by partial/random folding.
 	    folding_method: The method to use for folding gates ("local" or "global").
