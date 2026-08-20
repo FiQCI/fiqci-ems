@@ -34,7 +34,7 @@ handled specially by folding.
 
 Qiskit cannot invert a MOVE gate: it is deliberately defined without a decomposition so the
 transpiler cannot break it apart, which also makes `inverse()` raise. FiQCI EMS substitutes an
-internal self-inverse subclass during folding. This is exact rather than an approximation — MOVE is
+internal self-inverse subclass during folding. This is exact rather than an approximation. MOVE is
 an involution on its invariant subspace, so `MOVE MOVE` is the identity and `MOVE MOVE MOVE` is
 equivalent to a single MOVE. The substituted gate keeps the MOVE name and type, so the circuit still
 passes IQM's MOVE-sandwich validation.
@@ -67,9 +67,9 @@ Both accessors return a list of lists (one inner list per circuit/observable pai
 
 #### When folding cannot separate the scale factors
 
-Since folding is discrete, a circuit with few foldable gates can collapse several *distinct* requested scale factors onto the same achieved value. Extrapolation is then fitting fewer distinct x-values than it has points, which produces an unreliable fit — or, if every scale collapses to a single value, `nan`/`inf` expectation values. The most common cause is local folding on a circuit with **no two-qubit gates at all**, which cannot be folded locally, so every requested scale becomes 1.0.
+Since folding is discrete, a circuit with few foldable gates can collapse several *distinct* requested scale factors onto the same achieved value. Extrapolation is then fitting fewer distinct x-values than it has points, which produces an unreliable fit, or, if every scale collapses to a single value, `nan`/`inf` expectation values. The most common cause is local folding on a circuit with **no two-qubit gates at all**, which cannot be folded locally, so every requested scale becomes 1.0.
 
-The estimator cannot detect this before building the circuits, so it warns at `run` — after submission but before any results are fetched, so the run is still cancellable via the returned job handle:
+The estimator cannot detect this before building the circuits, so it warns at `run`. After submission but before any results are fetched, so the run is still cancellable via the returned job handle:
 
 ```python
 import warnings
@@ -81,8 +81,8 @@ with warnings.catch_warnings():
 
 Two distinct warnings are issued per circuit/observable pair:
 
-- *every* requested scale collapsed onto one achieved value — no extrapolation is possible and the returned values will be meaningless. Cancel the job and either switch to `folding_method="global"` (which folds single-qubit gates too), widen the scale factors, or disable ZNE.
-- *some* scales collapsed — the fit uses duplicated points and may be unreliable. Widen the scale factors if that is not intended.
+- *every* requested scale collapsed onto one achieved value so no extrapolation is possible and the returned values will be meaningless. Cancel the job and either switch to `folding_method="global"` (which folds single-qubit gates too), widen the scale factors, or disable ZNE.
+- *some* scales collapsed meaning the fit uses duplicated points and may be unreliable. Widen the scale factors if that is not intended.
 
 Check `job.achieved_scale_factors()` to see exactly which values collapsed.
 
@@ -155,7 +155,7 @@ estimator.zne(enabled=True, scale_factors=[1, 3, 5], extrapolation_method=my_lin
 job.standard_errors(0)["zne_extrapolation_error"]  # the errors the callable returned
 ```
 
-The returned `standard_errors` must have one entry per expectation value; a length mismatch raises `ValueError`. The values are surfaced unchanged as the `zne_extrapolation_error` and `total` keys of {meth}`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors`. Callables that take no `sigmas` argument, or return only values, leave both keys `None` — `shot_error` is still measured and reported. A callable may also return `(values, None)` to report values without standard errors, which is treated the same as returning the values alone. Anything else — a return value that cannot be read as a sequence of floats — raises `TypeError` naming what was returned. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. `extrapolation_method=richardson_extrapolation`) and their propagated errors come through as usual.
+The returned `standard_errors` must have one entry per expectation value; a length mismatch raises `ValueError`. The values are surfaced unchanged as the `zne_extrapolation_error` and `total` keys of {meth}`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors`. Callables that take no `sigmas` argument, or return only values, leave both keys `None`. `shot_error` is still measured and reported. A callable may also return `(values, None)` to report values without standard errors, which is treated the same as returning the values alone. Anything else, a return value that cannot be read as a sequence of floats, raises `TypeError` naming what was returned. Because the built-in extrapolators follow this same convention, they can be passed as callables directly (e.g. `extrapolation_method=richardson_extrapolation`) and their propagated errors come through as usual.
 
 ## Usage
 

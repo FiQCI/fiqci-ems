@@ -80,45 +80,18 @@ class TestSamplerOnRealDeviceValidation:
 		assert probabilities.get("00", 0.0) > 0.3
 		assert probabilities.get("11", 0.0) > 0.3
 
-	def test_untranspiled_circuit_is_rejected(self, backend: IQMFakeAdonis) -> None:
-		"""Guards the tests above: the backend really does validate, so passing them means something."""
-		qc = _bell()  # h and cx are not IQM native gates
-		qc.measure_all()
+	def test_mitigated_result_reports_m3_diagnostics(self, backend: IQMFakeAdonis, measured: QuantumCircuit) -> None:
+		"""The header must carry what an honest error bar and an unbiased value need."""
+		result = FiQCISampler(backend, mitigation_level=1).run(measured, shots=SHOTS).result()
 
-		with pytest.raises(Exception) as excinfo:
-			FiQCISampler(backend, mitigation_level=0).run(qc, shots=64).result()
-
-		assert "natively supported" in str(excinfo.value) or "not allowed as locus" in str(excinfo.value)
-
-
-class TestEstimatorOnRealDeviceValidation:
-	"""The estimator builds its own measurement circuits, so they need validating too."""
-
-	@pytest.mark.parametrize("level", LEVELS)
-	def test_runs_and_returns_expectation_values(
-		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp, level: int
-	) -> None:
-		values = (
-			FiQCIEstimator(backend, mitigation_level=level)
-			.run(transpiled, device_observables, shots=SHOTS)
-			.expectation_values(0)
-		)
-
-		assert len(values) == len(device_observables.paulis)
-		# A noisy device pulls these below the ideal 1.0, but they must stay physical.
-		assert all(-1.05 <= value <= 1.05 for value in values)
-
-	def test_standard_errors_are_reported(
-		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp
-	) -> None:
-		errors = (
-			FiQCIEstimator(backend, mitigation_level=0)
-			.run(transpiled, device_observables, shots=SHOTS)
-			.standard_errors(0)
-		)
-
-		assert len(errors["shot_error"]) == len(device_observables.paulis)
-		assert all(error > 0 for error in errors["shot_error"])
+		metadata = result.results[0].header["fiqci_ems"]
+		assert metadata["mitigation_method"] == "M3"
+		assert metadata["mitigation_overhead"] >= 1.0
+		assert metadata["clipped_outcomes"] >= 0
+		# Quasi-probabilities are keyed like the counts and sum to 1, but need not be non-negative.
+		quasi = metadata["quasi_probabilities"]
+		assert set(quasi) >= set(result.get_counts(0))
+		assert sum(quasi.values()) == pytest.approx(1.0)
 
 
 class TestMitigationImprovesAccuracy:
@@ -148,3 +121,67 @@ class TestMitigationImprovesAccuracy:
 		assert raw < 0.95, f"expected visible readout error to mitigate, got <ZZ>={raw}"
 		assert mitigated > raw, f"REM did not improve <ZZ>: raw={raw}, mitigated={mitigated}"
 		assert abs(1.0 - mitigated) < abs(1.0 - raw)
+
+	def test_untranspiled_circuit_is_rejected(self, backend: IQMFakeAdonis) -> None:
+		"""Guards the tests above: the backend really does validate, so passing them means something."""
+		qc = _bell()  # h and cx are not IQM native gates
+		qc.measure_all()
+
+		with pytest.raises(Exception) as excinfo:
+			FiQCISampler(backend, mitigation_level=0).run(qc, shots=64).result()
+
+		assert "natively supported" in str(excinfo.value) or "not allowed as locus" in str(excinfo.value)
+
+
+class TestEstimatorOnRealDeviceValidation:
+	"""The estimator builds its own measurement circuits, so they need validating too."""
+
+	@pytest.mark.parametrize("level", LEVELS)
+	def test_runs_and_returns_expectation_values(
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp, level: int
+	) -> None:
+		values = (
+			FiQCIEstimator(backend, mitigation_level=level)
+			.run(transpiled, device_observables, shots=SHOTS)
+			.expectation_values(0)
+		)
+
+		assert len(values) == len(device_observables.paulis)
+		# A noisy device pulls these below the ideal 1.0. At level 1+ they come from M3's
+		# quasi-probabilities and so are not bounded by ±1, but this device's readout error is small
+		# enough that over-subtraction stays well inside the margin.
+		assert all(-1.05 <= value <= 1.05 for value in values)
+
+	def test_standard_errors_are_reported(
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp
+	) -> None:
+		errors = (
+			FiQCIEstimator(backend, mitigation_level=0)
+			.run(transpiled, device_observables, shots=SHOTS)
+			.standard_errors(0)
+		)
+
+		assert len(errors["shot_error"]) == len(device_observables.paulis)
+		assert all(error > 0 for error in errors["shot_error"])
+
+	def test_readout_mitigation_widens_the_error_bar(
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp
+	) -> None:
+		"""M3 trades bias for variance, so a mitigated value cannot carry a tighter error bar.
+
+		It used to report a *smaller* error than level 0 (zero, in the saturating case): the error came
+		from the mitigated counts, whose spread the projection onto physical distributions had squeezed.
+		"""
+		shots = 8192
+
+		def errors(level: int) -> list[float]:
+			return (
+				FiQCIEstimator(backend, mitigation_level=level)
+				.run(transpiled, device_observables, shots=shots)
+				.standard_errors(0)["shot_error"]
+			)
+
+		raw, mitigated = errors(0), errors(1)
+
+		for raw_error, mitigated_error in zip(raw, mitigated):
+			assert mitigated_error > raw_error, f"REM shrank the error bar: {raw_error} -> {mitigated_error}"
