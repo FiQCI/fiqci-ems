@@ -10,11 +10,12 @@ backend interface without additional code.
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 from typing import Any, TypedDict
 from collections.abc import Iterable
 
-from iqm.iqm_client import STANDARD_DD_STRATEGY
+from iqm.iqm_client import STANDARD_DD_STRATEGY, CircuitCompilationOptions, DDMode
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
 
@@ -27,7 +28,9 @@ from fiqci.ems.backend.counts import (
 	_key_layout,
 	_reduce_counts,
 	_expand_counts,
+	_expand_quasi_probabilities,
 	_average_counts,
+	_average_distributions,
 	_trim_result_to_groups,
 )
 
@@ -37,6 +40,32 @@ from qiskit.providers import JobStatus, JobV1
 from qiskit.result import Result
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+def _combine_rem_diagnostics(diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
+	"""Combine the per-circuit M3 diagnostics of one Pauli-twirl group into a single entry.
+
+	Twirled counts are averaged, so the group's quasi-probabilities are averaged the same way. The
+	mitigation overhead is averaged too: the group's expectation value is the mean of ``G`` estimates
+	whose variances are each inflated by their own overhead, so the mean overhead is the factor that
+	applies to the averaged estimate. Clipped-outcome counts are summed across the group.
+
+	Args:
+	    diagnostics: Per-circuit diagnostics for the circuits of one twirl group.
+
+	Returns:
+	    A single diagnostics dict with the same keys.
+	"""
+	overheads = [
+		diagnostic["mitigation_overhead"] for diagnostic in diagnostics if diagnostic["mitigation_overhead"] is not None
+	]
+	return {
+		"quasi_probabilities": _average_distributions(
+			[diagnostic["quasi_probabilities"] for diagnostic in diagnostics]
+		),
+		"mitigation_overhead": sum(overheads) / len(overheads) if overheads else None,
+		"clipped_outcomes": sum(diagnostic["clipped_outcomes"] for diagnostic in diagnostics),
+	}
 
 
 class FiQCIBackend:
@@ -441,10 +470,24 @@ class FiQCIBackend:
 				twirl_group_size,
 			)
 
-		# Build run kwargs (DD options if enabled)
+		# Build run kwargs (DD options if enabled). A caller-supplied circuit_compilation_options is
+		# kept and only has its DD fields set, so options like MOVE gate validation and frame
+		# tracking survive.
 		run_kwargs = dict(kwargs)
 		if self._dd["enabled"]:
-			run_kwargs["circuit_compilation_options"] = build_dd_options(self._dd["gate_sequences"])
+			base_options = run_kwargs.get("circuit_compilation_options")
+			if base_options is not None and not isinstance(base_options, CircuitCompilationOptions):
+				raise TypeError(
+					"circuit_compilation_options must be an iqm.iqm_client.CircuitCompilationOptions, got "
+					f"{type(base_options).__name__}."
+				)
+			if base_options is not None and base_options.dd_mode != DDMode.DISABLED:
+				warnings.warn(
+					"circuit_compilation_options already configures dynamical decoupling; the settings from "
+					"this backend's dd() / mitigation_level take precedence. Disable DD here (dd(enabled=False)) "
+					"to submit with your own DD strategy."
+				)
+			run_kwargs["circuit_compilation_options"] = build_dd_options(self._dd["gate_sequences"], base=base_options)
 
 		# Submit circuits in batches of at most max_batch_size, preserving submission order so the
 		# combined result indices match circuits_list.
@@ -637,6 +680,10 @@ class FiQCIBackend:
 			# Apply M3 correction to each circuit's results
 			raw_counts_list: list[dict[str, int]] = []
 			mitigated_counts_list: list[dict[str, int]] = []
+			# One entry per submitted circuit, combined per twirl group below and attached to the
+			# result headers so consumers (notably FiQCIEstimator) can use the unprojected
+			# quasi-probabilities and inflate their error bars by M3's mitigation overhead.
+			diagnostics_list: list[dict[str, Any]] = []
 
 			for idx in range(len(circuits)):
 				raw_counts = result.get_counts(idx)
@@ -652,10 +699,17 @@ class FiQCIBackend:
 				layout = _key_layout(raw_counts, qubits)
 				counts_for_correction = _reduce_counts(raw_counts, layout)
 
-				quasi_dist = mitigator.apply_correction(counts_for_correction, qubits)
+				quasi_dist = mitigator.apply_correction(counts_for_correction, qubits, return_mitigation_overhead=True)
 				mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
 				mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
 				mitigated_counts_list.append(_expand_counts(mitigated_counts[0], layout))
+				diagnostics_list.append(
+					{
+						"quasi_probabilities": _expand_quasi_probabilities(dict(quasi_dist), layout),
+						"mitigation_overhead": getattr(quasi_dist, "mitigation_overhead", None),
+						"clipped_outcomes": sum(1 for value in quasi_dist.values() if value < 0),
+					}
+				)
 
 			result_to_use = result
 			# If Pauli twirling, average mitigated counts across groups (raw counts stay flat)
@@ -664,8 +718,23 @@ class FiQCIBackend:
 				for i in range(0, len(mitigated_counts_list), twirl_group_size):
 					averaged_mitigated.append(_average_counts(mitigated_counts_list[i : i + twirl_group_size]))
 				mitigated_counts_list = averaged_mitigated
+				diagnostics_list = [
+					_combine_rem_diagnostics(diagnostics_list[i : i + twirl_group_size])
+					for i in range(0, len(diagnostics_list), twirl_group_size)
+				]
 				num_groups = len(circuits) // twirl_group_size
 				result_to_use = _trim_result_to_groups(result, num_groups)
+
+			num_clipped = sum(1 for diagnostics in diagnostics_list if diagnostics["clipped_outcomes"])
+			if num_clipped:
+				warnings.warn(
+					f"M3 produced negative quasi-probabilities for {num_clipped} of {len(diagnostics_list)} "
+					"circuit(s); projecting onto the nearest physical distribution clipped them to zero. "
+					"Mitigated counts from those circuits are biased towards the physical boundary, so "
+					"expectation values computed from them can be pinned to +-1 with an understated shot "
+					"error (FiQCIEstimator avoids this by using the unprojected quasi-probabilities from the "
+					"result header). Raising calibration_shots reduces this."
+				)
 
 			self._raw_counts_cache = raw_counts_list
 			return self._create_mitigated_result(
@@ -675,6 +744,7 @@ class FiQCIBackend:
 				twirl_group_size=twirl_group_size or 1,
 				mitigation_level=mitigation_level,
 				calibration_shots=calibration_shots,
+				rem_diagnostics=diagnostics_list,
 			)
 
 		return MitigatedJob(
@@ -689,6 +759,7 @@ class FiQCIBackend:
 		twirl_group_size: int = 1,
 		mitigation_level: int | None = None,
 		calibration_shots: int | None = None,
+		rem_diagnostics: list[dict[str, Any]] | None = None,
 	) -> Result:
 		"""Create a new Result object with mitigated counts and metadata.
 
@@ -705,6 +776,9 @@ class FiQCIBackend:
 				snapshotted at submission time so the metadata stays consistent.
 			calibration_shots: Calibration shots to record in the result metadata. Defaults to the
 				backend's current setting; snapshotted by deferred callers for the same reason.
+			rem_diagnostics: Optional per-group M3 diagnostics (``quasi_probabilities``,
+				``mitigation_overhead``, ``clipped_outcomes``) merged into each header's ``fiqci_ems``
+				entry. Omitted when readout error mitigation did not run.
 
 		Returns:
 			New Result object with mitigated data and FiQCI EMS metadata. Each header's
@@ -738,12 +812,15 @@ class FiQCIBackend:
 					else:
 						raw_for_group = raw_counts[idx]
 
-					results_list[idx]["header"]["fiqci_ems"] = {  # type: ignore[index]
+					metadata: dict[str, Any] = {
 						"mitigation_level": mitigation_level,
 						"mitigation_method": "M3" if mitigation_level == 1 else None,
 						"calibration_shots": calibration_shots if mitigation_level == 1 else None,
 						"raw_counts": raw_for_group,
 					}
+					if rem_diagnostics is not None and idx < len(rem_diagnostics):
+						metadata.update(rem_diagnostics[idx])
+					results_list[idx]["header"]["fiqci_ems"] = metadata  # type: ignore[index]
 
 		# Create new result from modified data
 		from qiskit.result import Result as QiskitResult
