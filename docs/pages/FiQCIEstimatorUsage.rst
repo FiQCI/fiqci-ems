@@ -323,15 +323,19 @@ Standard Errors
    * - Key
      - Description
    * - ``shot_error``
-     - Statistical standard error of the raw measurement, :math:`\sqrt{(1 - \langle P \rangle^2) / N}` per term. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit's sampling-based ``EstimatorV2``.
+     - Statistical standard error of the raw measurement, :math:`\sqrt{(1 - \langle P \rangle^2) / N}` per term, taken from the pre-mitigation counts. At mitigation level ≥ 1 it is inflated by :math:`\sqrt{\gamma}`, where :math:`\gamma` is M3's mitigation overhead, so a mitigated value always carries a *larger* error bar than the unmitigated one it was computed from, readout mitigation trades bias for variance. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit's sampling-based ``EstimatorV2``.
    * - ``zne_extrapolation_error``
      - Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. ``None`` when ZNE is disabled, or when a user-defined extrapolation callable reports no standard errors. See :ref:`ZNE <fiqci-estimator-zne>`.
    * - ``total``
-     - Standard error of the value :meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values` actually returns — ``shot_error`` when ZNE is off, ``zne_extrapolation_error`` when ZNE is on. Not a quadrature sum, since the extrapolation error already incorporates the shot noise.
+     - Standard error of the value :meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values` actually returns ``shot_error`` when ZNE is off, ``zne_extrapolation_error`` when ZNE is on. Not a quadrature sum, since the extrapolation error already incorporates the shot noise.
 
 .. note::
 
-   Only statistical error is reported. The estimator does not account for ZNE *model* bias (the systematic error from the chosen extrapolation shape), nor does it inflate ``shot_error`` by the M3 readout-mitigation overhead at mitigation level ≥ 1.
+   Only statistical error is reported. The estimator does not account for ZNE *model* bias, the systematic error from the chosen extrapolation shape.
+
+.. note::
+
+   At mitigation level ≥ 1 the expectation values come from M3's quasi-probabilities, which are unbiased but not necessarily physical, so a value may fall slightly outside :math:`[-1, 1]`. Clamping it would reintroduce the bias the quasi-probabilities exist to avoid. A value far outside the range means the readout calibration is too noisy, so raise ``calibration_shots``. See :doc:`readout_mitigation`.
 
 Examples
 --------

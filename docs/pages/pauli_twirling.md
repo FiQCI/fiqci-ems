@@ -67,7 +67,7 @@ Two limits are worth knowing:
   disqualifies that sandwich, and its gates are skipped rather than guessed at.
 
 MOVE itself has no unitary representation and is dropped from `gates_to_twirl` with a warning if you
-pass it. And whenever twirling matches no gates at all, a warning is raised at submission — that
+pass it. And whenever twirling matches no gates at all, a warning is raised at submission. That
 also catches a circuit containing none of the gates being twirled, such as a `cx`-based circuit
 under the default `gates_to_twirl=[CZGate()]`.
 
