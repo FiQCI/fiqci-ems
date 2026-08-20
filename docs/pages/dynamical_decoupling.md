@@ -12,6 +12,14 @@ Common DD sequences include:
 - **XYXY**: A repeated XY sequence offering stronger suppression for longer idle periods.
 - **Custom PRX sequences**: User-defined rotation sequences for advanced noise profiles.
 
+## Not supported on IQM Star devices
+
+DD corrupts MOVE-routed circuits on Star devices (those with a computational resonator, e.g. VLQ and
+Deneb): the qubit whose state is parked in the resonator comes back randomized. Mitigation levels 2
+and 3 are unvalidated on this architecture and not recommended, and enabling DD on such a backend
+raises a warning before anything is submitted. Use level 0 or 1 there, or configure the other
+mitigators individually.
+
 ## Usage
 
 Dynamical decoupling is enabled by default at ``mitigation_level=2`` or it can be enabled with the primitives `dd()` method.

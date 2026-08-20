@@ -157,6 +157,10 @@ Dynamical Decoupling (DD)
 
 Dynamical decoupling inserts sequences of gates to mitigate decoherence. It is enabled at mitigation level 2.
 
+.. warning::
+
+   DD corrupts MOVE-routed circuits on IQM Star devices (those with a computational resonator, e.g. VLQ and Deneb): the qubit whose state is parked in the resonator comes back randomized. Mitigation levels 2 and 3 are unvalidated on this architecture and not recommended, and enabling DD on such a backend warns before anything is submitted. See :doc:`dynamical_decoupling`.
+
 Configure DD using the :meth:`~fiqci.ems.FiQCIEstimator.dd` method:
 
 .. code-block:: python
