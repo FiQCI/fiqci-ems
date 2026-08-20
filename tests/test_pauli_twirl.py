@@ -164,6 +164,7 @@ class TestGetTwirledCircuits:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -306,6 +307,7 @@ class TestGetTwirledCircuits:
 		mock_backend = Mock()
 		mock_backend.name = "MockBackend"
 		mock_backend.num_qubits = 5
+		mock_backend.has_resonators.return_value = False
 		mock_backend.target.instructions = [(InstructionWithName,), (InstructionWithNoName,)]
 
 		try:
@@ -322,6 +324,7 @@ class TestBackendPauliTwirlSettings:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def test_pauli_twirl_disabled_by_default(self, mock_backend):
@@ -378,6 +381,7 @@ class TestBackendRunWithPauliTwirling:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -583,6 +587,7 @@ class TestEstimatorPauliTwirl:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
@@ -620,6 +625,7 @@ class TestSamplerPauliTwirl:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")

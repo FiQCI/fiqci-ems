@@ -19,6 +19,7 @@ class TestFiQCIBackend:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -235,6 +236,7 @@ class TestREMSettings:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -348,6 +350,7 @@ class TestJobMitigatorOptionsSnapshot:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -455,6 +458,7 @@ class TestBackendBatching:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def test_run_single_batch_is_wrapped_in_batched_job(self, mock_backend: Mock) -> None:
@@ -686,6 +690,7 @@ class TestCalibrationMaxBatchSize:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -888,6 +893,7 @@ class TestMitigatorOptionsIsolation:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def test_mutating_returned_dict_does_not_change_settings(self, mock_backend: Mock) -> None:
@@ -949,6 +955,7 @@ class TestPartialCalibrationCoverage:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def _run(self, mock_backend: Mock, existing_cals: list | None, mapping: dict) -> Mock:

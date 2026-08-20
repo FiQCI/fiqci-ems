@@ -203,3 +203,27 @@ class TestEstimatorOnStarArchitecture:
 		assert zz > 0.5, f"<ZZ> should be near +1 on a Bell state, got {zz}"
 		assert xx > 0.5, f"<XX> should be near +1 on a Bell state, got {xx}"
 		assert yy < -0.5, f"<YY> should be near -1 on a Bell state, got {yy}"
+
+
+class TestDDWarningOnStarArchitecture:
+	"""DD is unvalidated on this architecture, so every interface must say so before submitting."""
+
+	@pytest.mark.parametrize("level", [2, 3])
+	def test_sampler_warns_at_dd_levels(self, backend: IQMFakeDeneb, measured: QuantumCircuit, level: int) -> None:
+		with pytest.warns(UserWarning, match="corrupts MOVE-routed circuits"):
+			FiQCISampler(backend, mitigation_level=level).run(measured, shots=SHOTS)
+
+	@pytest.mark.parametrize("level", [2, 3])
+	def test_estimator_warns_at_dd_levels(
+		self, backend: IQMFakeDeneb, transpiled: QuantumCircuit, device_observables: SparsePauliOp, level: int
+	) -> None:
+		with pytest.warns(UserWarning, match="corrupts MOVE-routed circuits"):
+			FiQCIEstimator(backend, mitigation_level=level).run(transpiled, device_observables, shots=SHOTS)
+
+	@pytest.mark.parametrize("level", [0, 1])
+	def test_no_warning_below_the_dd_levels(
+		self, backend: IQMFakeDeneb, transpiled: QuantumCircuit, device_observables: SparsePauliOp, level: int
+	) -> None:
+		with warnings.catch_warnings():
+			warnings.simplefilter("error", UserWarning)
+			FiQCIEstimator(backend, mitigation_level=level).run(transpiled, device_observables, shots=SHOTS)
