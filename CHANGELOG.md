@@ -8,6 +8,12 @@ Changes to enable EMS usage on IQM star based devices.
 - Pauli twirling now works on devices with computational resonators. A resonator accepts no single-qubit gates, so the resonator half of each twirl pair is commuted out of the MOVE sandwich onto the qubit whose state the resonator is holding: `I`/`Z` pass through freely, `X`/`Y` pick up a `Z` on the far qubit of every gate they cross. Previously such gates could not be twirled at all
 - a MOVE sandwich containing an operation a twirl Pauli cannot be commuted through is left untwirled rather than corrupted, and MOVE is dropped from `gates_to_twirl` with a warning
 - warn when twirling matched no gates, instead of silently submitting `num_twirls` extra circuit(s) per input with no mitigation applied.
+- `FiQCIEstimator` expectation values at mitigation level 1 and above now come from M3's unprojected quasi-probabilities instead of the projected counts, which could pin them to exactly +-1. Mitigated values are unbiased and may fall slightly outside `[-1, 1]` if REM calibration is very erronous.
+- `standard_errors()["shot_error"]` is now taken from the raw counts and inflated by `sqrt(mitigation_overhead)`. Level 1 previously reported a smaller error than level 0
+- mitigated results carry `quasi_probabilities`, `mitigation_overhead` and `clipped_outcomes` per circuit in `result.results[i].header["fiqci_ems"]`, and clipping now warns
+- `FiQCISampler` counts are unchanged and stay projected, since Qiskit's count consumers require non-negative integers
+- a `circuit_compilation_options` passed to `run()` is no longer discarded when dynamical decoupling is on. DD is merged into it, so heralding and MOVE gate settings survive
+- `probabilities_to_counts` rounds by largest remainder instead of truncating, so mitigated counts total exactly the requested shot count
 - https://github.com/FiQCI/fiqci-ems/pull/46
 
 ---
