@@ -264,6 +264,7 @@ def _get_zne_circuits(
 			)
 
 			zne_circuit = pm.run(circuit)
+			zne_circuit._layout = circuit.layout
 
 			zne_circuits.append(zne_circuit)
 

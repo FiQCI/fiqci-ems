@@ -114,6 +114,8 @@ def get_obs_subcircuits(
 			modified_circuit = pm.run(strip_final_measurements(subcircuit)).decompose(
 				gates_to_decompose=["X-meas", "Y-meas"]
 			)  # Decompose custom measurement
+			modified_circuit._layout = subcircuit.layout  # restore original layout to avoid to
+			# issues with transpilation later
 			if modified_circuit.num_qubits == 0:
 				continue
 			pm_circs[ind] = modified_circuit
