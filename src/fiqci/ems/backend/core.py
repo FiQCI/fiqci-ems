@@ -41,6 +41,12 @@ from qiskit.result import Result
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+_STAR_DD_WARNING = (
+	"Dynamical decoupling corrupts MOVE-routed circuits on IQM Star devices: the qubit whose state "
+	"is parked in the computational resonator comes back randomized. Mitigation levels 2 and 3 are "
+	"unvalidated on this architecture and not recommended."
+)
+
 
 def _combine_rem_diagnostics(diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
 	"""Combine the per-circuit M3 diagnostics of one Pauli-twirl group into a single entry.
@@ -367,6 +373,12 @@ class FiQCIBackend:
 		else:
 			self._dd["enabled"] = False
 
+	def _warn_if_star_architecture(self) -> None:
+		"""Warn when DD is about to be submitted to a device with a computational resonator."""
+		has_resonators = getattr(self._backend, "has_resonators", None)
+		if callable(has_resonators) and has_resonators():
+			warnings.warn(_STAR_DD_WARNING)
+
 	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
 		Set readout error mitigation settings for the backend.
@@ -488,6 +500,7 @@ class FiQCIBackend:
 					"to submit with your own DD strategy."
 				)
 			run_kwargs["circuit_compilation_options"] = build_dd_options(self._dd["gate_sequences"], base=base_options)
+			self._warn_if_star_architecture()
 
 		# Submit circuits in batches of at most max_batch_size, preserving submission order so the
 		# combined result indices match circuits_list.
