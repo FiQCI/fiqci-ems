@@ -80,8 +80,13 @@ class ModifyMeasurementBasis(TransformationPass):
 
 
 def strip_final_measurements(circuit: QuantumCircuit) -> QuantumCircuit:
-	"""Remove the circuit's trailing measurements, and any register they leave idle."""
-	return PassManager([RemoveFinalMeasurements()]).run(circuit)
+	"""
+	Remove the circuit's trailing measurements, and any register they leave idle.
+	Additionally restores the original layout to avoid issues with transpilation later.
+	"""
+	stripped = PassManager([RemoveFinalMeasurements()]).run(circuit)
+	stripped._layout = circuit.layout
+	return stripped
 
 
 def get_obs_subcircuits(
