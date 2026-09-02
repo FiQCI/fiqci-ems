@@ -13,7 +13,6 @@ import logging
 import warnings
 from pathlib import Path
 from typing import Any, TypedDict
-from collections.abc import Callable
 from collections.abc import Iterable
 
 from iqm.iqm_client import STANDARD_DD_STRATEGY, CircuitCompilationOptions, DDMode
@@ -24,7 +23,7 @@ from fiqci.ems.mitigators.rem import M3IQM
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry, build_dd_options
 from fiqci.ems.transpiler_passes.pauli_twirl import get_twirled_circuits
 from fiqci.ems.utils import probabilities_to_counts
-from fiqci.ems.backend.jobs import MitigatedJob, BatchedJob, _UnsubmittedBatch
+from fiqci.ems.backend.jobs import MitigatedJob, BatchedJob, _UnsubmittedBatch, describe_exception, job_id_of
 from fiqci.ems.backend.counts import (
 	_key_layout,
 	_reduce_counts,
@@ -539,20 +538,21 @@ class FiQCIBackend:
 				assert batch_job is not None, "Backend returned None job"
 			except Exception as exc:
 				submission_failed = True
+				detail = describe_exception(exc)
 				logger.warning(
 					"Backend rejected batch at circuit indices %d-%d: %s. Stopping submission; "
 					"returning a job handle for the %d batch(es) submitted so far (remaining batches "
 					"are marked cancelled). Inspect status()/statuses() and partial_results().",
 					batch_start,
 					batch_start + len(batch) - 1,
-					exc,
+					detail,
 					len(batch_jobs),
 				)
-				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.ERROR, error=str(exc)))  # type: ignore[bad-argument-type]
+				batch_jobs.append(_UnsubmittedBatch(batch_range, JobStatus.ERROR, error=detail))  # type: ignore[bad-argument-type]
 				batch_ranges.append(batch_range)
 				continue
 
-			jobid = batch_job.job_id() if isinstance(hasattr(batch_job, "job_id"), Callable) else batch_job.job_id
+			jobid = job_id_of(batch_job)
 
 			logger.info(
 				"Submitted batch of %d circuit(s) (indices %d-%d) to backend, got job ID %s",

@@ -14,6 +14,18 @@ logger: logging.Logger = logging.getLogger(__name__)
 _TERMINAL_STATUSES = frozenset({JobStatus.DONE, JobStatus.ERROR, JobStatus.CANCELLED})
 
 
+def job_id_of(job: Any) -> str | None:
+	"""Backend job id of ``job``, whether ``job_id`` is a method (``JobV1``) or a plain attribute."""
+	job_id: Any = getattr(job, "job_id", None)
+	return job_id() if callable(job_id) else job_id  # type: ignore[bad-return]
+
+
+def describe_exception(exc: BaseException) -> str:
+	"""Render an exception with its type, so bare-value messages (``KeyError: 23``) stay readable."""
+	message = str(exc)
+	return f"{type(exc).__name__}: {message}" if message else type(exc).__name__
+
+
 class BatchFailedError(RuntimeError):
 	"""Raised when one or more batches of a submitted job fail.
 
@@ -58,14 +70,14 @@ class PartialBatch(NamedTuple):
 		index: Position of the batch in submission order.
 		circuit_range: ``(start, end_exclusive)`` original circuit indices covered by the batch.
 		status: Current :class:`~qiskit.providers.JobStatus` of the batch job.
-		job_id: Backend job id of the batch.
+		job_id: Backend job id of the batch, ``None`` if it was never submitted.
 		result: The batch's :class:`~qiskit.result.Result` if it has completed, else ``None``.
 	"""
 
 	index: int  # type: ignore[bad-override]  # NamedTuple field shadows the read-write tuple.index method
 	circuit_range: tuple[int, int]
 	status: JobStatus
-	job_id: str
+	job_id: str | None
 	result: Result | None
 
 
@@ -126,19 +138,13 @@ class BatchedJob:
 
 	# -- identity / polling (available immediately, before any results) --
 
-	def job_id(self) -> str:
-		"""Backend job id of the first batch (for single-job back-compat)."""
-		jobid = (
-			self._jobs[0].job_id() if isinstance(hasattr(self._jobs[0], "job_id"), Callable) else self._jobs[0].job_id
-		)
-		return jobid
+	def job_id(self) -> str | None:
+		"""Backend job id of the first batch (for single-job back-compat), ``None`` if unsubmitted."""
+		return job_id_of(self._jobs[0])
 
-	def job_ids(self) -> list[str]:
-		"""Backend job ids of every batch, in submission order."""
-
-		jobids = [job.job_id() if isinstance(hasattr(job, "job_id"), Callable) else job.job_id for job in self._jobs]
-
-		return jobids
+	def job_ids(self) -> list[str | None]:
+		"""Backend job ids of every batch, in submission order (``None`` for unsubmitted batches)."""
+		return [job_id_of(job) for job in self._jobs]
 
 	def statuses(self) -> list[JobStatus]:
 		"""Current :class:`JobStatus` of each batch, in submission order."""
@@ -209,10 +215,10 @@ class BatchedJob:
 				except Exception:  # pragma: no cover - defensive
 					result = None
 
-			jobid = job.job_id() if isinstance(hasattr(job, "job_id"), Callable) else job.job_id
-
 			snapshots.append(
-				PartialBatch(index=index, circuit_range=self._range(index), status=status, job_id=jobid, result=result)
+				PartialBatch(
+					index=index, circuit_range=self._range(index), status=status, job_id=job_id_of(job), result=result
+				)
 			)
 		return snapshots
 
@@ -246,15 +252,15 @@ class BatchedJob:
 
 		deadline = None if timeout is None else time.monotonic() + timeout
 		results: list[Result] = []
-		failures: list[tuple[int, str, str]] = []
+		failures: list[tuple[int, str | None, str]] = []
 		for index, job in enumerate(self._jobs):
 			remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
-			jobid = job.job_id() if isinstance(hasattr(job, "job_id"), Callable) else job.job_id
+			jobid = job_id_of(job)
 			try:
 				# Concrete IQM jobs accept a timeout; the abstract JobV1.result stub does not declare one.
 				result = job.result() if remaining is None else job.result(remaining)  # type: ignore[bad-argument-count]
 			except Exception as exc:  # batch failed at the backend
-				failures.append((index, jobid, str(exc)))
+				failures.append((index, jobid, describe_exception(exc)))
 				continue
 			if job.status() in (JobStatus.ERROR, JobStatus.CANCELLED):
 				failures.append((index, jobid, str(job.status())))
@@ -272,12 +278,13 @@ class BatchedJob:
 		self._combined_result = QiskitResult.from_dict(combined_data)
 		return self._combined_result
 
-	def _failure_message(self, failures: list[tuple[int, str, str]]) -> str:
+	def _failure_message(self, failures: list[tuple[int, str | None, str]]) -> str:
 		"""Build a human-readable message naming each failed batch and its circuit range."""
 		parts = []
 		for index, job_id, detail in failures:
 			start, end = self._range(index)
-			parts.append(f"batch {index} (circuits {start}-{end - 1}, job_id={job_id}): {detail}")
+			where = f", job_id={job_id}" if job_id is not None else ""
+			parts.append(f"batch {index} (circuits {start}-{end - 1}{where}): {detail}")
 		return f"{len(failures)} of {len(self._jobs)} batch(es) failed: " + "; ".join(parts)
 
 	def __getattr__(self, name: str) -> Any:
