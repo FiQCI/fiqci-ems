@@ -128,11 +128,17 @@ class BatchedJob:
 
 	def job_id(self) -> str:
 		"""Backend job id of the first batch (for single-job back-compat)."""
-		return self._jobs[0].job_id()
+		jobid = (
+			self._jobs[0].job_id() if isinstance(hasattr(self._jobs[0], "job_id"), Callable) else self._jobs[0].job_id
+		)
+		return jobid
 
 	def job_ids(self) -> list[str]:
 		"""Backend job ids of every batch, in submission order."""
-		return [job.job_id() for job in self._jobs]
+
+		jobids = [job.job_id() if isinstance(hasattr(job, "job_id"), Callable) else job.job_id for job in self._jobs]
+
+		return jobids
 
 	def statuses(self) -> list[JobStatus]:
 		"""Current :class:`JobStatus` of each batch, in submission order."""
@@ -160,14 +166,20 @@ class BatchedJob:
 		"""
 		if not statuses:
 			return JobStatus.DONE
-		if any(status == JobStatus.ERROR for status in statuses):
+		if any(status in [JobStatus.ERROR, "ERROR"] for status in statuses):
 			return JobStatus.ERROR
-		if any(status == JobStatus.CANCELLED for status in statuses):
+		if any(status in [JobStatus.CANCELLED, "CANCELLED"] for status in statuses):
 			return JobStatus.CANCELLED
-		if all(status == JobStatus.DONE for status in statuses):
+		if all(status in [JobStatus.DONE, "DONE"] for status in statuses):
 			return JobStatus.DONE
-		for active in (JobStatus.RUNNING, JobStatus.VALIDATING, JobStatus.QUEUED):
+		for active in (JobStatus.RUNNING, JobStatus.VALIDATING, JobStatus.QUEUED, "RUNNING", "VALIDATING", "QUEUED"):
 			if any(status == active for status in statuses):
+				if active == "RUNNING":
+					return JobStatus.RUNNING
+				if active == "VALIDATING":
+					return JobStatus.VALIDATING
+				if active == "QUEUED":
+					return JobStatus.QUEUED
 				return active
 		return JobStatus.INITIALIZING
 
@@ -196,10 +208,11 @@ class BatchedJob:
 					result = job.result()
 				except Exception:  # pragma: no cover - defensive
 					result = None
+
+			jobid = job.job_id() if isinstance(hasattr(job, "job_id"), Callable) else job.job_id
+
 			snapshots.append(
-				PartialBatch(
-					index=index, circuit_range=self._range(index), status=status, job_id=job.job_id(), result=result
-				)
+				PartialBatch(index=index, circuit_range=self._range(index), status=status, job_id=jobid, result=result)
 			)
 		return snapshots
 
@@ -236,14 +249,15 @@ class BatchedJob:
 		failures: list[tuple[int, str, str]] = []
 		for index, job in enumerate(self._jobs):
 			remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+			jobid = job.job_id() if isinstance(hasattr(job, "job_id"), Callable) else job.job_id
 			try:
 				# Concrete IQM jobs accept a timeout; the abstract JobV1.result stub does not declare one.
 				result = job.result() if remaining is None else job.result(remaining)  # type: ignore[bad-argument-count]
 			except Exception as exc:  # batch failed at the backend
-				failures.append((index, job.job_id(), str(exc)))
+				failures.append((index, jobid, str(exc)))
 				continue
 			if job.status() in (JobStatus.ERROR, JobStatus.CANCELLED):
-				failures.append((index, job.job_id(), str(job.status())))
+				failures.append((index, jobid, str(job.status())))
 				continue
 			results.append(result)
 
