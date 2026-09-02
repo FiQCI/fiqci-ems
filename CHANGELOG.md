@@ -15,6 +15,7 @@ Changes to enable EMS usage on IQM star based devices.
 - warn when dynamical decoupling is submitted to a device with a computational resonator. DD corrupts MOVE-routed circuits there, so mitigation levels 2 and 3 are unvalidated on Star devices and not recommended
 - a `circuit_compilation_options` passed to `run()` is no longer discarded when dynamical decoupling is on. DD is merged into it, so heralding and MOVE gate settings survive
 - `probabilities_to_counts` rounds by largest remainder instead of truncating, so mitigated counts total exactly the requested shot count
+- `job_id()`, `job_ids()` and `partial_results()` also accept backends that expose `job_id` as an attribute instead of a method
 - https://github.com/FiQCI/fiqci-ems/pull/46
 
 ---
