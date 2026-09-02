@@ -13,6 +13,7 @@ import logging
 import warnings
 from pathlib import Path
 from typing import Any, TypedDict
+from collections.abc import Callable
 from collections.abc import Iterable
 
 from iqm.iqm_client import STANDARD_DD_STRATEGY, CircuitCompilationOptions, DDMode
@@ -213,6 +214,12 @@ class FiQCIBackend:
 			pauli_twirl["gates_to_twirl"] = list(gates_to_twirl)
 		return {"rem": dict(self._rem), "dd": dd, "pauli_twirl": pauli_twirl}
 
+	def _warn_if_star_architecture(self) -> None:
+		"""Warn when DD is about to be submitted to a device with a computational resonator."""
+		has_resonators = getattr(self._backend, "has_resonators", None)
+		if callable(has_resonators) and has_resonators():
+			warnings.warn(_STAR_DD_WARNING)
+
 	def _snapshot_mitigator_options(self) -> dict[str, Any]:
 		"""Freeze the current mitigator settings for attachment to a submitted job.
 
@@ -280,6 +287,9 @@ class FiQCIBackend:
 			gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
 				See build_dd_options for details on each field.
 		"""
+
+		self._warn_if_star_architecture()
+
 		if gate_sequences is None or len(gate_sequences) == 0:
 			gate_sequences = STANDARD_DD_STRATEGY.gate_sequences
 		else:
@@ -372,12 +382,6 @@ class FiQCIBackend:
 			self._init_dd(gate_sequences)
 		else:
 			self._dd["enabled"] = False
-
-	def _warn_if_star_architecture(self) -> None:
-		"""Warn when DD is about to be submitted to a device with a computational resonator."""
-		has_resonators = getattr(self._backend, "has_resonators", None)
-		if callable(has_resonators) and has_resonators():
-			warnings.warn(_STAR_DD_WARNING)
 
 	def rem(self, enabled: bool = True, calibration_shots: int = 1000, calibration_file: str | None = None) -> None:
 		"""
@@ -548,12 +552,14 @@ class FiQCIBackend:
 				batch_ranges.append(batch_range)
 				continue
 
+			jobid = batch_job.job_id() if isinstance(hasattr(batch_job, "job_id"), Callable) else batch_job.job_id
+
 			logger.info(
 				"Submitted batch of %d circuit(s) (indices %d-%d) to backend, got job ID %s",
 				len(batch),
 				batch_start,
 				batch_start + len(batch) - 1,
-				batch_job.job_id(),
+				jobid,
 			)
 
 			batch_jobs.append(batch_job)
