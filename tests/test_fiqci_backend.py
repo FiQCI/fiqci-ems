@@ -3,6 +3,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from mthree.classes import QuasiDistribution
 from qiskit import QuantumCircuit
 from qiskit.providers import JobStatus
 
@@ -18,6 +19,7 @@ class TestFiQCIBackend:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -89,9 +91,9 @@ class TestFiQCIBackend:
 			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
-			mock_quasi_dist = Mock()
-			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
-			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.apply_correction.return_value = QuasiDistribution(
+				{"00": 0.48, "11": 0.52}, shots=1024, mitigation_overhead=1.0
+			)
 			mock_mitigator.single_qubit_cals = None
 			mock_m3iqm_class.return_value = mock_mitigator
 
@@ -127,9 +129,9 @@ class TestFiQCIBackend:
 			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
-			mock_quasi_dist = Mock()
-			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
-			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.apply_correction.return_value = QuasiDistribution(
+				{"00": 0.48, "11": 0.52}, shots=1024, mitigation_overhead=1.0
+			)
 			mock_mitigator.single_qubit_cals = None
 			mock_m3iqm_class.return_value = mock_mitigator
 
@@ -205,9 +207,9 @@ class TestFiQCIBackend:
 			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
-			mock_quasi_dist = Mock()
-			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
-			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.apply_correction.return_value = QuasiDistribution(
+				{"00": 0.48, "11": 0.52}, shots=1024, mitigation_overhead=1.0
+			)
 			# First run: no calibration yet
 			mock_mitigator.single_qubit_cals = None
 			mock_m3iqm_class.return_value = mock_mitigator
@@ -234,6 +236,7 @@ class TestREMSettings:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -347,6 +350,7 @@ class TestJobMitigatorOptionsSnapshot:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -454,6 +458,7 @@ class TestBackendBatching:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def test_run_single_batch_is_wrapped_in_batched_job(self, mock_backend: Mock) -> None:
@@ -685,6 +690,7 @@ class TestCalibrationMaxBatchSize:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -720,9 +726,9 @@ class TestCalibrationMaxBatchSize:
 			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
-			mock_quasi_dist = Mock()
-			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
-			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.apply_correction.return_value = QuasiDistribution(
+				{"00": 0.48, "11": 0.52}, shots=1024, mitigation_overhead=1.0
+			)
 			mock_mitigator.single_qubit_cals = None
 			mock_m3iqm_class.return_value = mock_mitigator
 
@@ -758,9 +764,9 @@ class TestCalibrationMaxBatchSize:
 			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
-			mock_quasi_dist = Mock()
-			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
-			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.apply_correction.return_value = QuasiDistribution(
+				{"00": 0.48, "11": 0.52}, shots=1024, mitigation_overhead=1.0
+			)
 			mock_mitigator.single_qubit_cals = None
 			mock_m3iqm_class.return_value = mock_mitigator
 
@@ -887,6 +893,7 @@ class TestMitigatorOptionsIsolation:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def test_mutating_returned_dict_does_not_change_settings(self, mock_backend: Mock) -> None:
@@ -948,6 +955,7 @@ class TestPartialCalibrationCoverage:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def _run(self, mock_backend: Mock, existing_cals: list | None, mapping: dict) -> Mock:

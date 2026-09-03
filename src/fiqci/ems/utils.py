@@ -5,7 +5,13 @@ from qiskit.circuit import Qubit
 
 
 def probabilities_to_counts(probabilities, shots) -> list[dict]:
-	"""Convert probabilities to counts"""
+	"""Convert probabilities to counts.
+
+	Uses the largest-remainder method so the counts sum to exactly ``shots`` (for a normalised input).
+	Truncating each outcome instead drops up to one count per outcome, which leaves the realised total
+	below the requested shot count and so understates the ``N`` of any shot-error estimate taken from
+	these counts.
+	"""
 	try:
 		probabilities[0]
 	except KeyError:
@@ -14,9 +20,19 @@ def probabilities_to_counts(probabilities, shots) -> list[dict]:
 
 	counts_list = []
 	for probs in probabilities:
-		counts = {}
-		for k, prob in probs.items():
-			counts[k] = int(prob * shots)
+		scaled = {k: prob * shots for k, prob in probs.items()}
+		counts = {k: int(value) for k, value in scaled.items()}
+		deficit = shots - sum(counts.values())
+		if deficit > 0:
+			# Only the truncated fractions are handed back out, so an input summing below 1 stays
+			# below `shots` instead of being padded up to it.
+			by_remainder = sorted(
+				(k for k in scaled if scaled[k] > counts[k]),
+				key=lambda k: (scaled[k] - counts[k], scaled[k]),
+				reverse=True,
+			)
+			for k in by_remainder[:deficit]:
+				counts[k] += 1
 		counts_list.append(counts)
 
 	return counts_list

@@ -73,6 +73,18 @@ def _reduce_counts(counts: dict[str, int], layout: _KeyLayout) -> dict[str, int]
 	return reduced
 
 
+def _expand_key(key: str, layout: _KeyLayout) -> str:
+	"""Restore unmeasured zero bits and register spaces to a single reduced key."""
+	measured_iter = iter(key)
+	chars = [
+		next(measured_iter) if (layout.num_clbits - 1 - i) in layout.measured else "0" for i in range(layout.num_clbits)
+	]
+	full = "".join(chars)
+	for pos in layout.space_positions:
+		full = full[:pos] + " " + full[pos:]
+	return full
+
+
 def _expand_counts(counts: dict[str, int], layout: _KeyLayout) -> dict[str, int]:
 	"""Restore unmeasured zero bits and register spaces to reduced count keys.
 
@@ -88,15 +100,21 @@ def _expand_counts(counts: dict[str, int], layout: _KeyLayout) -> dict[str, int]
 	"""
 	expanded: dict[str, int] = {}
 	for key, value in counts.items():
-		measured_iter = iter(key)
-		chars = [
-			next(measured_iter) if (layout.num_clbits - 1 - i) in layout.measured else "0"
-			for i in range(layout.num_clbits)
-		]
-		full = "".join(chars)
-		for pos in layout.space_positions:
-			full = full[:pos] + " " + full[pos:]
+		full = _expand_key(key, layout)
 		expanded[full] = expanded.get(full, 0) + value
+	return expanded
+
+
+def _expand_quasi_probabilities(quasi_probabilities: dict[str, float], layout: _KeyLayout) -> dict[str, float]:
+	"""Restore unmeasured zero bits and register spaces to reduced quasi-probability keys.
+
+	Same key mapping as :meth:`_expand_counts`, but keeping the (possibly negative) float values M3
+	produces instead of integer counts.
+	"""
+	expanded: dict[str, float] = {}
+	for key, value in quasi_probabilities.items():
+		full = _expand_key(key, layout)
+		expanded[full] = expanded.get(full, 0.0) + float(value)
 	return expanded
 
 
@@ -118,6 +136,29 @@ def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
 			totals[key] = totals.get(key, 0.0) + value
 	n = len(counts_list)
 	return {key: round(value / n) for key, value in totals.items()}
+
+
+def _average_distributions(distributions: list[dict[str, float]]) -> dict[str, float]:
+	"""Average quasi-probability distributions, keeping float (possibly negative) values.
+
+	The counterpart of :meth:`_average_counts` for the unprojected M3 output, which must not be
+	rounded to integers.
+
+	Args:
+	    distributions: List of quasi-probability dictionaries to average.
+
+	Returns:
+	    Averaged quasi-probability dictionary.
+	"""
+	if len(distributions) == 1:
+		return dict(distributions[0])
+
+	totals: dict[str, float] = {}
+	for distribution in distributions:
+		for key, value in distribution.items():
+			totals[key] = totals.get(key, 0.0) + value
+	n = len(distributions)
+	return {key: value / n for key, value in totals.items()}
 
 
 def _trim_result_to_groups(result: Result, num_groups: int) -> Result:

@@ -1,11 +1,13 @@
 """Unit tests for FiQCIEstimator class."""
 
+import math
 from unittest.mock import Mock, patch
 
 import pytest
 from qiskit import QuantumCircuit
 from qiskit.circuit.library import HGate, CXGate, RZGate, SXGate, XGate, SdgGate
 from qiskit.quantum_info import SparsePauliOp
+from qiskit.result import Result
 from qiskit.transpiler import Target
 
 from fiqci.ems.primitives.fiqci_estimator import FiQCIEstimator, FiQCIEstimatorJob
@@ -40,6 +42,7 @@ class TestFiQCIEstimator:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		backend.target = _make_target()
 		return backend
 
@@ -243,6 +246,7 @@ class TestEstimatorBatching:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		backend.target = _make_target()
 		return backend
 
@@ -791,3 +795,119 @@ class TestFinalMeasurementRejection:
 		values = self._estimator().run(_bell(), SparsePauliOp(["ZZ"]), shots=1024).expectation_values(0)
 
 		assert values[0] == pytest.approx(1.0, abs=0.05)
+
+
+def _mock_iqm_backend() -> Mock:
+	"""A mocked IQM backend, as the estimator's constructor sees it."""
+	backend = Mock()
+	backend.name = "MockBackend"
+	backend.num_qubits = 5
+	backend.has_resonators.return_value = False
+	backend.target = _make_target()
+	return backend
+
+
+def _bell() -> QuantumCircuit:
+	qc = QuantumCircuit(2)
+	qc.h(0)
+	qc.cx(0, 1)
+	return qc
+
+
+def _mitigated_result(counts: dict[str, int], fiqci_ems: dict) -> Result:
+	"""A single-circuit Result carrying the ``fiqci_ems`` header FiQCIBackend attaches at level 1+."""
+	return Result.from_dict(
+		{
+			"backend_name": "mock",
+			"backend_version": "1",
+			"qobj_id": "1",
+			"job_id": "1",
+			"success": True,
+			"results": [
+				{
+					"shots": sum(counts.values()),
+					"success": True,
+					"data": {"counts": counts},
+					"header": {"memory_slots": 2, "creg_sizes": [["c", 2]], "fiqci_ems": fiqci_ems},
+				}
+			],
+		}
+	)
+
+
+class TestMitigatedExpectationValues:
+	"""Level 1+ must read M3's unprojected output, not the projected counts.
+
+	The counts in a mitigated result come from projecting M3's quasi-probabilities onto the nearest
+	physical distribution, which zeroes the negative entries. For a two-qubit Z observable those are
+	precisely the odd-parity outcomes, so an expectation value computed from the counts saturates at
+	exactly ±1 and its ``sqrt((1 - ⟨P⟩²) / N)`` error bar collapses to zero.
+	"""
+
+	SATURATING_COUNTS = {"00": 500, "11": 500}
+	QUASI = {"00": 0.53, "01": -0.03, "10": -0.03, "11": 0.53}
+	RAW = {"00": 470, "01": 30, "10": 30, "11": 470}
+	OVERHEAD = 2.0
+
+	@pytest.fixture
+	def job(self) -> FiQCIEstimatorJob:
+		with patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend") as mock_class:
+			backend = _make_fiqci_backend_mock()
+			backend_job = Mock()
+			backend_job.result.return_value = _mitigated_result(
+				self.SATURATING_COUNTS,
+				{
+					"quasi_probabilities": self.QUASI,
+					"mitigation_overhead": self.OVERHEAD,
+					"raw_counts": self.RAW,
+					"clipped_outcomes": 2,
+				},
+			)
+			backend.run.return_value = backend_job
+			mock_class.return_value = backend
+
+			estimator = FiQCIEstimator(_mock_iqm_backend(), mitigation_level=1)
+			return estimator.run(_bell(), SparsePauliOp.from_list([("ZZ", 1.0)]), shots=1000)
+
+	def test_value_comes_from_quasi_probabilities_not_projected_counts(self, job: FiQCIEstimatorJob) -> None:
+		# From the counts alone <ZZ> is exactly 1.0; the quasi-probabilities keep the over-subtraction
+		# visible instead of hiding it at the physical boundary.
+		assert job.expectation_values(0)[0] == pytest.approx(1.12)
+
+	def test_shot_error_comes_from_raw_counts_and_is_inflated_by_the_overhead(self, job: FiQCIEstimatorJob) -> None:
+		raw_expval = 0.88  # (470 + 470 - 30 - 30) / 1000
+		expected = math.sqrt((1.0 - raw_expval**2) / 1000) * math.sqrt(self.OVERHEAD)
+
+		errors = job.standard_errors(0)
+		assert errors["shot_error"][0] == pytest.approx(expected)
+		assert errors["total"] == errors["shot_error"]
+
+	def test_shot_error_exceeds_the_unmitigated_one(self, job: FiQCIEstimatorJob) -> None:
+		"""Mitigation trades bias for variance, so its error bar must not come out smaller."""
+		unmitigated = math.sqrt((1.0 - 0.88**2) / 1000)
+
+		assert job.standard_errors(0)["shot_error"][0] > unmitigated
+
+
+class TestShotErrorOverhead:
+	"""Unit-level checks of the overhead factor in ``_calculate_shot_errors``."""
+
+	@pytest.fixture
+	def estimator(self) -> FiQCIEstimator:
+		with patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend") as mock_class:
+			mock_class.return_value = _make_fiqci_backend_mock()
+			return FiQCIEstimator(_mock_iqm_backend(), mitigation_level=1)
+
+	@pytest.mark.parametrize("overhead, factor", [(None, 1.0), (1.0, 1.0), (4.0, 2.0), (0.5, 1.0)])
+	def test_overhead_scales_the_error_by_its_square_root(
+		self, estimator: FiQCIEstimator, overhead: float | None, factor: float
+	) -> None:
+		"""An overhead below 1 would shrink the error bar, so it is floored at 1."""
+		counts = [{"00": 470, "01": 30, "10": 30, "11": 470}]
+		obs = SparsePauliOp.from_list([("ZZ", 1.0)])
+		settings = [{0: "Z", 1: "Z"}]
+
+		plain = estimator._calculate_shot_errors(counts, obs, settings)
+		scaled = estimator._calculate_shot_errors(counts, obs, settings, 1, [overhead])
+
+		assert scaled[0] == pytest.approx(plain[0] * factor)

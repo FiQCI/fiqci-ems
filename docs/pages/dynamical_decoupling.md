@@ -12,11 +12,42 @@ Common DD sequences include:
 - **XYXY**: A repeated XY sequence offering stronger suppression for longer idle periods.
 - **Custom PRX sequences**: User-defined rotation sequences for advanced noise profiles.
 
+## Not supported on IQM Star devices
+
+DD corrupts MOVE-routed circuits on Star devices (those with a computational resonator, e.g. VLQ and
+Deneb): the qubit whose state is parked in the resonator comes back randomized. Mitigation levels 2
+and 3 are unvalidated on this architecture and not recommended, and enabling DD on such a backend
+raises a warning before anything is submitted. Use level 0 or 1 there, or configure the other
+mitigators individually.
+
 ## Usage
 
 Dynamical decoupling is enabled by default at ``mitigation_level=2`` or it can be enabled with the primitives `dd()` method.
 
 For more detailed usage see [FiQCISampler](FiQCISamplerUsage.rst) or [FiQCIEstimator](FiQCIEstimatorUsage.rst)
+
+### Combining DD with other compilation options
+
+DD is submitted through IQM's `CircuitCompilationOptions`, which is also how you reach settings EMS
+does not wrap (heralding, MOVE gate validation, MOVE gate frame tracking). Passing your own options to
+`run()` keeps every non-DD field and only sets the DD ones, so the two compose:
+
+```python
+from iqm.iqm_client import CircuitCompilationOptions, MoveGateValidationMode
+
+sampler = FiQCISampler(backend, mitigation_level=2)  # DD on
+sampler.run(
+    circuit,
+    shots=4096,
+    circuit_compilation_options=CircuitCompilationOptions(
+        move_gate_validation=MoveGateValidationMode.ALLOW_PRX
+    ),
+)
+```
+
+The DD strategy from `dd()` (or the mitigation level) wins over a `dd_mode`/`dd_strategy` set in your
+own options, and you get a warning if both are configured. To submit with your own DD strategy
+instead, turn EMS's off with `dd(enabled=False)`.
 
 ## References
 

@@ -1,14 +1,17 @@
 """Unit tests for Pauli twirling transpiler pass, caching, and integration with backend/estimator."""
 
+import warnings
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
+from mthree.classes import QuasiDistribution
 from qiskit import QuantumCircuit
 from qiskit.circuit.library import CZGate, CXGate
+from qiskit.transpiler import PassManager
 from qiskit.quantum_info import Operator
 
-from iqm.qiskit_iqm import IQMFakeAphrodite
+from iqm.qiskit_iqm import IQMFakeAdonis, IQMFakeAphrodite
 
 from fiqci.ems.transpiler_passes.pauli_twirl import PauliTwirl, get_twirled_circuits, _get_twirl_set, _twirl_set_cache
 from fiqci.ems.backend import BatchedJob, FiQCIBackend, MitigatedJob
@@ -161,6 +164,7 @@ class TestGetTwirledCircuits:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -303,6 +307,7 @@ class TestGetTwirledCircuits:
 		mock_backend = Mock()
 		mock_backend.name = "MockBackend"
 		mock_backend.num_qubits = 5
+		mock_backend.has_resonators.return_value = False
 		mock_backend.target.instructions = [(InstructionWithName,), (InstructionWithNoName,)]
 
 		try:
@@ -319,6 +324,7 @@ class TestBackendPauliTwirlSettings:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	def test_pauli_twirl_disabled_by_default(self, mock_backend):
@@ -375,6 +381,7 @@ class TestBackendRunWithPauliTwirling:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -456,9 +463,9 @@ class TestBackendRunWithPauliTwirling:
 			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
-			mock_quasi_dist = Mock()
-			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
-			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.apply_correction.return_value = QuasiDistribution(
+				{"00": 0.48, "11": 0.52}, shots=1024, mitigation_overhead=1.0
+			)
 			mock_mitigator.single_qubit_cals = None
 			mock_m3iqm_class.return_value = mock_mitigator
 
@@ -549,7 +556,6 @@ class TestAverageAndTrimMethods:
 		Uses the no-REM twirl branch so no M3 calibration is needed.
 		"""
 		from qiskit import transpile
-		from iqm.qiskit_iqm import IQMFakeAdonis
 
 		fake = IQMFakeAdonis()
 
@@ -581,6 +587,7 @@ class TestEstimatorPauliTwirl:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")
@@ -618,6 +625,7 @@ class TestSamplerPauliTwirl:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
@@ -736,3 +744,167 @@ class TestPauliTwirlSeed:
 		assert backend._pauli_twirl["seed"] == 99
 		assert backend.mitigator_options["pauli_twirl"]["seed"] == 99
 		assert backend._snapshot_mitigator_options()["pauli_twirl"]["seed"] == 99
+
+
+def _substitute_moves(circuit: QuantumCircuit) -> QuantumCircuit:
+	"""Swap MOVE for its explicit unitary so the circuit can be simulated."""
+	from qiskit.circuit.library import UnitaryGate
+	from iqm.qiskit_iqm.move_gate import MOVE_GATE_UNITARY
+
+	out = circuit.copy_empty_like()
+	for instruction in circuit.data:
+		if instruction.operation.name == "move":
+			out.append(UnitaryGate(np.asarray(MOVE_GATE_UNITARY)), instruction.qubits)
+		else:
+			out.append(instruction)
+	return out
+
+
+def _equal_up_to_phase(left, right) -> bool:
+	product = np.asarray(left) @ np.asarray(right).conj().T
+	diagonal = np.diag(product)
+	return (
+		np.allclose(product, np.diag(diagonal))
+		and np.allclose(np.abs(diagonal), 1)
+		and np.allclose(diagonal, diagonal[0])
+	)
+
+
+class TestComputationalResonatorTwirling:
+	"""Twirling circuits routed through a computational resonator (Deneb-class devices).
+
+	Twirling a ``(qubit, resonator)`` gate is possible even though the resonator accepts no
+	single-qubit gates: the resonator half of the twirl pair is commuted out of the MOVE sandwich
+	onto the qubit whose state the resonator holds.
+	"""
+
+	@pytest.fixture
+	def backend(self):
+		from iqm.qiskit_iqm import IQMFakeDeneb
+
+		return IQMFakeDeneb()
+
+	def transpiled(self, backend, num_partners: int) -> QuantumCircuit:
+		"""A circuit whose MOVE sandwich holds ``num_partners`` CZ gates."""
+		from iqm.qiskit_iqm import transpile_to_IQM
+
+		circuit = QuantumCircuit(num_partners + 1)
+		circuit.h(0)
+		for target in range(1, num_partners + 1):
+			circuit.cz(0, target)
+		transpiled = transpile_to_IQM(circuit, backend)
+		assert transpiled.count_ops()["move"] == 2, "fixture must exercise a MOVE sandwich"
+		assert transpiled.count_ops()["cz"] == num_partners
+		return transpiled
+
+	@pytest.mark.parametrize("num_partners", [1, 2, 3])
+	def test_gates_in_a_sandwich_are_twirled(self, backend, num_partners: int) -> None:
+		base = self.transpiled(backend, num_partners)
+		twirled = get_twirled_circuits([base], num_twirls=8, backend=backend)
+
+		assert len(twirled) == 9
+		assert any(candidate != base for candidate in twirled[1:]), "nothing was twirled"
+
+	@pytest.mark.parametrize("num_partners", [1, 2, 3])
+	def test_twirling_preserves_the_unitary(self, backend, num_partners: int) -> None:
+		"""The whole point: relocating the resonator-side Paulis must not change what the circuit does."""
+		base = self.transpiled(backend, num_partners)
+		reference = Operator(_substitute_moves(base))
+
+		for candidate in get_twirled_circuits([base], num_twirls=12, backend=backend)[1:]:
+			assert _equal_up_to_phase(Operator(_substitute_moves(candidate)), reference)
+
+	@pytest.mark.parametrize("num_partners", [1, 2, 3])
+	def test_twirled_circuits_pass_strict_move_validation(self, backend, num_partners: int) -> None:
+		from iqm.iqm_client import MoveGateValidationMode
+		from iqm.qiskit_iqm.iqm_circuit_validation import validate_circuit
+
+		base = self.transpiled(backend, num_partners)
+		for candidate in get_twirled_circuits([base], num_twirls=12, backend=backend)[1:]:
+			validate_circuit(candidate, backend, validate_moves=MoveGateValidationMode.STRICT)
+
+	@pytest.mark.parametrize("num_partners", [1, 2, 3])
+	def test_no_single_qubit_gate_lands_on_a_resonator(self, backend, num_partners: int) -> None:
+		base = self.transpiled(backend, num_partners)
+		for candidate in get_twirled_circuits([base], num_twirls=12, backend=backend)[1:]:
+			resonators = {
+				instruction.qubits[1] for instruction in candidate.data if instruction.operation.name == "move"
+			}
+			for instruction in candidate.data:
+				if len(instruction.qubits) == 1:
+					assert instruction.qubits[0] not in resonators
+
+	def test_boundary_paulis_land_outside_the_sandwich(self, backend) -> None:
+		"""IQM asks for no single-qubit gates on the moved qubit between a MOVE pair."""
+		base = self.transpiled(backend, 2)
+		for candidate in get_twirled_circuits([base], num_twirls=12, backend=backend)[1:]:
+			moved = next(i.qubits[0] for i in candidate.data if i.operation.name == "move")
+			inside = False
+			for instruction in candidate.data:
+				if instruction.operation.name == "move":
+					inside = not inside
+				elif inside and len(instruction.qubits) == 1:
+					assert instruction.qubits[0] is not moved
+
+	def test_resonator_detected_when_wire_index_differs_from_physical_index(self, backend) -> None:
+		"""The single-partner layout puts the resonator on a wire whose index is not its physical one."""
+		base = self.transpiled(backend, 1)
+		move = next(i for i in base.data if i.operation.name == "move")
+		resonator_wire = base.find_bit(move.qubits[1]).index
+		physical_resonator = next(i for i, n in backend._idx_to_qb.items() if n == "CR1")
+		assert resonator_wire != physical_resonator, "fixture no longer covers the mismatching case"
+
+		# Detection comes from the MOVE argument order, so it still finds the right wire.
+		for candidate in get_twirled_circuits([base], num_twirls=8, backend=backend)[1:]:
+			for instruction in candidate.data:
+				if len(instruction.qubits) == 1:
+					assert base.find_bit(instruction.qubits[0]).index != resonator_wire
+
+	def test_sandwich_with_an_untwirlable_gate_is_left_alone(self) -> None:
+		"""A Pauli cannot be commuted through an unknown gate, so that sandwich is skipped."""
+		from iqm.qiskit_iqm.move_gate import MoveGate
+
+		circuit = QuantumCircuit(3)
+		circuit.append(MoveGate(), [0, 2])
+		circuit.cz(1, 2)
+		circuit.append(CXGate(), [1, 2])  # not in gates_to_twirl, and not commutable
+		circuit.append(MoveGate(), [0, 2])
+
+		twirl = PauliTwirl(seed=3)
+		result = PassManager(twirl).run(circuit)
+
+		assert twirl.twirled_gate_count == 0
+		assert result == circuit
+
+	def test_twirled_gate_count_counts_resonator_gates(self, backend) -> None:
+		base = self.transpiled(backend, 3)
+		twirl = PauliTwirl(seed=3)
+		PassManager(twirl).run(base)
+		assert twirl.twirled_gate_count == 3
+
+	def test_move_dropped_from_gates_to_twirl(self) -> None:
+		from iqm.qiskit_iqm.move_gate import MoveGate
+
+		with pytest.warns(UserWarning, match="MOVE gates cannot be twirled"):
+			twirl = PauliTwirl(gates_to_twirl=[CZGate(), MoveGate()])
+
+		assert [gate.name for gate in twirl.gates_to_twirl] == ["cz"]
+
+	def test_warns_when_nothing_matches(self, backend) -> None:
+		"""A resonator circuit whose gates are all untwirlable still reports the wasted shots."""
+		from iqm.qiskit_iqm.move_gate import MoveGate
+
+		circuit = QuantumCircuit(3)
+		circuit.append(MoveGate(), [0, 2])
+		circuit.cz(1, 2)
+		circuit.append(CXGate(), [1, 2])
+		circuit.append(MoveGate(), [0, 2])
+
+		with pytest.warns(UserWarning, match="matched no gates"):
+			get_twirled_circuits([circuit], num_twirls=2)
+
+	def test_no_warning_when_resonator_gates_are_twirled(self, backend) -> None:
+		base = self.transpiled(backend, 2)
+		with warnings.catch_warnings():
+			warnings.simplefilter("error", UserWarning)
+			get_twirled_circuits([base], num_twirls=2, backend=backend)

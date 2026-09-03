@@ -1,3 +1,25 @@
+## [WIP] [1.0.1] 6.8.2026
+
+Changes to enable EMS usage on IQM star based devices.
+
+### Changed
+- ZNE now works on devices with computational resonators. Both folding methods previously raised `CircuitError: inverse() not implemented for move` on any circuit transpiled for a resonator device, making estimator mitigation level 3 unusable there
+- local folding leaves MOVE gates alone unless `fold_gates` names `"move"` explicitly, and MOVE no longer counts towards the foldable-gate total used for the achieved scale factors. Global folding inverts the whole circuit and so still folds MOVE
+- Pauli twirling now works on devices with computational resonators. A resonator accepts no single-qubit gates, so the resonator half of each twirl pair is commuted out of the MOVE sandwich onto the qubit whose state the resonator is holding: `I`/`Z` pass through freely, `X`/`Y` pick up a `Z` on the far qubit of every gate they cross. Previously such gates could not be twirled at all
+- a MOVE sandwich containing an operation a twirl Pauli cannot be commuted through is left untwirled rather than corrupted, and MOVE is dropped from `gates_to_twirl` with a warning
+- warn when twirling matched no gates, instead of silently submitting `num_twirls` extra circuit(s) per input with no mitigation applied.
+- `FiQCIEstimator` expectation values at mitigation level 1 and above now come from M3's unprojected quasi-probabilities instead of the projected counts, which could pin them to exactly +-1. Mitigated values are unbiased and may fall slightly outside `[-1, 1]` if REM calibration is very erronous.
+- `standard_errors()["shot_error"]` is now taken from the raw counts and inflated by `sqrt(mitigation_overhead)`. Level 1 previously reported a smaller error than level 0
+- mitigated results carry `quasi_probabilities`, `mitigation_overhead` and `clipped_outcomes` per circuit in `result.results[i].header["fiqci_ems"]`, and clipping now warns
+- `FiQCISampler` counts are unchanged and stay projected, since Qiskit's count consumers require non-negative integers
+- warn when dynamical decoupling is submitted to a device with a computational resonator. DD corrupts MOVE-routed circuits there, so mitigation levels 2 and 3 are unvalidated on Star devices and not recommended
+- a `circuit_compilation_options` passed to `run()` is no longer discarded when dynamical decoupling is on. DD is merged into it, so heralding and MOVE gate settings survive
+- `probabilities_to_counts` rounds by largest remainder instead of truncating, so mitigated counts total exactly the requested shot count
+- `job_id()`, `job_ids()` and `partial_results()` also accept backends that expose `job_id` as an attribute instead of a method
+- https://github.com/FiQCI/fiqci-ems/pull/46
+
+---
+
 ## [1.0.0] 31.7.2026
 
 ### Breaking changes

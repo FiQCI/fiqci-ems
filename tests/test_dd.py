@@ -1,9 +1,19 @@
 """Unit tests for dynamical decoupling functionality."""
 
+import warnings
 from unittest.mock import Mock, patch
 
 import pytest
-from iqm.iqm_client import CircuitCompilationOptions, DDMode, STANDARD_DD_STRATEGY
+from mthree.classes import QuasiDistribution
+from iqm.iqm_client import (
+	CircuitCompilationOptions,
+	DDMode,
+	DDStrategy,
+	HeraldingMode,
+	MoveGateFrameTrackingMode,
+	MoveGateValidationMode,
+	STANDARD_DD_STRATEGY,
+)
 from qiskit import QuantumCircuit
 
 from fiqci.ems.mitigators.dd import build_dd_options, DDGateSequenceEntry
@@ -61,6 +71,7 @@ class TestFiQCIBackendDD:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -128,6 +139,7 @@ class TestDDValidation:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -200,6 +212,7 @@ class TestDDRunIntegration:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@pytest.fixture
@@ -258,9 +271,9 @@ class TestDDRunIntegration:
 			patch("fiqci.ems.backend.core.probabilities_to_counts", return_value=[{"00": 480, "11": 520}]),
 		):
 			mock_mitigator = Mock()
-			mock_quasi_dist = Mock()
-			mock_quasi_dist.nearest_probability_distribution.return_value = {"00": 0.48, "11": 0.52}
-			mock_mitigator.apply_correction.return_value = mock_quasi_dist
+			mock_mitigator.apply_correction.return_value = QuasiDistribution(
+				{"00": 0.48, "11": 0.52}, shots=1024, mitigation_overhead=1.0
+			)
 			mock_mitigator.single_qubit_cals = None
 			mock_m3iqm_class.return_value = mock_mitigator
 
@@ -281,6 +294,7 @@ class TestSamplerEstimatorDD:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
 		return backend
 
 	@patch("fiqci.ems.primitives.fiqci_sampler.FiQCIBackend")
@@ -323,3 +337,181 @@ class TestSamplerEstimatorDD:
 		estimator.dd(enabled=True, gate_sequences=sequences)
 
 		mock_fiqci_backend.dd.assert_called_once_with(True, sequences)
+
+
+class TestUserSuppliedCompilationOptions:
+	"""DD must be layered onto caller-supplied compilation options, not replace them.
+
+	``CircuitCompilationOptions`` carries settings that have nothing to do with DD — heralding, MOVE
+	gate validation and frame tracking — and are the only way to reach them, since ems does not wrap
+	them. Overwriting the whole object when DD is on would silently drop them.
+	"""
+
+	@pytest.fixture
+	def mock_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockBackend"
+		backend.num_qubits = 5
+		backend.has_resonators.return_value = False
+		return backend
+
+	@pytest.fixture
+	def mock_circuit(self) -> QuantumCircuit:
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure_all()
+		return qc
+
+	def test_build_dd_options_keeps_non_dd_fields_of_the_base(self) -> None:
+		base = CircuitCompilationOptions(
+			move_gate_validation=MoveGateValidationMode.ALLOW_PRX,
+			move_gate_frame_tracking=MoveGateFrameTrackingMode.NONE,
+			heralding_mode=HeraldingMode.ZEROS,
+		)
+
+		options = build_dd_options([(2, "XX", "center")], base=base)
+
+		assert options.dd_mode == DDMode.ENABLED
+		assert options.dd_strategy.gate_sequences == [(2, "XX", "center")]
+		assert options.move_gate_validation == MoveGateValidationMode.ALLOW_PRX
+		assert options.move_gate_frame_tracking == MoveGateFrameTrackingMode.NONE
+		assert options.heralding_mode == HeraldingMode.ZEROS
+		# The caller's object is not mutated.
+		assert base.dd_mode == DDMode.DISABLED
+
+	def test_run_merges_dd_into_user_options(self, mock_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		mock_backend.run.return_value = Mock()
+
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		backend.dd(enabled=True, gate_sequences=[(2, "XX", "center")])
+		backend.run(
+			mock_circuit,
+			shots=1024,
+			circuit_compilation_options=CircuitCompilationOptions(
+				move_gate_validation=MoveGateValidationMode.ALLOW_PRX
+			),
+		)
+
+		options = mock_backend.run.call_args[1]["circuit_compilation_options"]
+		assert options.dd_mode == DDMode.ENABLED
+		assert options.move_gate_validation == MoveGateValidationMode.ALLOW_PRX
+
+	def test_run_passes_user_options_through_unchanged_when_dd_is_off(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		mock_backend.run.return_value = Mock()
+		options = CircuitCompilationOptions(move_gate_frame_tracking=MoveGateFrameTrackingMode.NONE)
+
+		FiQCIBackend(mock_backend, mitigation_level=0).run(
+			mock_circuit, shots=1024, circuit_compilation_options=options
+		)
+
+		assert mock_backend.run.call_args[1]["circuit_compilation_options"] is options
+
+	def test_run_warns_when_user_options_already_configure_dd(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		mock_backend.run.return_value = Mock()
+
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		backend.dd(enabled=True, gate_sequences=[(2, "XX", "center")])
+
+		with pytest.warns(UserWarning, match="already configures dynamical decoupling"):
+			backend.run(
+				mock_circuit,
+				shots=1024,
+				circuit_compilation_options=CircuitCompilationOptions(
+					dd_mode=DDMode.ENABLED, dd_strategy=DDStrategy(gate_sequences=[(9, "XYXYYXYX", "asap")])
+				),
+			)
+
+		options = mock_backend.run.call_args[1]["circuit_compilation_options"]
+		assert options.dd_strategy.gate_sequences == [(2, "XX", "center")]
+
+	def test_run_rejects_a_non_compilation_options_value(
+		self, mock_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		mock_backend.run.return_value = Mock()
+
+		backend = FiQCIBackend(mock_backend, mitigation_level=0)
+		backend.dd(enabled=True)
+
+		with pytest.raises(TypeError, match="CircuitCompilationOptions"):
+			backend.run(mock_circuit, shots=1024, circuit_compilation_options={"dd_mode": "enabled"})
+
+
+class TestStarArchitectureWarning:
+	"""DD is not validated on Star devices, so enabling it there must say so before submitting."""
+
+	@pytest.fixture
+	def star_backend(self) -> Mock:
+		backend = Mock()
+		backend.name = "MockStarBackend"
+		backend.num_qubits = 5
+		backend.has_resonators.return_value = True
+		backend.run.return_value = Mock()
+		return backend
+
+	@pytest.fixture
+	def mock_circuit(self) -> QuantumCircuit:
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure_all()
+		return qc
+
+	def test_warns_when_dd_is_submitted_to_a_resonator_device(
+		self, star_backend: Mock, mock_circuit: QuantumCircuit
+	) -> None:
+		backend = FiQCIBackend(star_backend, mitigation_level=0)
+		backend.dd(enabled=True)
+
+		with pytest.warns(UserWarning, match="corrupts MOVE-routed circuits"):
+			backend.run(mock_circuit, shots=1024)
+
+	def test_warns_before_anything_is_submitted(self, star_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		"""Shots are spent at submission, so the warning is only actionable if it comes first."""
+		backend = FiQCIBackend(star_backend, mitigation_level=0)
+		backend.dd(enabled=True)
+
+		already_submitted: list[bool] = []
+		with warnings.catch_warnings():
+			warnings.simplefilter("always")
+			warnings.showwarning = lambda *args, **kwargs: already_submitted.append(star_backend.run.called)
+			backend.run(mock_circuit, shots=1024)
+
+		assert already_submitted == [False]
+
+	def test_no_warning_when_dd_is_disabled(self, star_backend: Mock, mock_circuit: QuantumCircuit) -> None:
+		with warnings.catch_warnings():
+			warnings.simplefilter("error")
+			FiQCIBackend(star_backend, mitigation_level=0).run(mock_circuit, shots=1024)
+
+	def test_no_warning_on_a_device_without_resonators(self, mock_circuit: QuantumCircuit) -> None:
+		crystal_backend = Mock()
+		crystal_backend.name = "MockBackend"
+		crystal_backend.num_qubits = 5
+		crystal_backend.has_resonators.return_value = False
+		crystal_backend.run.return_value = Mock()
+
+		backend = FiQCIBackend(crystal_backend, mitigation_level=0)
+		backend.dd(enabled=True)
+
+		with warnings.catch_warnings():
+			warnings.simplefilter("error")
+			backend.run(mock_circuit, shots=1024)
+
+	def test_no_warning_when_the_backend_cannot_report_resonators(self, mock_circuit: QuantumCircuit) -> None:
+		"""A backend without ``has_resonators`` is not assumed to be a Star device."""
+		plain_backend = Mock(spec=["name", "num_qubits", "run"])
+		plain_backend.name = "MockBackend"
+		plain_backend.num_qubits = 5
+		plain_backend.run.return_value = Mock()
+
+		backend = FiQCIBackend(plain_backend, mitigation_level=0)
+		backend.dd(enabled=True)
+
+		with warnings.catch_warnings():
+			warnings.simplefilter("error")
+			backend.run(mock_circuit, shots=1024)
