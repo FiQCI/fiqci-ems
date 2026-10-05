@@ -449,6 +449,18 @@ def _make_result_mock(counts_per_circuit: list[dict[str, int]]) -> Mock:
 class TestBackendBatching:
 	"""Tests for FiQCIBackend.run circuit batching."""
 
+	def test_result_accepts_iqm_keyword_only_timeout(self) -> None:
+		job = _make_result_mock([{"00": 16}])
+		result = job.result.return_value
+
+		def iqm_result(*, timeout):
+			assert 0 <= timeout <= 10
+			return result
+
+		job.result.side_effect = iqm_result
+		handle = BatchedJob([job])
+		assert handle.result(timeout=10).get_counts(0) == {"00": 16}
+
 	@pytest.fixture
 	def mock_backend(self) -> Mock:
 		backend = Mock()

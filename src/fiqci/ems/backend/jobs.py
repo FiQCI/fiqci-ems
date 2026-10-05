@@ -238,7 +238,7 @@ class BatchedJob:
 			remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
 			try:
 				# Concrete IQM jobs accept a timeout; the abstract JobV1.result stub does not declare one.
-				result = job.result() if remaining is None else job.result(remaining)  # type: ignore[bad-argument-count]
+				result = job.result() if remaining is None else job.result(timeout=remaining)  # type: ignore[unexpected-keyword]
 			except Exception as exc:  # batch failed at the backend
 				failures.append((index, job.job_id(), str(exc)))
 				continue
