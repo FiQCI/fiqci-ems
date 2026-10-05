@@ -1,3 +1,11 @@
+## [1.0.1] - 5.10.2026
+
+### Changed
+- Update the minimum `iqm-client` version to 35.0.3 for IQM OS 4.6.3 compatibility.
+
+### Fixed
+- Pass result timeouts as keyword arguments to IQM jobs, fixing `result(timeout=...)` raising `BatchFailedError` through FiQCI job handles.
+
 ## [1.0.0] 31.7.2026
 
 ### Breaking changes
