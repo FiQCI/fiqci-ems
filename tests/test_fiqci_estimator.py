@@ -110,7 +110,7 @@ class TestFiQCIEstimator:
 		circuits = [QuantumCircuit(2), QuantumCircuit(2)]
 		observables = [SparsePauliOp.from_list([("ZZ", 1.0)])]
 
-		with pytest.raises(ValueError, match="Length of observables and circuits lists must match"):
+		with pytest.raises(ValueError, match="observable entr"):
 			estimator.run(circuits, observables)
 
 	@patch("fiqci.ems.primitives.fiqci_estimator.FiQCIBackend")

@@ -1,9 +1,20 @@
 ## [WIP] [2.0.0]
 
+### Breaking changes
+- `FiQCIEstimator` observables now behave as in Qiskit's Estimator. A `SparsePauliOp` is one observable with expectation value `sum(c * <P>)` over its terms, instead of one value per term with the coefficients ignored. To keep one value per term, pass the terms as a list, e.g. `run(qc, ["ZZ", "XX"])`
+- `expectation_values(i)` and `standard_errors(i)` hold one value per observable of circuit `i`. The standard error of an observable is `sum(|c| * shot_error)` over its terms, as in Qiskit's `BackendEstimatorV2`
+- `run()` raises `ValueError` when an observable does not act on as many qubits as its circuit, or has complex coefficients
+- `FiQCIEstimatorJob.observables()` returns one list of `SparsePauliOp` per circuit
+
 ### Changed
+- `FiQCIEstimator.run()` and `total_circuits_generated()` accept several observables per circuit, as `run(qc, [a, b])` or `run([qc1, qc2], [[a, b], c])`. Terms of all observables on a circuit share measurement circuits
+- observables can be given as anything Qiskit's Estimator accepts, including label strings, `{label: coeff}` dicts, `Pauli` and `SparseObservable`
+- ZNE extrapolates each observable's combined value. Identity terms are added after extrapolation
 - Support IQM OS 4.7.0: allow `iqm-client` 36 (`iqm-client[qiskit]>=35.0.3,<37`). 35.0.3 remains the minimum and is tested in CI alongside the locked 36.0.0
 - `iqm-client` 36 no longer drops final RZ gates by default (`transpile_to_IQM(remove_final_rzs=False)`, `optimize_single_qubit_gates(drop_final_rz=False)`), so transpiled circuits keep their unitary. Z-basis counts are unchanged; RZ gates directly before a measurement are still dropped, so `FiQCIEstimator` keeps rejecting circuits that end in measurements. Keep passing `remove_final_rzs=False` explicitly for the estimator to stay correct on `iqm-client` 35
-- https://github.com/FiQCI/fiqci-ems/pull/49
+- https://github.com/FiQCI/fiqci-ems/pull/50
+
+---
 
 ## [1.1.0] 30.10.2026
 
@@ -23,6 +34,10 @@ Changes to enable EMS usage on IQM star based devices.
 - `probabilities_to_counts` rounds by largest remainder instead of truncating, so mitigated counts total exactly the requested shot count
 - `job_id()`, `job_ids()` and `partial_results()` also accept backends that expose `job_id` as an attribute instead of a method
 - https://github.com/FiQCI/fiqci-ems/pull/46
+
+### Fixed
+- identity terms now contribute their coefficient instead of `0`, and an identity-only observable no longer fails the run
+- https://github.com/FiQCI/fiqci-ems/pull/48
 
 ---
 
