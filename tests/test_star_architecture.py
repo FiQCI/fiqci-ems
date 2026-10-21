@@ -74,9 +74,9 @@ def measured(transpiled: QuantumCircuit) -> QuantumCircuit:
 
 
 @pytest.fixture(scope="module")
-def device_observables(transpiled: QuantumCircuit) -> SparsePauliOp:
+def device_observables(transpiled: QuantumCircuit) -> list[SparsePauliOp]:
 	"""Observables mapped onto the transpiled circuit's layout, as the docs instruct."""
-	return SparsePauliOp(["ZZ", "XX", "YY"]).apply_layout(transpiled.layout)
+	return [SparsePauliOp(label).apply_layout(transpiled.layout) for label in ("ZZ", "XX", "YY")]
 
 
 def _loci(backend: IQMFakeDeneb, circuit: QuantumCircuit) -> dict[str, list[str]]:
@@ -158,7 +158,7 @@ class TestEstimatorOnStarArchitecture:
 		self,
 		backend: IQMFakeDeneb,
 		transpiled: QuantumCircuit,
-		device_observables: SparsePauliOp,
+		device_observables: list[SparsePauliOp],
 		resonators: list[str],
 		level: int,
 	) -> None:
@@ -173,7 +173,7 @@ class TestEstimatorOnStarArchitecture:
 		self,
 		backend: IQMFakeDeneb,
 		transpiled: QuantumCircuit,
-		device_observables: SparsePauliOp,
+		device_observables: list[SparsePauliOp],
 		resonators: list[str],
 	) -> None:
 		"""The full stack at once: folding duplicates gates and twirling wraps them in Paulis."""
@@ -188,7 +188,7 @@ class TestEstimatorOnStarArchitecture:
 		_assert_loci_are_sound(backend, submitted, transpiled, resonators)
 
 	def test_estimator_values_are_physical_on_a_star_device(
-		self, backend: IQMFakeDeneb, transpiled: QuantumCircuit, device_observables: SparsePauliOp
+		self, backend: IQMFakeDeneb, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp]
 	) -> None:
 		"""Guards the loci tests: a circuit whose gates moved would not measure a Bell state at all."""
 		with warnings.catch_warnings():

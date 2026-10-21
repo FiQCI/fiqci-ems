@@ -121,11 +121,11 @@ estimator = FiQCIEstimator(backend, mitigation_level=1)
 # iqm-client 36, but older versions default to True.
 tr_qc = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
 
-# Define observables
-observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
+# Define observables, here <ZZ>, <IX> and their weighted sum
+observables = [SparsePauliOp("ZZ"), SparsePauliOp("IX"), SparsePauliOp(["ZZ", "IX"], [0.5, 0.5])]
 
 # Map observables to transpiled layout
-device_observables = observables.apply_layout(tr_qc.layout)
+device_observables = [obs.apply_layout(tr_qc.layout) for obs in observables]
 
 # Execute the job
 job_collection = estimator.run(tr_qc, observables=device_observables, shots=2048)

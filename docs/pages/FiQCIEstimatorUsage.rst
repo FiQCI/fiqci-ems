@@ -30,8 +30,8 @@ to ``True``.
 
    tr_qc = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
 
-   observables = SparsePauliOp.from_list([("ZZ", 1), ("IX", 1)])
-   device_observables = observables.apply_layout(tr_qc.layout)
+   observables = [SparsePauliOp("ZZ"), SparsePauliOp("IX")]
+   device_observables = [obs.apply_layout(tr_qc.layout) for obs in observables]
 
 The circuit must not end in measurements. The estimator appends its own measurement basis, and
 ``transpile_to_IQM`` drops the terminal RZ frame of a circuit it sees measurements on even with
@@ -39,6 +39,34 @@ The circuit must not end in measurements. The estimator appends its own measurem
 ``ValueError`` for such a circuit. Mid-circuit measurements are supported.
 
 The examples below use ``tr_qc`` and ``device_observables``.
+
+Observables
+-----------
+
+Observables behave as in Qiskit's Estimator. Each observable is one Hermitian operator, and its
+expectation value is :math:`\sum_i c_i \langle P_i \rangle` over its terms. A
+``SparsePauliOp(["ZZ", "XX"], [0.5, 0.5])`` therefore gives a single value. To get one value per Pauli
+term, pass the terms as separate observables.
+
+An observable can be anything Qiskit's Estimator accepts: a ``SparsePauliOp``, ``Pauli``,
+``SparseObservable``, a label string such as ``"ZZ"``, or a ``{label: coeff}`` dict. Duplicate terms
+are merged, identity terms contribute their coefficient, and complex coefficients raise
+``ValueError``. Every observable must act on as many qubits as its circuit, which
+``apply_layout(tr_qc.layout)`` ensures.
+
+.. code-block:: python
+
+   estimator.run(qc, "ZZ")                          # one circuit, one observable
+   estimator.run(qc, ["ZZ", "XX"])                  # one circuit, two observables
+   estimator.run([qc1, qc2], "ZZ")                  # the same observable on every circuit
+   estimator.run([qc1, qc2], [["ZZ", "XX"], "YY"])  # per circuit, one observable or a list
+
+With a list of circuits the observables pair up with the circuits, so ``run([qc], ["ZZ", "XX"])``
+raises ``ValueError``. Use ``run(qc, ["ZZ", "XX"])`` or ``run([qc], [["ZZ", "XX"]])`` instead.
+
+The terms of all observables on a circuit are grouped together, so observables sharing a measurement
+basis cost no extra circuits. ``expectation_values(i)`` is always a list with one value per
+observable of circuit ``i``.
 
 Mitigation Levels
 -----------------
@@ -297,7 +325,7 @@ Results
    * - ``result()``
      - Combined ``Result`` from the backend job
    * - ``observables(index=None)``
-     - Observables used in the computation
+     - Observables used in the computation, one list of ``SparsePauliOp`` per circuit
    * - ``requested_scale_factors(index=None)``
      - ZNE scale factors requested for the run, one list per circuit/observable pair
    * - ``achieved_scale_factors(index=None)``
@@ -310,13 +338,13 @@ Results
 Standard Errors
 ~~~~~~~~~~~~~~~
 
-:meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors` reports the uncertainty of each expectation value, computed lazily and cached alongside the values. It mirrors the shape of ``expectation_values``: one entry per circuit/observable pair, each a dict of per-Pauli-term standard errors.
+:meth:`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors` reports the uncertainty of each expectation value, computed lazily and cached alongside the values. It mirrors the shape of ``expectation_values``: one entry per circuit, each a dict of per-observable standard errors.
 
 .. code-block:: python
 
    job = estimator.run(tr_qc, observables=device_observables, shots=2048)
 
-   job.expectation_values(0)   # e.g. [0.92, -0.01, ...]
+   job.expectation_values(0)   # e.g. [0.92, -0.01]
    job.standard_errors(0)      # {"shot_error": [...], "zne_extrapolation_error": ..., "total": [...]}
 
 .. list-table::
@@ -325,7 +353,7 @@ Standard Errors
    * - Key
      - Description
    * - ``shot_error``
-     - Statistical standard error of the raw measurement, :math:`\sqrt{(1 - \langle P \rangle^2) / N}` per term, taken from the pre-mitigation counts. At mitigation level ≥ 1 it is inflated by :math:`\sqrt{\gamma}`, where :math:`\gamma` is M3's mitigation overhead, so a mitigated value always carries a *larger* error bar than the unmitigated one it was computed from, readout mitigation trades bias for variance. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit's sampling-based ``EstimatorV2``.
+     - Statistical standard error of the raw measurement, :math:`\sum_i |c_i| \sqrt{(1 - \langle P_i \rangle^2) / N}` over the observable's terms, taken from the pre-mitigation counts. This is the formula Qiskit's ``BackendEstimatorV2`` uses. At mitigation level ≥ 1 each term's error is inflated by :math:`\sqrt{\gamma}`, where :math:`\gamma` is M3's mitigation overhead, so a mitigated value always carries a *larger* error bar than the unmitigated one it was computed from, readout mitigation trades bias for variance. When ZNE is enabled this is taken at the unfolded (scale 1) point.
    * - ``zne_extrapolation_error``
      - Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. ``None`` when ZNE is disabled, or when a user-defined extrapolation callable reports no standard errors. See :ref:`ZNE <fiqci-estimator-zne>`.
    * - ``total``

@@ -13,6 +13,7 @@ from typing import Any, TypedDict, cast
 
 import numpy as np
 from qiskit import QuantumCircuit, transpile
+from qiskit.primitives.containers.observables_array import ObservablesArray
 from qiskit.quantum_info import SparsePauliOp, Pauli
 from fiqci.ems import FiQCIBackend
 from fiqci.ems.transpiler_passes.basis_measurement import (
@@ -157,6 +158,75 @@ def _apply_custom_extrapolation(
 	return values, errors
 
 
+def _coerce_observable(observable) -> SparsePauliOp:
+	"""Convert an observable-like input into a simplified, real-coefficient ``SparsePauliOp``.
+
+	Uses Qiskit's Estimator coercion, so the same inputs are accepted (``SparsePauliOp``, ``Pauli``,
+	``SparseObservable``, label strings and ``{label: coeff}`` dicts) and the same errors are raised.
+	"""
+	op = SparsePauliOp.from_sparse_observable(ObservablesArray.coerce_observable(observable)).simplify(atol=0)
+	return SparsePauliOp(op.paulis, op.coeffs.real)
+
+
+def _observables_per_circuit(observables, num_circuits: int, single_circuit: bool) -> list[list[SparsePauliOp]]:
+	"""Pair each circuit with its list of coerced observables.
+
+	A single observable is broadcast to every circuit. A list gives one entry per circuit, where each
+	entry is an observable or a list of them, except with a single circuit, where the whole list
+	belongs to that circuit.
+	"""
+	if not isinstance(observables, (list, tuple)):
+		observable = _coerce_observable(observables)
+		return [[observable] for _ in range(num_circuits)]
+	if single_circuit:
+		return [[_coerce_observable(obs) for obs in observables]]
+	if len(observables) != num_circuits:
+		raise ValueError(
+			f"Got {len(observables)} observable entr(y/ies) for {num_circuits} circuit(s); provide a single "
+			"observable, or one entry (an observable or a list of observables) per circuit."
+		)
+	return [
+		[_coerce_observable(obs) for obs in entry] if isinstance(entry, (list, tuple)) else [_coerce_observable(entry)]
+		for entry in observables
+	]
+
+
+def _is_identity(label: str) -> bool:
+	return set(label) == {"I"}
+
+
+def _measured_terms(observables: list[SparsePauliOp]) -> SparsePauliOp | None:
+	"""Unique non-identity Pauli terms across a circuit's observables, or None if there are none."""
+	labels = dict.fromkeys(label for obs in observables for label in obs.paulis.to_labels() if not _is_identity(label))
+	return SparsePauliOp(list(labels)) if labels else None
+
+
+def _identity_offset(observable: SparsePauliOp) -> float:
+	return sum(
+		float(coeff.real)
+		for label, coeff in zip(observable.paulis.to_labels(), observable.coeffs)
+		if _is_identity(label)
+	)
+
+
+def _combine_terms(
+	observables: list[SparsePauliOp], terms: SparsePauliOp, term_values: list[float], term_sigmas: list[float]
+) -> tuple[list[float], list[float]]:
+	"""Weight per-term values into ``sum(c * <P>)`` per observable, with ``sum(|c| * sigma)`` as its
+	standard error (as ``BackendEstimatorV2`` does). Identity terms are left out."""
+	index = {label: i for i, label in enumerate(terms.paulis.to_labels())}
+	values, sigmas = [], []
+	for obs in observables:
+		value = sigma = 0.0
+		for label, coeff in zip(obs.paulis.to_labels(), obs.coeffs):
+			if label in index:
+				value += float(coeff.real) * term_values[index[label]]
+				sigma += abs(float(coeff.real)) * term_sigmas[index[label]]
+		values.append(value)
+		sigmas.append(sigma)
+	return values, sigmas
+
+
 def _count_measurements(circuit: QuantumCircuit) -> int:
 	return sum(1 for instruction in circuit.data if instruction.operation.name == "measure")
 
@@ -234,7 +304,7 @@ class FiQCIEstimator:
 		return {"zne": zne, **self.backend.mitigator_options}
 
 	def total_circuits_generated(
-		self, num_base_circuits: int, observables: SparsePauliOp | list[SparsePauliOp], detailed: bool = False
+		self, num_base_circuits: int, observables, detailed: bool = False
 	) -> int | dict[str, Any]:
 		"""Calculate total circuits generated for a given number of base circuits and observables.
 
@@ -245,7 +315,9 @@ class FiQCIEstimator:
 
 		Args:
 			num_base_circuits: Number of circuits to be submitted.
-			observables: A single ``SparsePauliOp`` used for every circuit, or one per circuit.
+			observables: As for :meth:`run`. A single observable used for every circuit, or one entry per
+				circuit, where each entry is an observable or a list of observables measured on that
+				circuit. With one base circuit, a list holds that circuit's observables.
 			detailed: Print the breakdown and return it as a dict instead of just the total.
 
 		Returns:
@@ -256,18 +328,15 @@ class FiQCIEstimator:
 			ValueError: If a list of observables or per-circuit scale factors does not have one entry
 				per base circuit.
 		"""
-		if isinstance(observables, SparsePauliOp):
-			per_pair_observables = [observables] * num_base_circuits
-		else:
-			if len(observables) != num_base_circuits:
-				raise ValueError(
-					f"Got {len(observables)} observable(s) for {num_base_circuits} base circuit(s); provide a "
-					"single SparsePauliOp or one per circuit."
-				)
-			per_pair_observables = list(observables)
+		per_pair_observables = _observables_per_circuit(
+			observables, num_base_circuits, single_circuit=num_base_circuits == 1
+		)
 
-		# Each observable is measured in as many circuits as it has qubit-wise commuting groups.
-		per_pair_groups = [len(get_measurement_settings(obs)) for obs in per_pair_observables]
+		# A circuit is measured once per qubit-wise commuting group of its observables' terms.
+		per_pair_groups = []
+		for obs_list in per_pair_observables:
+			terms = _measured_terms(obs_list)
+			per_pair_groups.append(len(get_measurement_settings(terms)) if terms is not None else 0)
 
 		per_pair_scales = [1] * num_base_circuits
 		if self._zne["enabled"]:
@@ -321,7 +390,7 @@ class FiQCIEstimator:
 	def _run(
 		self,
 		circuits: QuantumCircuit | list[QuantumCircuit],
-		observables: SparsePauliOp | list[SparsePauliOp],
+		observables,
 		shots: int = 2048,
 		max_batch_size: int = 100,
 		**options,
@@ -338,25 +407,14 @@ class FiQCIEstimator:
 			"Y-meas": self._make_meas_instruction(y_meas, "Y-meas"),
 		}
 
-		# if observables and circuits are both lists, they must be of the same length and we pair them elementwise
-		if isinstance(observables, list) and isinstance(circuits, list):
-			if len(observables) != len(circuits):
-				# raise error if lengths don't match
-				raise ValueError("Length of observables and circuits lists must match.")
-
-			# if lengths match, we pair them elementwise
-			else:
-				pairs = list(zip(circuits, observables))
-
-		# if observables is a single SparsePauliOp and circuits is a list, we use the same observables for all circuits
-		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, list):
-			pairs = [(circ, observables) for circ in circuits]
-
-		# if observables is a single SparsePauliOp and circuits is a single QuantumCircuit, we just pair them
-		elif isinstance(observables, SparsePauliOp) and isinstance(circuits, QuantumCircuit):
-			pairs = [(circuits, observables)]
+		if isinstance(circuits, QuantumCircuit):
+			circuit_list, single_circuit = [circuits], True
+		elif isinstance(circuits, list):
+			circuit_list, single_circuit = circuits, False
 		else:
-			raise TypeError(f"Unsupported types: circuits={type(circuits)}, observables={type(observables)}")
+			raise TypeError(f"Unsupported type for circuits: {type(circuits)}")
+		pair_observables = _observables_per_circuit(observables, len(circuit_list), single_circuit)
+		pairs = list(zip(circuit_list, pair_observables))
 
 		num_pairs = len(pairs)
 		if self._zne["enabled"]:
@@ -379,6 +437,7 @@ class FiQCIEstimator:
 		flat_circuits: list[QuantumCircuit] = []
 		pair_lengths: list[int] = []
 		pair_measurement_settings: list[list[dict[int, str]]] = []
+		pair_terms: list[SparsePauliOp | None] = []
 		# Scale factors actually realised per pair. Folding can only approximate the requested values, so
 		# extrapolation uses these achieved x-values. They depend only on each circuit's foldable-gate
 		# count (not the random seed), and equal the requested values exactly for odd integers. Both the
@@ -396,8 +455,17 @@ class FiQCIEstimator:
 				"circuit/observable pair(s) were submitted; provide one scale-factor list per circuit."
 			)
 
-		for i, (circuit, obs) in enumerate(pairs):
-			measurement_settings = get_measurement_settings(obs)
+		for i, (circuit, obs_list) in enumerate(pairs):
+			for j, obs in enumerate(obs_list):
+				if obs.num_qubits != circuit.num_qubits:
+					raise ValueError(
+						f"The number of qubits of circuit {i} ({circuit.num_qubits}) does not match the number of "
+						f"qubits of its {j}-th observable ({obs.num_qubits})."
+					)
+			# Terms of all the circuit's observables are grouped together, so shared bases are measured once.
+			terms = _measured_terms(obs_list)
+			pair_terms.append(terms)
+			measurement_settings = get_measurement_settings(terms) if terms is not None else []
 			pair_measurement_settings.append(measurement_settings)
 
 			# Fold the bare circuit, before the measurement-basis rotations are appended. Folding
@@ -411,17 +479,23 @@ class FiQCIEstimator:
 					"which flips X and Y expectation values. Pass the unmeasured circuit."
 				)
 			scaled_circuits = [base_circuit]
+			requested_scales = cast(
+				list[float], self._zne["scale_factors"][i] if zne_nested else self._zne["scale_factors"]
+			)
 
 			if self._zne["enabled"]:
-				requested_scales = cast(
-					list[float], self._zne["scale_factors"][i] if zne_nested else self._zne["scale_factors"]
-				)
 				pair_requested_scale_factors.append([float(s) for s in requested_scales])
 				pair_scale_factors.append(
 					_achieved_scale_factors(
 						base_circuit, requested_scales, self._zne["folding_method"], self._zne["fold_gates"]
 					)
 				)
+
+			if terms is None:
+				pair_lengths.append(0)
+				continue
+
+			if self._zne["enabled"]:
 				scaled_circuits = _get_zne_circuits(
 					[base_circuit],
 					self._zne["fold_gates"],
@@ -432,7 +506,7 @@ class FiQCIEstimator:
 
 			# One measurement-basis subcircuit per (scale, group), flattened scale-major so the
 			# stride _compute() slices by is the number of measurement groups.
-			obs_circ_groups = get_obs_subcircuits(scaled_circuits, obs, ops)
+			obs_circ_groups = get_obs_subcircuits(scaled_circuits, terms, ops)
 			num_base_circuits += len(obs_circ_groups)
 			obs_circs_list = [
 				groups[scale_index] for scale_index in range(len(scaled_circuits)) for groups in obs_circ_groups
@@ -458,6 +532,8 @@ class FiQCIEstimator:
 			# circuits have already been submitted at this point, so warn loudly here rather than at
 			# result time: the run is still cancellable via the returned job handle.
 			for i, achieved in enumerate(pair_scale_factors):
+				if pair_terms[i] is None:
+					continue
 				num_distinct = len(np.unique(np.round(achieved, 12)))
 				if num_distinct < 2:
 					warnings.warn(
@@ -491,6 +567,12 @@ class FiQCIEstimator:
 				num_pairs,
 				len(flat_circuits),
 				max_batch_size,
+			)
+
+		if not flat_circuits:
+			raise ValueError(
+				"No observable has a non-identity term, so there is nothing to measure. The expectation value of "
+				"an identity-only observable is the sum of its coefficients."
 			)
 
 		# Backend returns a lazy handle immediately (it does not wait for results). The expectation
@@ -547,37 +629,53 @@ class FiQCIEstimator:
 				overheads = all_overheads[offset : offset + length]
 				offset += length
 
-				obs = observables if isinstance(observables, SparsePauliOp) else observables[i]
+				obs_list = pair_observables[i]
+				terms = pair_terms[i]
 				measurement_settings = pair_measurement_settings[i]
-				zne_expvs = []
+				identity_offsets = [_identity_offset(obs) for obs in obs_list]
+
+				def _non_identity_part(scale: slice) -> tuple[list[float], list[float]]:
+					if terms is None:
+						zeros = [0.0] * len(obs_list)
+						return zeros, zeros
+					term_values = self._calculate_expectation_values(counts[scale], terms, measurement_settings)
+					term_sigmas = self._calculate_shot_errors(
+						variance_counts[scale], terms, measurement_settings, twirl_group_size, overheads[scale]
+					)
+					return _combine_terms(obs_list, terms, term_values, term_sigmas)
+
+				def _with_offsets(values: list[float]) -> list[float]:
+					return [v + c for v, c in zip(values, identity_offsets)]
 
 				if zne_enabled:
-					num_circs_per_zne = len(measurement_settings)
-					per_scale_sigmas = []
-					for j in range(0, len(counts), num_circs_per_zne):
-						scale = slice(j, j + num_circs_per_zne)
-						zne_expvs.append(self._calculate_expectation_values(counts[scale], obs, measurement_settings))
-						per_scale_sigmas.append(
-							self._calculate_shot_errors(
-								variance_counts[scale], obs, measurement_settings, twirl_group_size, overheads[scale]
-							)
-						)
-
 					scales = zne_scale_factors_per_pair[i]
-					if callable(zne_extrapolation_method):
+					num_circs_per_zne = len(measurement_settings)
+					per_scale_values, per_scale_sigmas = [], []
+					for j in range(len(scales)):
+						values, sigmas = _non_identity_part(slice(j * num_circs_per_zne, (j + 1) * num_circs_per_zne))
+						per_scale_values.append(values)
+						per_scale_sigmas.append(sigmas)
+
+					# Identity offsets are added after extrapolation: the exponential model decays to zero, so a
+					# constant must not be fitted with it.
+					if terms is None:
+						expvs, ext_err = per_scale_values[0], per_scale_sigmas[0]
+					elif callable(zne_extrapolation_method):
 						expvs, ext_err = _apply_custom_extrapolation(
-							zne_extrapolation_method, zne_expvs, scales, per_scale_sigmas
+							zne_extrapolation_method, per_scale_values, scales, per_scale_sigmas
 						)
 					elif zne_extrapolation_method == "exponential":
-						expvs, ext_err = exponential_extrapolation(zne_expvs, scales, sigmas=per_scale_sigmas)
+						expvs, ext_err = exponential_extrapolation(per_scale_values, scales, sigmas=per_scale_sigmas)
 					elif zne_extrapolation_method == "richardson":
-						expvs, ext_err = richardson_extrapolation(zne_expvs, scales, sigmas=per_scale_sigmas)
+						expvs, ext_err = richardson_extrapolation(per_scale_values, scales, sigmas=per_scale_sigmas)
 					elif zne_extrapolation_method == "polynomial":
 						expvs, ext_err = polynomial_extrapolation(
-							zne_expvs, scales, degree=zne_extrapolation_degree, sigmas=per_scale_sigmas
+							per_scale_values, scales, degree=zne_extrapolation_degree, sigmas=per_scale_sigmas
 						)
 					elif zne_extrapolation_method == "linear":
-						expvs, ext_err = polynomial_extrapolation(zne_expvs, scales, degree=1, sigmas=per_scale_sigmas)
+						expvs, ext_err = polynomial_extrapolation(
+							per_scale_values, scales, degree=1, sigmas=per_scale_sigmas
+						)
 					else:
 						raise ValueError(f"Unsupported extrapolation method: {zne_extrapolation_method}")
 
@@ -587,29 +685,25 @@ class FiQCIEstimator:
 					standard_errors.append(
 						{"shot_error": shot_err, "zne_extrapolation_error": ext_err, "total": ext_err}
 					)
+					expectation_values.append(_with_offsets(cast(list[float], expvs)))
+					all_zne_expvs.append([_with_offsets(values) for values in per_scale_values])
 				else:
-					expvs = self._calculate_expectation_values(counts, obs, measurement_settings)
-					shot_err = self._calculate_shot_errors(
-						variance_counts, obs, measurement_settings, twirl_group_size, overheads
-					)
+					values, shot_err = _non_identity_part(slice(None))
 					standard_errors.append({"shot_error": shot_err, "zne_extrapolation_error": None, "total": shot_err})
+					expectation_values.append(_with_offsets(values))
 
-				expectation_values.append(expvs)
-				if zne_enabled and len(zne_expvs) > 0:
-					all_zne_expvs.append(zne_expvs)
-
-			if zne_enabled and len(all_zne_expvs) > 0:
+			if zne_enabled:
 				return expectation_values, all_zne_expvs, standard_errors
 			return expectation_values, expectation_values, standard_errors
 
 		return FiQCIEstimatorJob(
-			job, _compute, observables, pair_requested_scale_factors, pair_scale_factors, zne_options_snapshot
+			job, _compute, pair_observables, pair_requested_scale_factors, pair_scale_factors, zne_options_snapshot
 		)
 
 	def run(
 		self,
 		circuits: QuantumCircuit | list[QuantumCircuit],
-		observables: SparsePauliOp | list[SparsePauliOp],
+		observables,
 		shots: int = 2048,
 		max_batch_size: int = 100,
 		**options,
@@ -619,7 +713,12 @@ class FiQCIEstimator:
 
 		Args:
 			circuits: A QuantumCircuit or list of QuantumCircuits to execute.
-			observables: A SparsePauliOp or list of SparsePauliOps representing the observables for which to calculate expectation values.
+			observables: The observables to estimate, as in Qiskit's Estimator. Each observable is one
+				Hermitian operator (``SparsePauliOp``, ``Pauli``, ``SparseObservable``, label string or
+				``{label: coeff}`` dict) whose expectation value is ``sum(c * <P>)`` over its terms, and it
+				must act on as many qubits as its circuit. A single observable is used for every circuit.
+				With a list of circuits, give one entry per circuit, each an observable or a list of them.
+				With a single circuit, a list holds that circuit's observables.
 			shots: Number of shots to execute each circuit (default: 2048).
 			max_batch_size: Maximum number of circuits to send in a single backend job. All measurement-basis subcircuits
 				(across all circuit/observable pairs and ZNE scale factors) are flattened and split into batches of this
@@ -627,7 +726,12 @@ class FiQCIEstimator:
 			**options: Additional options to pass to the backend's run method.
 
 		Returns:
-			A FiQCIEstimatorJob containing the jobs and calculated expectation values.
+			A FiQCIEstimatorJob whose expectation values are one list per circuit, with one value per
+			observable.
+
+		Raises:
+			ValueError: If an observable's qubit count does not match its circuit, an observable has
+				complex coefficients, or no observable has a non-identity term.
 		"""
 		return self._run(circuits, observables, shots=shots, max_batch_size=max_batch_size, **options)
 
@@ -770,10 +874,11 @@ class FiQCIEstimator:
 
 		``extrapolation_method`` may be one of the built-in strings (``"exponential"``, ``"richardson"``,
 		``"polynomial"``, ``"linear"``) or a user-defined callable. The callable is invoked once per
-		circuit/observable pair as ``fn(expectation_values, scale_factors)``, where ``expectation_values``
-		is a list (one entry per scale factor) of per-observable expectation-value lists and
-		``scale_factors`` is the list of achieved scale factors; it must return a list of floats (the
-		zero-noise estimate per observable). ``extrapolation_degree`` is ignored for callables.
+		circuit as ``fn(expectation_values, scale_factors)``, where ``expectation_values`` is a list (one
+		entry per scale factor) of per-observable expectation-value lists and ``scale_factors`` is the
+		list of achieved scale factors; it must return a list of floats (the zero-noise estimate per
+		observable). ``extrapolation_degree`` is ignored for callables. Every extrapolator sees the
+		observables without their identity terms, whose coefficients are added to the result afterwards.
 
 		A callable can also report the uncertainty of its estimate the way the built-in extrapolators do.
 		If it accepts a ``sigmas`` keyword argument, it is additionally called with
@@ -867,7 +972,7 @@ class FiQCIEstimatorJob:
 		    job: The underlying job that produced the results (BatchedJob or MitigatedJob).
 		    compute_fn: Deferred callable returning
 		        ``(expectation_values, raw_expectation_values, standard_errors)``.
-		    observables: Observable(s) for which expectation values were calculated.
+		    observables: The coerced observables of each circuit.
 		    requested_scale_factors: ZNE scale factors requested for each circuit/observable pair (empty
 		        when ZNE is disabled).
 		    achieved_scale_factors: ZNE scale factors actually realised by folding for each pair. The
@@ -928,8 +1033,8 @@ class FiQCIEstimatorJob:
 			return self._expectation_values[index]
 		return self._expectation_values
 
-	def observables(self, index: int | None = None) -> SparsePauliOp:
-		"""Get the observables for which expectation values were calculated."""
+	def observables(self, index: int | None = None) -> list[list[SparsePauliOp]] | list[SparsePauliOp]:
+		"""Observables the expectation values were calculated for, one list per circuit, as ``SparsePauliOp``."""
 		if index is not None:
 			return self._observables[index]
 		return self._observables
@@ -937,13 +1042,14 @@ class FiQCIEstimatorJob:
 	def standard_errors(self, index: int | None = None) -> list[dict] | dict:
 		"""Standard errors of the expectation values (computes lazily on first access).
 
-		Mirrors the shape of :meth:`expectation_values`: one entry per circuit/observable pair, each
-		a dict of per-Pauli-term standard errors with keys:
+		Mirrors the shape of :meth:`expectation_values`: one entry per circuit, each a dict of
+		per-observable standard errors with keys:
 
-		- ``"shot_error"``: statistical SE of the raw measurement, ``sqrt((1 - ⟨P⟩²) / N)`` per term,
-		  taken from the pre-mitigation counts. When readout error mitigation is on, this is inflated
-		  by ``sqrt(M3 mitigation overhead)``, so a mitigated value carries a *larger* error bar than
-		  the unmitigated one it was computed from — mitigation trades bias for variance. When ZNE is
+		- ``"shot_error"``: statistical SE of the raw measurement, ``sum(|c| * sqrt((1 - ⟨P⟩²) / N))``
+		  over the observable's terms, as in Qiskit's ``BackendEstimatorV2``, taken from the
+		  pre-mitigation counts. When readout error mitigation is on, each term's error is inflated by
+		  ``sqrt(M3 mitigation overhead)``, so a mitigated value carries a *larger* error bar than the
+		  unmitigated one it was computed from — mitigation trades bias for variance. When ZNE is
 		  enabled the value is taken at the unfolded (scale 1) point. With Pauli twirling, ``N`` counts
 		  every twirled variant's shots, not the averaged total.
 		- ``"zne_extrapolation_error"``: SE of the extrapolated value, the per-scale shot errors
