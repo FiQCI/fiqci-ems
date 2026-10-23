@@ -42,7 +42,6 @@ class TestFiQCIEstimator:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
-		backend.has_resonators.return_value = False
 		backend.target = _make_target()
 		return backend
 
@@ -246,7 +245,6 @@ class TestEstimatorBatching:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
-		backend.has_resonators.return_value = False
 		backend.target = _make_target()
 		return backend
 
@@ -802,7 +800,6 @@ def _mock_iqm_backend() -> Mock:
 	backend = Mock()
 	backend.name = "MockBackend"
 	backend.num_qubits = 5
-	backend.has_resonators.return_value = False
 	backend.target = _make_target()
 	return backend
 

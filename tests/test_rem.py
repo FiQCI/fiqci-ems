@@ -231,7 +231,6 @@ class TestIntegration:
 		backend.version = 2
 		backend.name = "mock_iqm_backend"
 		backend.num_qubits = 20
-		backend.has_resonators.return_value = False
 		config = Mock()
 		config.num_qubits = 20
 		config.max_shots = 10000
@@ -294,7 +293,6 @@ class TestKeyLayout:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 20
-		backend.has_resonators.return_value = False
 		return backend
 
 	def test_run_with_m3_mitigation_strips_register_spaces_before_correction(self, mock_backend: Mock) -> None:
@@ -393,7 +391,6 @@ class TestCalibrationMaxBatchSize:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
-		backend.has_resonators.return_value = False
 		config = Mock()
 		config.num_qubits = 5
 		config.max_shots = 10000
@@ -545,7 +542,6 @@ class TestQuasiProbabilityDiagnostics:
 		backend = Mock()
 		backend.name = "MockBackend"
 		backend.num_qubits = 5
-		backend.has_resonators.return_value = False
 		return backend
 
 	@staticmethod

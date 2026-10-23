@@ -41,12 +41,6 @@ from qiskit.result import Result
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-_STAR_DD_WARNING = (
-	"Dynamical decoupling corrupts MOVE-routed circuits on IQM Star devices: the qubit whose state "
-	"is parked in the computational resonator comes back randomized. Mitigation levels 2 and 3 are "
-	"unvalidated on this architecture and not recommended."
-)
-
 
 def _combine_rem_diagnostics(diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
 	"""Combine the per-circuit M3 diagnostics of one Pauli-twirl group into a single entry.
@@ -213,12 +207,6 @@ class FiQCIBackend:
 			pauli_twirl["gates_to_twirl"] = list(gates_to_twirl)
 		return {"rem": dict(self._rem), "dd": dd, "pauli_twirl": pauli_twirl}
 
-	def _warn_if_star_architecture(self) -> None:
-		"""Warn when DD is about to be submitted to a device with a computational resonator."""
-		has_resonators = getattr(self._backend, "has_resonators", None)
-		if callable(has_resonators) and has_resonators():
-			warnings.warn(_STAR_DD_WARNING)
-
 	def _snapshot_mitigator_options(self) -> dict[str, Any]:
 		"""Freeze the current mitigator settings for attachment to a submitted job.
 
@@ -286,9 +274,6 @@ class FiQCIBackend:
 			gate_sequences: List of (threshold_length, sequence, strategy) tuples defining DD behavior.
 				See build_dd_options for details on each field.
 		"""
-
-		self._warn_if_star_architecture()
-
 		if gate_sequences is None or len(gate_sequences) == 0:
 			gate_sequences = STANDARD_DD_STRATEGY.gate_sequences
 		else:
@@ -503,7 +488,6 @@ class FiQCIBackend:
 					"to submit with your own DD strategy."
 				)
 			run_kwargs["circuit_compilation_options"] = build_dd_options(self._dd["gate_sequences"], base=base_options)
-			self._warn_if_star_architecture()
 
 		# Submit circuits in batches of at most max_batch_size, preserving submission order so the
 		# combined result indices match circuits_list.
