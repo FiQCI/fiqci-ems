@@ -12,9 +12,13 @@
 - ZNE extrapolates each observable's combined value. Identity terms are added after extrapolation
 - Support IQM OS 4.7.0: allow `iqm-client` 36 (`iqm-client[qiskit]>=35.0.3,<37`). 35.0.3 remains the minimum and is tested in CI alongside the locked 36.0.0
 - `iqm-client` 36 no longer drops final RZ gates by default (`transpile_to_IQM(remove_final_rzs=False)`, `optimize_single_qubit_gates(drop_final_rz=False)`), so transpiled circuits keep their unitary. Z-basis counts are unchanged; RZ gates directly before a measurement are still dropped, so `FiQCIEstimator` keeps rejecting circuits that end in measurements. Keep passing `remove_final_rzs=False` explicitly for the estimator to stay correct on `iqm-client` 35
+
+### Fixed
+- identity terms now contribute their coefficient instead of `0`, and an identity-only observable no longer fails the run
+
 - https://github.com/FiQCI/fiqci-ems/pull/50
 
----
+## [WIP] [1.1.0] 27.10.2026
 
 ## [1.1.0] 30.10.2026
 
@@ -34,10 +38,6 @@ Changes to enable EMS usage on IQM star based devices.
 - `probabilities_to_counts` rounds by largest remainder instead of truncating, so mitigated counts total exactly the requested shot count
 - `job_id()`, `job_ids()` and `partial_results()` also accept backends that expose `job_id` as an attribute instead of a method
 - https://github.com/FiQCI/fiqci-ems/pull/46
-
-### Fixed
-- identity terms now contribute their coefficient instead of `0`, and an identity-only observable no longer fails the run
-- https://github.com/FiQCI/fiqci-ems/pull/48
 
 ---
 
