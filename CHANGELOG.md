@@ -1,7 +1,7 @@
 ## [WIP] [2.0.0]
 
 ### Breaking changes
-- `FiQCIEstimator` observables now behave as in Qiskit's Estimator. A `SparsePauliOp` is one observable with expectation value `sum(c * <P>)` over its terms, instead of one value per term with the coefficients ignored. To keep one value per term, pass the terms as a list, e.g. `run(qc, ["ZZ", "XX"])`
+- `FiQCIEstimator` observables now behave as in Qiskit's Estimator. A `SparsePauliOp` is one observable with expectation value `sum(c * <P>)` over its terms, instead of one value per term with the coefficients ignored. To keep one value per term, pass the terms of the laid-out observable as a list, e.g. `run(tr_qc, list(obs.apply_layout(tr_qc.layout).paulis))`
 - `expectation_values(i)` and `standard_errors(i)` hold one value per observable of circuit `i`. The standard error of an observable is `sum(|c| * shot_error)` over its terms, as in Qiskit's `BackendEstimatorV2`
 - `run()` raises `ValueError` when an observable does not act on as many qubits as its circuit, or has complex coefficients
 - `FiQCIEstimatorJob.observables()` returns one list of `SparsePauliOp` per circuit
