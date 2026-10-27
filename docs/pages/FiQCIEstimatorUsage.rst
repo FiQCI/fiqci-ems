@@ -56,13 +56,20 @@ are merged, identity terms contribute their coefficient, and complex coefficient
 
 .. code-block:: python
 
-   estimator.run(qc, "ZZ")                          # one circuit, one observable
-   estimator.run(qc, ["ZZ", "XX"])                  # one circuit, two observables
-   estimator.run([qc1, qc2], "ZZ")                  # the same observable on every circuit
-   estimator.run([qc1, qc2], [["ZZ", "XX"], "YY"])  # per circuit, one observable or a list
+   estimator.run(tr_qc, device_observables[0])           # one circuit, one observable
+   estimator.run(tr_qc, device_observables)              # one circuit, two observables
+   estimator.run([tr_qc, tr_qc], device_observables[0])  # the same observable on every circuit
+   estimator.run([tr_qc, tr_qc], [device_observables, device_observables[0]])  # per circuit, one or a list
 
-With a list of circuits the observables pair up with the circuits, so ``run([qc], ["ZZ", "XX"])``
-raises ``ValueError``. Use ``run(qc, ["ZZ", "XX"])`` or ``run([qc], [["ZZ", "XX"]])`` instead.
+With a list of circuits the observables pair up with the circuits, so
+``run([tr_qc], device_observables)`` raises ``ValueError``. Use ``run(tr_qc, device_observables)`` or
+``run([tr_qc], [device_observables])`` instead.
+
+Label strings work the same way, as long as they already match the transpiled circuit: one character
+per qubit of the backend, with the Paulis on the physical qubits the layout placed the circuit on. For
+example, on a 5-qubit backend with the circuit mapped to physical qubits 0 and 1,
+``run(tr_qc, ["IIIZZ", "IIIXX"])``. Qiskit labels are little-endian, so the rightmost character is
+qubit 0.
 
 The terms of all observables on a circuit are grouped together, so observables sharing a measurement
 basis cost no extra circuits. ``expectation_values(i)`` is always a list with one value per
