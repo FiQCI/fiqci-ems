@@ -1,4 +1,4 @@
-## [WIP] [1.0.1] 6.8.2026
+## [WIP] [1.1.0] 27.10.2026
 
 Changes to enable EMS usage on IQM star based devices.
 
@@ -18,6 +18,14 @@ Changes to enable EMS usage on IQM star based devices.
 - https://github.com/FiQCI/fiqci-ems/pull/46
 
 ---
+
+## [1.0.1] - 5.10.2026
+
+### Changed
+- Update the minimum `iqm-client` version to 35.0.3 for IQM OS 4.6.3 compatibility.
+
+### Fixed
+- Pass result timeouts as keyword arguments to IQM jobs, fixing `result(timeout=...)` raising `BatchFailedError` through FiQCI job handles.
 
 ## [1.0.0] 31.7.2026
 
