@@ -281,14 +281,11 @@ class FiQCIEstimator:
 			"seed": None,  # seed for random gate sampling when approximating non-odd-integer scale factors
 		}
 
-		if self._mitigation_level in [0, 1, 2]:
-			self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_file)
-		elif self._mitigation_level == 3:
-			self.backend = FiQCIBackend(backend, 2, calibration_shots, calibration_file)
+		self.backend = FiQCIBackend(backend, mitigation_level, calibration_shots, calibration_file)
+		if self._mitigation_level == 3:
+			# Estimator level 3 replaces the backend's Pauli twirling with ZNE.
+			self.backend.pauli_twirl(enabled=False, num_twirls=0)
 			self.zne(enabled=True)
-		else:
-			# Matches FiQCIBackend, so callers catch one exception type across all three interfaces.
-			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
 	@property
 	def mitigator_options(self) -> dict[str, Any]:

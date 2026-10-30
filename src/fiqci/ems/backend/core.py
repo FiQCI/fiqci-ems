@@ -781,7 +781,8 @@ class FiQCIBackend:
 				backend's current setting; snapshotted by deferred callers for the same reason.
 			rem_diagnostics: Optional per-group M3 diagnostics (``quasi_probabilities``,
 				``mitigation_overhead``, ``clipped_outcomes``) merged into each header's ``fiqci_ems``
-				entry. Omitted when readout error mitigation did not run.
+				entry. Omitted when readout error mitigation did not run, which also leaves
+				``mitigation_method`` and ``calibration_shots`` as ``None``.
 
 		Returns:
 			New Result object with mitigated data and FiQCI EMS metadata. Each header's
@@ -817,8 +818,8 @@ class FiQCIBackend:
 
 					metadata: dict[str, Any] = {
 						"mitigation_level": mitigation_level,
-						"mitigation_method": "M3" if mitigation_level == 1 else None,
-						"calibration_shots": calibration_shots if mitigation_level == 1 else None,
+						"mitigation_method": "M3" if rem_diagnostics is not None else None,
+						"calibration_shots": calibration_shots if rem_diagnostics is not None else None,
 						"raw_counts": raw_for_group,
 					}
 					if rem_diagnostics is not None and idx < len(rem_diagnostics):
