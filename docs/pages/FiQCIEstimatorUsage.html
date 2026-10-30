@@ -345,6 +345,7 @@
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-configuration">Basic Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#observables">Observables</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
@@ -395,8 +396,8 @@ to <code class="docutils literal notranslate"><span class="pre">True</span></cod
 
 <span class="n">tr_qc</span> <span class="o">=</span> <span class="n">transpile_to_IQM</span><span class="p">(</span><span class="n">qc</span><span class="p">,</span> <span class="n">backend</span><span class="p">,</span> <span class="n">remove_final_rzs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">optimization_level</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
-<span class="n">observables</span> <span class="o">=</span> <span class="n">SparsePauliOp</span><span class="o">.</span><span class="n">from_list</span><span class="p">([(</span><span class="s2">&quot;ZZ&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;IX&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
-<span class="n">device_observables</span> <span class="o">=</span> <span class="n">observables</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">tr_qc</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span>
+<span class="n">observables</span> <span class="o">=</span> <span class="p">[</span><span class="n">SparsePauliOp</span><span class="p">(</span><span class="s2">&quot;ZZ&quot;</span><span class="p">),</span> <span class="n">SparsePauliOp</span><span class="p">(</span><span class="s2">&quot;IX&quot;</span><span class="p">)]</span>
+<span class="n">device_observables</span> <span class="o">=</span> <span class="p">[</span><span class="n">obs</span><span class="o">.</span><span class="n">apply_layout</span><span class="p">(</span><span class="n">tr_qc</span><span class="o">.</span><span class="n">layout</span><span class="p">)</span> <span class="k">for</span> <span class="n">obs</span> <span class="ow">in</span> <span class="n">observables</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>The circuit must not end in measurements. The estimator appends its own measurement basis, and
@@ -404,6 +405,35 @@ to <code class="docutils literal notranslate"><span class="pre">True</span></cod
 <code class="docutils literal notranslate"><span class="pre">remove_final_rzs=False</span></code>, which flips the X and Y expectation values. <code class="docutils literal notranslate"><span class="pre">run()</span></code> raises
 <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for such a circuit. Mid-circuit measurements are supported.</p>
 <p>The examples below use <code class="docutils literal notranslate"><span class="pre">tr_qc</span></code> and <code class="docutils literal notranslate"><span class="pre">device_observables</span></code>.</p>
+</section>
+<section id="observables">
+<h2>Observables<a class="headerlink" href="#observables" title="Link to this heading">#</a></h2>
+<p>Observables behave as in Qiskit’s Estimator. Each observable is one Hermitian operator, and its
+expectation value is <span class="math notranslate nohighlight">\(\sum_i c_i \langle P_i \rangle\)</span> over its terms. A
+<code class="docutils literal notranslate"><span class="pre">SparsePauliOp([&quot;ZZ&quot;,</span> <span class="pre">&quot;XX&quot;],</span> <span class="pre">[0.5,</span> <span class="pre">0.5])</span></code> therefore gives a single value. To get one value per Pauli
+term, pass the terms as separate observables.</p>
+<p>An observable can be anything Qiskit’s Estimator accepts: a <code class="docutils literal notranslate"><span class="pre">SparsePauliOp</span></code>, <code class="docutils literal notranslate"><span class="pre">Pauli</span></code>,
+<code class="docutils literal notranslate"><span class="pre">SparseObservable</span></code>, a label string such as <code class="docutils literal notranslate"><span class="pre">&quot;ZZ&quot;</span></code>, or a <code class="docutils literal notranslate"><span class="pre">{label:</span> <span class="pre">coeff}</span></code> dict. Duplicate terms
+are merged, identity terms contribute their coefficient, and complex coefficients raise
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. Every observable must act on as many qubits as its circuit, which
+<code class="docutils literal notranslate"><span class="pre">apply_layout(tr_qc.layout)</span></code> ensures.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">device_observables</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>           <span class="c1"># one circuit, one observable</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">device_observables</span><span class="p">)</span>              <span class="c1"># one circuit, two observables</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">tr_qc</span><span class="p">],</span> <span class="n">device_observables</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>  <span class="c1"># the same observable on every circuit</span>
+<span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">tr_qc</span><span class="p">],</span> <span class="p">[</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">device_observables</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>  <span class="c1"># per circuit, one or a list</span>
+</pre></div>
+</div>
+<p>With a list of circuits the observables pair up with the circuits, so
+<code class="docutils literal notranslate"><span class="pre">run([tr_qc],</span> <span class="pre">device_observables)</span></code> raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. Use <code class="docutils literal notranslate"><span class="pre">run(tr_qc,</span> <span class="pre">device_observables)</span></code> or
+<code class="docutils literal notranslate"><span class="pre">run([tr_qc],</span> <span class="pre">[device_observables])</span></code> instead.</p>
+<p>Label strings work the same way, as long as they already match the transpiled circuit: one character
+per qubit of the backend, with the Paulis on the physical qubits the layout placed the circuit on. For
+example, on a 5-qubit backend with the circuit mapped to physical qubits 0 and 1,
+<code class="docutils literal notranslate"><span class="pre">run(tr_qc,</span> <span class="pre">[&quot;IIIZZ&quot;,</span> <span class="pre">&quot;IIIXX&quot;])</span></code>. Qiskit labels are little-endian, so the rightmost character is
+qubit 0.</p>
+<p>The terms of all observables on a circuit are grouped together, so observables sharing a measurement
+basis cost no extra circuits. <code class="docutils literal notranslate"><span class="pre">expectation_values(i)</span></code> is always a list with one value per
+observable of circuit <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p>
 </section>
 <section id="mitigation-levels">
 <h2>Mitigation Levels<a class="headerlink" href="#mitigation-levels" title="Link to this heading">#</a></h2>
@@ -677,7 +707,7 @@ copied, since it owns the calibration data.</p>
 <td><p>Combined <code class="docutils literal notranslate"><span class="pre">Result</span></code> from the backend job</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">observables(index=None)</span></code></p></td>
-<td><p>Observables used in the computation</p></td>
+<td><p>Observables used in the computation, one list of <code class="docutils literal notranslate"><span class="pre">SparsePauliOp</span></code> per circuit</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">requested_scale_factors(index=None)</span></code></p></td>
 <td><p>ZNE scale factors requested for the run, one list per circuit/observable pair</p></td>
@@ -696,10 +726,10 @@ copied, since it owns the calibration data.</p>
 </div>
 <section id="standard-errors">
 <h3>Standard Errors<a class="headerlink" href="#standard-errors" title="Link to this heading">#</a></h3>
-<p><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a> reports the uncertainty of each expectation value, computed lazily and cached alongside the values. It mirrors the shape of <code class="docutils literal notranslate"><span class="pre">expectation_values</span></code>: one entry per circuit/observable pair, each a dict of per-Pauli-term standard errors.</p>
+<p><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">standard_errors()</span></code></a> reports the uncertainty of each expectation value, computed lazily and cached alongside the values. It mirrors the shape of <code class="docutils literal notranslate"><span class="pre">expectation_values</span></code>: one entry per circuit, each a dict of per-observable standard errors.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">job</span> <span class="o">=</span> <span class="n">estimator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">tr_qc</span><span class="p">,</span> <span class="n">observables</span><span class="o">=</span><span class="n">device_observables</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">2048</span><span class="p">)</span>
 
-<span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># e.g. [0.92, -0.01, ...]</span>
+<span class="n">job</span><span class="o">.</span><span class="n">expectation_values</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># e.g. [0.92, -0.01]</span>
 <span class="n">job</span><span class="o">.</span><span class="n">standard_errors</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>      <span class="c1"># {&quot;shot_error&quot;: [...], &quot;zne_extrapolation_error&quot;: ..., &quot;total&quot;: [...]}</span>
 </pre></div>
 </div>
@@ -711,7 +741,7 @@ copied, since it owns the calibration data.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">shot_error</span></code></p></td>
-<td><p>Statistical standard error of the raw measurement, <span class="math notranslate nohighlight">\(\sqrt{(1 - \langle P \rangle^2) / N}\)</span> per term, taken from the pre-mitigation counts. At mitigation level ≥ 1 it is inflated by <span class="math notranslate nohighlight">\(\sqrt{\gamma}\)</span>, where <span class="math notranslate nohighlight">\(\gamma\)</span> is M3’s mitigation overhead, so a mitigated value always carries a <em>larger</em> error bar than the unmitigated one it was computed from, readout mitigation trades bias for variance. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit’s sampling-based <code class="docutils literal notranslate"><span class="pre">EstimatorV2</span></code>.</p></td>
+<td><p>Statistical standard error of the raw measurement, <span class="math notranslate nohighlight">\(\sum_i |c_i| \sqrt{(1 - \langle P_i \rangle^2) / N}\)</span> over the observable’s terms, taken from the pre-mitigation counts. This is the formula Qiskit’s <code class="docutils literal notranslate"><span class="pre">BackendEstimatorV2</span></code> uses. At mitigation level ≥ 1 each term’s error is inflated by <span class="math notranslate nohighlight">\(\sqrt{\gamma}\)</span>, where <span class="math notranslate nohighlight">\(\gamma\)</span> is M3’s mitigation overhead, so a mitigated value always carries a <em>larger</em> error bar than the unmitigated one it was computed from, readout mitigation trades bias for variance. When ZNE is enabled this is taken at the unfolded (scale 1) point.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code></p></td>
 <td><p>Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. <code class="docutils literal notranslate"><span class="pre">None</span></code> when ZNE is disabled, or when a user-defined extrapolation callable reports no standard errors. See <a class="reference internal" href="#fiqci-estimator-zne"><span class="std std-ref">ZNE</span></a>.</p></td>
@@ -789,6 +819,7 @@ copied, since it owns the calibration data.</p>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-configuration">Basic Configuration</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#observables">Observables</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-levels">Mitigation Levels</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mitigation-options">Mitigation Options</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rem-readout-error-mitigation">REM (Readout Error Mitigation)</a></li>
