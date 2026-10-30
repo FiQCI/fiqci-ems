@@ -18,7 +18,7 @@
 
 - https://github.com/FiQCI/fiqci-ems/pull/50
 
-## [WIP] [1.1.0] 27.10.2026
+---
 
 ## [1.1.0] 30.10.2026
 
