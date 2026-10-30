@@ -120,6 +120,8 @@ Instead of one of the built-in strings, `extrapolation_method` accepts a **user-
 - `expectation_values`: a list with one entry per scale factor; each entry is itself the list of per-observable expectation values measured at that scale (shape `(n_scales, n_obs)`, the same layout the built-in functions receive).
 - `scale_factors`: the list of **achieved** scale factors for that pair (the extrapolation x-axis).
 
+Each observable's value is its weighted sum of Pauli terms, so one `SparsePauliOp` is one column. Identity terms are left out of the values every extrapolator sees, and their coefficients are added to the zero-noise estimate afterwards, since a constant offset does not decay with noise.
+
 ```python
 import numpy as np
 

@@ -999,7 +999,7 @@ class TestEstimatorZNESettings:
 		qc.cx(0, 1)
 
 		obs = SparsePauliOp(["ZZ", "ZI"])
-		job = estimator.run(qc, obs, shots=512)
+		job = estimator.run(qc, list(obs), shots=512)
 		errors = job.standard_errors(0)
 
 		assert job.expectation_values(0) == [42.0, 42.0]
@@ -1033,7 +1033,7 @@ class TestEstimatorZNESettings:
 		qc.cx(0, 1)
 
 		obs = SparsePauliOp(["ZZ", "ZI"])
-		job = estimator.run(qc, obs, shots=512)
+		job = estimator.run(qc, list(obs), shots=512)
 		errors = job.standard_errors(0)
 
 		assert job.expectation_values(0) == [42.0, 42.0]
@@ -1390,7 +1390,7 @@ class TestZNEFoldsBeforeBasisRotations:
 		obs = SparsePauliOp(["ZZ", "XX", "YY"])
 		with warnings.catch_warnings():
 			warnings.simplefilter("ignore")
-			values = estimator.run(_ghz(2), obs, shots=16384).expectation_values(0)
+			values = estimator.run(_ghz(2), list(obs), shots=16384).expectation_values(0)
 
 		assert values == pytest.approx([1.0, 1.0, -1.0], abs=0.05)
 

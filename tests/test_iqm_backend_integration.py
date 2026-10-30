@@ -59,9 +59,9 @@ def measured(transpiled: QuantumCircuit) -> QuantumCircuit:
 
 
 @pytest.fixture(scope="module")
-def device_observables(transpiled: QuantumCircuit) -> SparsePauliOp:
+def device_observables(transpiled: QuantumCircuit) -> list[SparsePauliOp]:
 	"""Observables mapped onto the transpiled circuit's layout, as the docs instruct."""
-	return SparsePauliOp(["ZZ", "XX"]).apply_layout(transpiled.layout)
+	return [SparsePauliOp(label).apply_layout(transpiled.layout) for label in ("ZZ", "XX")]
 
 
 class TestSamplerOnRealDeviceValidation:
@@ -102,7 +102,7 @@ class TestMitigationImprovesAccuracy:
 	"""
 
 	def test_readout_mitigation_moves_zz_towards_the_ideal_value(
-		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp]
 	) -> None:
 		shots = 8192  # keep shot noise well below the readout-error gap being measured
 		raw = (
@@ -138,7 +138,7 @@ class TestEstimatorOnRealDeviceValidation:
 
 	@pytest.mark.parametrize("level", LEVELS)
 	def test_runs_and_returns_expectation_values(
-		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp, level: int
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp], level: int
 	) -> None:
 		values = (
 			FiQCIEstimator(backend, mitigation_level=level)
@@ -146,14 +146,14 @@ class TestEstimatorOnRealDeviceValidation:
 			.expectation_values(0)
 		)
 
-		assert len(values) == len(device_observables.paulis)
+		assert len(values) == len(device_observables)
 		# A noisy device pulls these below the ideal 1.0. At level 1+ they come from M3's
 		# quasi-probabilities and so are not bounded by ±1, but this device's readout error is small
 		# enough that over-subtraction stays well inside the margin.
 		assert all(-1.05 <= value <= 1.05 for value in values)
 
 	def test_standard_errors_are_reported(
-		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp]
 	) -> None:
 		errors = (
 			FiQCIEstimator(backend, mitigation_level=0)
@@ -161,11 +161,11 @@ class TestEstimatorOnRealDeviceValidation:
 			.standard_errors(0)
 		)
 
-		assert len(errors["shot_error"]) == len(device_observables.paulis)
+		assert len(errors["shot_error"]) == len(device_observables)
 		assert all(error > 0 for error in errors["shot_error"])
 
 	def test_readout_mitigation_widens_the_error_bar(
-		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: SparsePauliOp
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp]
 	) -> None:
 		"""M3 trades bias for variance, so a mitigated value cannot carry a tighter error bar.
 
