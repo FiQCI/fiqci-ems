@@ -1,4 +1,4 @@
-## [WIP] [1.1.0] 27.10.2026
+## [1.1.0] 30.10.2026
 
 Changes to enable EMS usage on IQM star based devices.
 
