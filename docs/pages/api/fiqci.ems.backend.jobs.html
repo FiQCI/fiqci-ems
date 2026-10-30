@@ -342,6 +342,8 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.job_id_of"><code class="docutils literal notranslate"><span class="pre">job_id_of()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.describe_exception"><code class="docutils literal notranslate"><span class="pre">describe_exception()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.BatchFailedError"><code class="docutils literal notranslate"><span class="pre">BatchFailedError</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.PartialBatch"><code class="docutils literal notranslate"><span class="pre">PartialBatch</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.PartialBatch.index"><code class="docutils literal notranslate"><span class="pre">PartialBatch.index</span></code></a></li>
@@ -387,6 +389,18 @@
                   
   <section id="module-fiqci.ems.backend.jobs">
 <span id="fiqci-ems-backend-jobs"></span><h1>fiqci.ems.backend.jobs<a class="headerlink" href="#module-fiqci.ems.backend.jobs" title="Link to this heading">#</a></h1>
+<p class="rubric">Functions</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.backend.jobs.describe_exception" title="fiqci.ems.backend.jobs.describe_exception"><code class="xref py py-obj docutils literal notranslate"><span class="pre">describe_exception</span></code></a>(exc)</p></td>
+<td><p>Render an exception with its type, so bare-value messages (<code class="docutils literal notranslate"><span class="pre">KeyError:</span> <span class="pre">23</span></code>) stay readable.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#fiqci.ems.backend.jobs.job_id_of" title="fiqci.ems.backend.jobs.job_id_of"><code class="xref py py-obj docutils literal notranslate"><span class="pre">job_id_of</span></code></a>(job)</p></td>
+<td><p>Backend job id of <code class="docutils literal notranslate"><span class="pre">job</span></code>, whether <code class="docutils literal notranslate"><span class="pre">job_id</span></code> is a method (<code class="docutils literal notranslate"><span class="pre">JobV1</span></code>) or a plain attribute.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -411,6 +425,18 @@
 </tbody>
 </table>
 </div>
+<dl class="py function">
+<dt class="sig sig-object py" id="fiqci.ems.backend.jobs.job_id_of">
+<span class="sig-name descname"><span class="pre">job_id_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">job</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.job_id_of" title="Link to this definition">#</a></dt>
+<dd><p>Backend job id of <code class="docutils literal notranslate"><span class="pre">job</span></code>, whether <code class="docutils literal notranslate"><span class="pre">job_id</span></code> is a method (<code class="docutils literal notranslate"><span class="pre">JobV1</span></code>) or a plain attribute.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fiqci.ems.backend.jobs.describe_exception">
+<span class="sig-name descname"><span class="pre">describe_exception</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">BaseException</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.describe_exception" title="Link to this definition">#</a></dt>
+<dd><p>Render an exception with its type, so bare-value messages (<code class="docutils literal notranslate"><span class="pre">KeyError:</span> <span class="pre">23</span></code>) stay readable.</p>
+</dd></dl>
+
 <dl class="py exception">
 <dt class="sig sig-object py" id="fiqci.ems.backend.jobs.BatchFailedError">
 <span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">BatchFailedError</span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.BatchFailedError" title="Link to this definition">#</a></dt>
@@ -422,7 +448,7 @@ indices it covered, so callers can map the failure back to their input.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="fiqci.ems.backend.jobs.PartialBatch">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">PartialBatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">circuit_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">JobStatus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Result</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.backend.jobs.PartialBatch" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">PartialBatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">circuit_range</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">JobStatus</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Result</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.backend.jobs.PartialBatch" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">NamedTuple</span></code></p>
 <p>Snapshot of a single batch within a multi-batch job.</p>
 <dl class="py attribute">
@@ -461,10 +487,10 @@ indices it covered, so callers can map the failure back to their input.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fiqci.ems.backend.jobs.PartialBatch.job_id">
 <span class="sig-name descname"><span class="pre">job_id</span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.PartialBatch.job_id" title="Link to this definition">#</a></dt>
-<dd><p>Backend job id of the batch.</p>
+<dd><p>Backend job id of the batch, <code class="docutils literal notranslate"><span class="pre">None</span></code> if it was never submitted.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
+<dd class="field-odd"><p>str | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -500,7 +526,7 @@ indices it covered, so callers can map the failure back to their input.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="id3">
-<span class="sig-name descname"><span class="pre">job_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id3" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">job_id</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id3" title="Link to this definition">#</a></dt>
 <dd><p>Alias for field number 3</p>
 </dd></dl>
 
@@ -559,14 +585,14 @@ attached.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.backend.jobs.BatchedJob.job_id">
-<span class="sig-name descname"><span class="pre">job_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.BatchedJob.job_id" title="Link to this definition">#</a></dt>
-<dd><p>Backend job id of the first batch (for single-job back-compat).</p>
+<span class="sig-name descname"><span class="pre">job_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.BatchedJob.job_id" title="Link to this definition">#</a></dt>
+<dd><p>Backend job id of the first batch (for single-job back-compat), <code class="docutils literal notranslate"><span class="pre">None</span></code> if unsubmitted.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fiqci.ems.backend.jobs.BatchedJob.job_ids">
-<span class="sig-name descname"><span class="pre">job_ids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.BatchedJob.job_ids" title="Link to this definition">#</a></dt>
-<dd><p>Backend job ids of every batch, in submission order.</p>
+<span class="sig-name descname"><span class="pre">job_ids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.backend.jobs.BatchedJob.job_ids" title="Link to this definition">#</a></dt>
+<dd><p>Backend job ids of every batch, in submission order (<code class="docutils literal notranslate"><span class="pre">None</span></code> for unsubmitted batches).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -697,6 +723,8 @@ mitigation was configured for the run.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.job_id_of"><code class="docutils literal notranslate"><span class="pre">job_id_of()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.describe_exception"><code class="docutils literal notranslate"><span class="pre">describe_exception()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.BatchFailedError"><code class="docutils literal notranslate"><span class="pre">BatchFailedError</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.PartialBatch"><code class="docutils literal notranslate"><span class="pre">PartialBatch</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.backend.jobs.PartialBatch.index"><code class="docutils literal notranslate"><span class="pre">PartialBatch.index</span></code></a></li>

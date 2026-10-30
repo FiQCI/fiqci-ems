@@ -347,6 +347,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-configuration">Manual Configuration</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#devices-with-computational-resonators">Devices with computational resonators</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
 </ul>
             </nav>
@@ -394,6 +395,39 @@
 </pre></div>
 </div>
 </section>
+</section>
+<section id="devices-with-computational-resonators">
+<h2>Devices with computational resonators<a class="headerlink" href="#devices-with-computational-resonators" title="Link to this heading">#</a></h2>
+<p>On Deneb-class devices, <code class="docutils literal notranslate"><span class="pre">transpile_to_IQM</span></code> routes two-qubit interactions through a computational
+resonator: a MOVE gate transfers a qubit’s state into the resonator, several CZ gates act on
+<code class="docutils literal notranslate"><span class="pre">(partner,</span> <span class="pre">resonator)</span></code> pairs, and a second MOVE brings the state back. Twirling those CZ gates is
+not obviously possible, because twirling wraps a gate in single-qubit Paulis and a resonator accepts
+no single-qubit gates.</p>
+<p>FiQCI EMS twirls them anyway, by moving the resonator half of each twirl pair out of the MOVE
+sandwich. The resonator is holding the moved qubit’s state, so a Pauli on the resonator is the same
+Pauli applied to that qubit before the state was moved in (or after it comes back out). Getting it
+there means commuting it past the sandwich’s other gates:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">I</span></code> and <code class="docutils literal notranslate"><span class="pre">Z</span></code> commute with CZ and pass through unchanged.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">X</span></code> and <code class="docutils literal notranslate"><span class="pre">Y</span></code> pick up a <code class="docutils literal notranslate"><span class="pre">Z</span></code> on the far qubit of every CZ they cross.</p></li>
+</ul>
+<p>The qubit half of each pair stays where it always was, next to the gate. The resulting circuit is
+exactly equivalent to the untwirled one and passes IQM’s MOVE-sandwich validation in strict mode,
+with no single-qubit gate on the resonator and none on the moved qubit between the MOVE pair.</p>
+<p>Two limits are worth knowing:</p>
+<ul class="simple">
+<li><p><strong>What gets twirled is the sandwich, not the bare CZ.</strong> The Paulis no longer sit adjacent to the
+gate, so the MOVE transfers and the neighbouring CZs lie between a twirl Pauli and the gate it
+belongs to. This still tailors coherent error into stochastic Pauli error, and it tailors the MOVE
+error too, but it is a coarser claim than twirling an isolated CZ.</p></li>
+<li><p><strong>A sandwich holding an operation the Paulis cannot be commuted through is left alone.</strong> Only the
+gates in <code class="docutils literal notranslate"><span class="pre">gates_to_twirl</span></code> are handled; anything else on the resonator wire between the MOVEs
+disqualifies that sandwich, and its gates are skipped rather than guessed at.</p></li>
+</ul>
+<p>MOVE itself has no unitary representation and is dropped from <code class="docutils literal notranslate"><span class="pre">gates_to_twirl</span></code> with a warning if you
+pass it. And whenever twirling matches no gates at all, a warning is raised at submission. That
+also catches a circuit containing none of the gates being twirled, such as a <code class="docutils literal notranslate"><span class="pre">cx</span></code>-based circuit
+under the default <code class="docutils literal notranslate"><span class="pre">gates_to_twirl=[CZGate()]</span></code>.</p>
 </section>
 <section id="references">
 <h2>References<a class="headerlink" href="#references" title="Link to this heading">#</a></h2>
@@ -456,6 +490,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#manual-configuration">Manual Configuration</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#devices-with-computational-resonators">Devices with computational resonators</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References</a></li>
 </ul>
   </nav></div>

@@ -8,5 +8,6 @@ fiqci.ems.transpiler\_passes.zne\_circuits
 
    .. autosummary::
    
+      SelfInverseMoveGate
       ZNECircuits
    

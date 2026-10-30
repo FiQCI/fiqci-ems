@@ -344,6 +344,7 @@
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-readout-error-mitigation">What is Readout Error Mitigation?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-m3-matrix-free-measurement-mitigation-method">The M3 (Matrix-free Measurement Mitigation) Method</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quasi-probabilities-counts-and-error-bars">Quasi-probabilities, counts and error bars</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-direct-m3iqm-control">Advanced: Direct M3IQM Control</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References:</a></li>
@@ -386,6 +387,39 @@
 <li><p>Provides quasi-probability distributions (can have negative values)</p></li>
 <li><p>Can convert to nearest valid probability distribution</p></li>
 </ul>
+</section>
+<section id="quasi-probabilities-counts-and-error-bars">
+<h2>Quasi-probabilities, counts and error bars<a class="headerlink" href="#quasi-probabilities-counts-and-error-bars" title="Link to this heading">#</a></h2>
+<p>M3’s correction produces a <strong>quasi-probability</strong> distribution, whose entries may be negative. That is
+an unbiased estimate but not a physical distribution, so EMS uses it two different ways depending on
+what you asked for:</p>
+<ul class="simple">
+<li><p><strong><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_sampler.html#fiqci.ems.primitives.fiqci_sampler.FiQCISampler" title="fiqci.ems.primitives.fiqci_sampler.FiQCISampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCISampler</span></code></a> counts</strong> are the quasi-probabilities
+projected onto the nearest physical distribution (negative entries clipped to zero) and scaled back
+to the shot count, because counts have to be non-negative integers for the rest of Qiskit.</p></li>
+<li><p><strong><a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code></a> expectation values</strong> are computed
+from the <em>unprojected</em> quasi-probabilities. Clipping removes exactly the low-probability outcomes an
+expectation value is most sensitive to, which biases ⟨P⟩ towards ±1 and lands it exactly on ±1
+whenever the clipped outcomes are the only ones contributing the opposite sign, as for a two-qubit
+ZZ observable. A mitigated expectation value can therefore fall slightly outside <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>; that is
+the honest estimate for an over-subtracting calibration, and a value far outside means the readout
+calibration is too noisy (raise <code class="docutils literal notranslate"><span class="pre">calibration_shots</span></code>).</p></li>
+</ul>
+<p>Mitigation trades bias for variance, so <code class="docutils literal notranslate"><span class="pre">standard_errors()</span></code> reports the shot noise of the <strong>raw</strong>
+counts inflated by <code class="docutils literal notranslate"><span class="pre">sqrt(mitigation_overhead)</span></code>, mthree’s own error bound. A mitigated value’s error
+bar is therefore always larger than the unmitigated one it came from.</p>
+<p>Both quantities, and how many outcomes the projection clipped, travel in each result’s header:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">FiQCISampler</span><span class="p">(</span><span class="n">backend</span><span class="p">,</span> <span class="n">mitigation_level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">shots</span><span class="o">=</span><span class="mi">4096</span><span class="p">)</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+<span class="n">metadata</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;fiqci_ems&quot;</span><span class="p">]</span>
+
+<span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;quasi_probabilities&quot;</span><span class="p">]</span>   <span class="c1"># unprojected M3 output, keyed like the counts</span>
+<span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;mitigation_overhead&quot;</span><span class="p">]</span>   <span class="c1"># M3&#39;s variance amplification factor (&gt;= 1)</span>
+<span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;clipped_outcomes&quot;</span><span class="p">]</span>      <span class="c1"># outcomes the projection zeroed</span>
+<span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;raw_counts&quot;</span><span class="p">]</span>            <span class="c1"># pre-mitigation counts</span>
+</pre></div>
+</div>
+<p>A warning is raised when the projection had to clip anything, since the counts from those circuits are
+biased towards the physical boundary.</p>
 </section>
 <section id="advanced-direct-m3iqm-control">
 <h2>Advanced: Direct M3IQM Control<a class="headerlink" href="#advanced-direct-m3iqm-control" title="Link to this heading">#</a></h2>
@@ -462,6 +496,7 @@
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-readout-error-mitigation">What is Readout Error Mitigation?</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-m3-matrix-free-measurement-mitigation-method">The M3 (Matrix-free Measurement Mitigation) Method</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quasi-probabilities-counts-and-error-bars">Quasi-probabilities, counts and error bars</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-direct-m3iqm-control">Advanced: Direct M3IQM Control</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#examples">Examples</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#references">References:</a></li>

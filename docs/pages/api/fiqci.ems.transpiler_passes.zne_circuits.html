@@ -342,6 +342,10 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate"><code class="docutils literal notranslate"><span class="pre">SelfInverseMoveGate</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate.inverse"><code class="docutils literal notranslate"><span class="pre">SelfInverseMoveGate.inverse()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits"><code class="docutils literal notranslate"><span class="pre">ZNECircuits</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.run()</span></code></a></li>
@@ -363,12 +367,56 @@
 <p class="rubric">Classes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits" title="fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ZNECircuits</span></code></a>(*args, **kwargs)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate" title="fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SelfInverseMoveGate</span></code></a>([label])</p></td>
+<td><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">MoveGate</span></code> that reports itself as its own inverse.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits" title="fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ZNECircuits</span></code></a>(*args, **kwargs)</p></td>
 <td><p>A pass to generate circuits for zero-noise extrapolation (ZNE) by folding gates.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
+<dl class="py class">
+<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SelfInverseMoveGate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MoveGate</span></code></p>
+<p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">MoveGate</span></code> that reports itself as its own inverse.</p>
+<p><code class="docutils literal notranslate"><span class="pre">MoveGate</span></code> is deliberately left without a definition so the transpiler cannot decompose it,
+which also makes <code class="docutils literal notranslate"><span class="pre">inverse()</span></code> raise. Folding needs an inverse, and MOVE is an involution on its
+invariant subspace: its off-diagonal entries are an undefined phase and that phase’s reciprocal,
+so <code class="docutils literal notranslate"><span class="pre">MOVE</span> <span class="pre">MOVE</span></code> is the identity whatever the phase happens to be. Subclassing keeps the gate’s
+name and type, so IQM serialisation and MOVE-sandwich validation see an ordinary MOVE.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">annotated</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate" title="fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate"><span class="pre">SelfInverseMoveGate</span></a></span></span><a class="headerlink" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate.inverse" title="Link to this definition">#</a></dt>
+<dd><p>Invert this instruction.</p>
+<p>If <cite>annotated</cite> is <cite>False</cite>, the inverse instruction is implemented as
+a fresh instruction with the recursively inverted definition.</p>
+<p>If <cite>annotated</cite> is <cite>True</cite>, the inverse instruction is implemented as
+<code class="xref py py-class docutils literal notranslate"><span class="pre">AnnotatedOperation</span></code>, and corresponds to the given instruction
+annotated with the “inverse modifier”.</p>
+<p>Special instructions inheriting from Instruction can
+implement their own inverse (e.g. T and Tdg, Barrier, etc.)
+In particular, they can choose how to handle the argument <code class="docutils literal notranslate"><span class="pre">annotated</span></code>
+which may include ignoring it and always returning a concrete gate class
+if the inverse is defined as a standard gate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>annotated</strong> – if set to <cite>True</cite> the output inverse gate will be returned
+as <code class="xref py py-class docutils literal notranslate"><span class="pre">AnnotatedOperation</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The inverse operation.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>CircuitError</strong> – if the instruction is not composite
+    and an inverse has not been implemented for it.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ZNECircuits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits" title="Link to this definition">#</a></dt>
@@ -381,7 +429,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>fold_gates</strong> – An optional iterable of gate names to fold. If None, all gates will be folded.</p></li>
+<li><p><strong>fold_gates</strong> – An optional iterable of gate names to fold. If None, every two-qubit gate is
+folded except MOVE, which is only folded when named explicitly. Ignored by global
+folding, which folds the whole circuit including MOVE.</p></li>
 <li><p><strong>scale_factor</strong> – The factor by which to scale the noise. Any real number &gt;= 1. Non-odd-integer
 values are approximated by partially folding a randomly-sampled subset of gates.</p></li>
 <li><p><strong>folding_method</strong> – The method to use for folding gates (“local” or “global”).</p></li>
@@ -458,6 +508,10 @@ by <code class="docutils literal notranslate"><span class="pre">np.random.defaul
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate"><code class="docutils literal notranslate"><span class="pre">SelfInverseMoveGate</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.SelfInverseMoveGate.inverse"><code class="docutils literal notranslate"><span class="pre">SelfInverseMoveGate.inverse()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits"><code class="docutils literal notranslate"><span class="pre">ZNECircuits</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.__init__"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fiqci.ems.transpiler_passes.zne_circuits.ZNECircuits.run"><code class="docutils literal notranslate"><span class="pre">ZNECircuits.run()</span></code></a></li>

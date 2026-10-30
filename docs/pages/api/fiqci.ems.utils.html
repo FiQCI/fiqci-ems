@@ -360,7 +360,7 @@
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.utils.probabilities_to_counts" title="fiqci.ems.utils.probabilities_to_counts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">probabilities_to_counts</span></code></a>(probabilities, shots)</p></td>
-<td><p>Convert probabilities to counts</p></td>
+<td><p>Convert probabilities to counts.</p></td>
 </tr>
 </tbody>
 </table>
@@ -368,7 +368,11 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="fiqci.ems.utils.probabilities_to_counts">
 <span class="sig-name descname"><span class="pre">probabilities_to_counts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">probabilities</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shots</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.utils.probabilities_to_counts" title="Link to this definition">#</a></dt>
-<dd><p>Convert probabilities to counts</p>
+<dd><p>Convert probabilities to counts.</p>
+<p>Uses the largest-remainder method so the counts sum to exactly <code class="docutils literal notranslate"><span class="pre">shots</span></code> (for a normalised input).
+Truncating each outcome instead drops up to one count per outcome, which leaves the realised total
+below the requested shot count and so understates the <code class="docutils literal notranslate"><span class="pre">N</span></code> of any shot-error estimate taken from
+these counts.</p>
 </dd></dl>
 
 </section>

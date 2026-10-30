@@ -709,20 +709,24 @@ copied, since it owns the calibration data.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">shot_error</span></code></p></td>
-<td><p>Statistical standard error of the raw measurement, <span class="math notranslate nohighlight">\(\sqrt{(1 - \langle P \rangle^2) / N}\)</span> per term. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit’s sampling-based <code class="docutils literal notranslate"><span class="pre">EstimatorV2</span></code>.</p></td>
+<td><p>Statistical standard error of the raw measurement, <span class="math notranslate nohighlight">\(\sqrt{(1 - \langle P \rangle^2) / N}\)</span> per term, taken from the pre-mitigation counts. At mitigation level ≥ 1 it is inflated by <span class="math notranslate nohighlight">\(\sqrt{\gamma}\)</span>, where <span class="math notranslate nohighlight">\(\gamma\)</span> is M3’s mitigation overhead, so a mitigated value always carries a <em>larger</em> error bar than the unmitigated one it was computed from, readout mitigation trades bias for variance. When ZNE is enabled this is taken at the unfolded (scale 1) point. This matches the convention used by Qiskit’s sampling-based <code class="docutils literal notranslate"><span class="pre">EstimatorV2</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code></p></td>
 <td><p>Standard error of the extrapolated value: the per-scale shot errors propagated through the (linear) extrapolator. <code class="docutils literal notranslate"><span class="pre">None</span></code> when ZNE is disabled, or when a user-defined extrapolation callable reports no standard errors. See <a class="reference internal" href="#fiqci-estimator-zne"><span class="std std-ref">ZNE</span></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">total</span></code></p></td>
-<td><p>Standard error of the value <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">expectation_values()</span></code></a> actually returns — <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> when ZNE is off, <code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code> when ZNE is on. Not a quadrature sum, since the extrapolation error already incorporates the shot noise.</p></td>
+<td><p>Standard error of the value <a class="reference internal" href="api/fiqci.ems.primitives.fiqci_estimator.html#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">expectation_values()</span></code></a> actually returns <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> when ZNE is off, <code class="docutils literal notranslate"><span class="pre">zne_extrapolation_error</span></code> when ZNE is on. Not a quadrature sum, since the extrapolation error already incorporates the shot noise.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Only statistical error is reported. The estimator does not account for ZNE <em>model</em> bias (the systematic error from the chosen extrapolation shape), nor does it inflate <code class="docutils literal notranslate"><span class="pre">shot_error</span></code> by the M3 readout-mitigation overhead at mitigation level ≥ 1.</p>
+<p>Only statistical error is reported. The estimator does not account for ZNE <em>model</em> bias, the systematic error from the chosen extrapolation shape.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>At mitigation level ≥ 1 the expectation values come from M3’s quasi-probabilities, which are unbiased but not necessarily physical, so a value may fall slightly outside <span class="math notranslate nohighlight">\([-1, 1]\)</span>. Clamping it would reintroduce the bias the quasi-probabilities exist to avoid. A value far outside the range means the readout calibration is too noisy, so raise <code class="docutils literal notranslate"><span class="pre">calibration_shots</span></code>. See <a class="reference internal" href="readout_mitigation.html"><span class="doc">Readout Error Mitigation with FiQCI EMS</span></a>.</p>
 </div>
 </section>
 </section>

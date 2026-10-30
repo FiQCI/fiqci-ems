@@ -629,6 +629,10 @@ If it accepts a <code class="docutils literal notranslate"><span class="pre">sig
 then return a <code class="docutils literal notranslate"><span class="pre">(values,</span> <span class="pre">standard_errors)</span></code> pair instead of just the values. Those standard
 errors are surfaced as the <code class="docutils literal notranslate"><span class="pre">&quot;zne_extrapolation_error&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;total&quot;</span></code> entries of
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">FiQCIEstimatorJob.standard_errors()</span></code>; callables that return only values leave both <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<p>On devices with computational resonators, local folding leaves MOVE gates alone unless
+<code class="docutils literal notranslate"><span class="pre">fold_gates</span></code> names <code class="docutils literal notranslate"><span class="pre">&quot;move&quot;</span></code> explicitly: folding MOVE adds state transfers without scaling
+how long the state sits in the resonator, so its noise would not scale by the requested factor.
+Global folding inverts the whole circuit and therefore always folds MOVE too.</p>
 </dd></dl>
 
 <dl class="py method">

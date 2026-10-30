@@ -18,6 +18,29 @@ Dynamical decoupling is enabled by default at ``mitigation_level=2`` or it can b
 
 For more detailed usage see [FiQCISampler](FiQCISamplerUsage.rst) or [FiQCIEstimator](FiQCIEstimatorUsage.rst)
 
+### Combining DD with other compilation options
+
+DD is submitted through IQM's `CircuitCompilationOptions`, which is also how you reach settings EMS
+does not wrap (heralding, MOVE gate validation, MOVE gate frame tracking). Passing your own options to
+`run()` keeps every non-DD field and only sets the DD ones, so the two compose:
+
+```python
+from iqm.iqm_client import CircuitCompilationOptions, MoveGateValidationMode
+
+sampler = FiQCISampler(backend, mitigation_level=2)  # DD on
+sampler.run(
+    circuit,
+    shots=4096,
+    circuit_compilation_options=CircuitCompilationOptions(
+        move_gate_validation=MoveGateValidationMode.ALLOW_PRX
+    ),
+)
+```
+
+The DD strategy from `dd()` (or the mitigation level) wins over a `dd_mode`/`dd_strategy` set in your
+own options, and you get a warning if both are configured. To submit with your own DD strategy
+instead, turn EMS's off with `dd(enabled=False)`.
+
 ## References
 
 - [IQM Academy: Dynamical Decoupling](https://www.iqmacademy.com/learn/errorreduction/02-dd/)

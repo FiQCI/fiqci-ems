@@ -137,7 +137,7 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         # See applied and available options
         backend.mitigation_options
 
-      Access raw (pre-mitigation) counts via :attr:`~fiqci.ems.FiQCIBackend.raw_counts` (populated only after the run's ``result()`` has been retrieved, since post-processing is lazy).
+      Access raw (pre-mitigation) counts via :attr:`~fiqci.ems.FiQCIBackend.raw_counts` (populated only after the run's ``result()`` has been retrieved, since post-processing is lazy). Each mitigated result also carries per-circuit M3 diagnostics (the unprojected quasi-probabilities, the mitigation overhead and the number of clipped outcomes) in ``result.results[i].header["fiqci_ems"]``. See :doc:`readout_mitigation`.
 
       The mitigation options for :class:`~fiqci.ems.FiQCIBackend` are the same as for :class:`~fiqci.ems.FiQCISampler`. For more information, see :doc:`FiQCISamplerUsage`.
 

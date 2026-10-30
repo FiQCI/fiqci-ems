@@ -462,8 +462,8 @@ is turned on (assuming reasonable error rates).</p></li>
 <p>Overrides M3’s method to:
 1. Default to ‘balanced’ calibration method for IQM
 2. Support IQM’s calibration_set_id parameter
-3. Use IQM-specific job thread for bit-string handling
-4. Support configurable calibration batching</p>
+3. Support configurable calibration batching</p>
+<p>Bit-string parsing is left to mthree’s own calibration job thread; nothing here changes it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

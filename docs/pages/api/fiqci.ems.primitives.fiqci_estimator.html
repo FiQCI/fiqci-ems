@@ -534,6 +534,10 @@ If it accepts a <code class="docutils literal notranslate"><span class="pre">sig
 then return a <code class="docutils literal notranslate"><span class="pre">(values,</span> <span class="pre">standard_errors)</span></code> pair instead of just the values. Those standard
 errors are surfaced as the <code class="docutils literal notranslate"><span class="pre">&quot;zne_extrapolation_error&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;total&quot;</span></code> entries of
 <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.standard_errors"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FiQCIEstimatorJob.standard_errors()</span></code></a>; callables that return only values leave both <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<p>On devices with computational resonators, local folding leaves MOVE gates alone unless
+<code class="docutils literal notranslate"><span class="pre">fold_gates</span></code> names <code class="docutils literal notranslate"><span class="pre">&quot;move&quot;</span></code> explicitly: folding MOVE adds state transfers without scaling
+how long the state sits in the resonator, so its noise would not scale by the requested factor.
+Global folding inverts the whole circuit and therefore always folds MOVE too.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -600,6 +604,11 @@ settings), surfaced via <a class="reference internal" href="#fiqci.ems.primitive
 <dt class="sig sig-object py" id="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values">
 <span class="sig-name descname"><span class="pre">expectation_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values" title="Link to this definition">#</a></dt>
 <dd><p>Get the calculated expectation values (computes lazily on first access).</p>
+<p>With readout error mitigation enabled these come from M3’s quasi-probabilities, which are an
+unbiased but not necessarily physical estimate: a value may fall slightly outside <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>
+when the calibration over-subtracts. Clamping it would reintroduce the boundary bias, so the
+estimate is reported as is; a value far outside the range means the readout calibration is too
+noisy (raise <code class="docutils literal notranslate"><span class="pre">calibration_shots</span></code>).</p>
 </dd></dl>
 
 <dl class="py method">
@@ -615,9 +624,12 @@ settings), surfaced via <a class="reference internal" href="#fiqci.ems.primitive
 <p>Mirrors the shape of <a class="reference internal" href="#fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values" title="fiqci.ems.primitives.fiqci_estimator.FiQCIEstimatorJob.expectation_values"><code class="xref py py-meth docutils literal notranslate"><span class="pre">expectation_values()</span></code></a>: one entry per circuit/observable pair, each
 a dict of per-Pauli-term standard errors with keys:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&quot;shot_error&quot;</span></code>: statistical SE of the raw measurement, <code class="docutils literal notranslate"><span class="pre">sqrt((1</span> <span class="pre">-</span> <span class="pre">⟨P⟩²)</span> <span class="pre">/</span> <span class="pre">N)</span></code> per term.
-When ZNE is enabled this is taken at the unfolded (scale 1) point. With Pauli twirling, <code class="docutils literal notranslate"><span class="pre">N</span></code>
-counts every twirled variant’s shots, not the averaged total.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;shot_error&quot;</span></code>: statistical SE of the raw measurement, <code class="docutils literal notranslate"><span class="pre">sqrt((1</span> <span class="pre">-</span> <span class="pre">⟨P⟩²)</span> <span class="pre">/</span> <span class="pre">N)</span></code> per term,
+taken from the pre-mitigation counts. When readout error mitigation is on, this is inflated
+by <code class="docutils literal notranslate"><span class="pre">sqrt(M3</span> <span class="pre">mitigation</span> <span class="pre">overhead)</span></code>, so a mitigated value carries a <em>larger</em> error bar than
+the unmitigated one it was computed from — mitigation trades bias for variance. When ZNE is
+enabled the value is taken at the unfolded (scale 1) point. With Pauli twirling, <code class="docutils literal notranslate"><span class="pre">N</span></code> counts
+every twirled variant’s shots, not the averaged total.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;zne_extrapolation_error&quot;</span></code>: SE of the extrapolated value, the per-scale shot errors
 propagated through the (linear) extrapolator; <code class="docutils literal notranslate"><span class="pre">None</span></code> when ZNE is disabled, or when a
 user-defined extrapolation callable reports no standard errors.</p></li>

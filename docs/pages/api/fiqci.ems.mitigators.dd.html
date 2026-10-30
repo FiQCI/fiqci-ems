@@ -360,7 +360,7 @@
 <p class="rubric">Functions</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.mitigators.dd.build_dd_options" title="fiqci.ems.mitigators.dd.build_dd_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_dd_options</span></code></a>(gate_sequences)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fiqci.ems.mitigators.dd.build_dd_options" title="fiqci.ems.mitigators.dd.build_dd_options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_dd_options</span></code></a>(gate_sequences[, base])</p></td>
 <td><p>Build compilation options for dynamical decoupling.</p></td>
 </tr>
 </tbody>
@@ -368,14 +368,18 @@
 </div>
 <dl class="py function">
 <dt class="sig sig-object py" id="fiqci.ems.mitigators.dd.build_dd_options">
-<span class="sig-name descname"><span class="pre">build_dd_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gate_sequences</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CircuitCompilationOptions</span></span></span><a class="headerlink" href="#fiqci.ems.mitigators.dd.build_dd_options" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">build_dd_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gate_sequences</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CircuitCompilationOptions</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CircuitCompilationOptions</span></span></span><a class="headerlink" href="#fiqci.ems.mitigators.dd.build_dd_options" title="Link to this definition">#</a></dt>
 <dd><p>Build compilation options for dynamical decoupling.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>gate_sequences</strong> – List of (threshold_length, sequence, strategy) tuples defining DD behavior.
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gate_sequences</strong> – List of (threshold_length, sequence, strategy) tuples defining DD behavior.
 - threshold_length: Length of idle time before applying DD. Defaults to sequence length or 2.
 - sequence: DD sequence as a string (e.g., “XYXY”) or list of rotation angle tuples. Defaults to “XY”.
-- strategy: “asap”, “alap”, or “center”. Defaults to “asap”.</p>
+- strategy: “asap”, “alap”, or “center”. Defaults to “asap”.</p></li>
+<li><p><strong>base</strong> – Compilation options to add DD to, keeping every non-DD field (heralding, MOVE gate
+validation and frame tracking, …) as given. Defaults to IQM’s defaults.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>CircuitCompilationOptions with the specified DD settings.</p>
