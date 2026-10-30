@@ -19,7 +19,9 @@ For more details see the API reference documentation for :class:`FiQCIEstimator`
 
 Transpile the circuit with :func:`~iqm.qiskit_iqm.transpile_to_IQM` and map the observables onto the
 transpiled circuit's layout. ``remove_final_rzs=False`` is required: the estimator measures in the X
-and Y bases, and dropping the final RZ gates changes those expectation values.
+and Y bases, and dropping the final RZ gates changes those expectation values. It is the default from
+``iqm-client`` 36 onwards, but pass it explicitly to stay correct on older versions, where it defaults
+to ``True``.
 
 .. code-block:: python
 
