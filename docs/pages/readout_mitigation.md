@@ -26,6 +26,42 @@ Unlike traditional methods that explicitly compute and invert large matrices, M3
 - Provides quasi-probability distributions (can have negative values)
 - Can convert to nearest valid probability distribution
 
+## Quasi-probabilities, counts and error bars
+
+M3's correction produces a **quasi-probability** distribution, whose entries may be negative. That is
+an unbiased estimate but not a physical distribution, so EMS uses it two different ways depending on
+what you asked for:
+
+- **{class}`~fiqci.ems.primitives.fiqci_sampler.FiQCISampler` counts** are the quasi-probabilities
+  projected onto the nearest physical distribution (negative entries clipped to zero) and scaled back
+  to the shot count, because counts have to be non-negative integers for the rest of Qiskit.
+- **{class}`~fiqci.ems.primitives.fiqci_estimator.FiQCIEstimator` expectation values** are computed
+  from the *unprojected* quasi-probabilities. Clipping removes exactly the low-probability outcomes an
+  expectation value is most sensitive to, which biases ⟨P⟩ towards ±1 and lands it exactly on ±1
+  whenever the clipped outcomes are the only ones contributing the opposite sign, as for a two-qubit
+  ZZ observable. A mitigated expectation value can therefore fall slightly outside `[-1, 1]`; that is
+  the honest estimate for an over-subtracting calibration, and a value far outside means the readout
+  calibration is too noisy (raise `calibration_shots`).
+
+Mitigation trades bias for variance, so `standard_errors()` reports the shot noise of the **raw**
+counts inflated by `sqrt(mitigation_overhead)`, mthree's own error bound. A mitigated value's error
+bar is therefore always larger than the unmitigated one it came from.
+
+Both quantities, and how many outcomes the projection clipped, travel in each result's header:
+
+```python
+result = FiQCISampler(backend, mitigation_level=1).run(circuit, shots=4096).result()
+metadata = result.results[0].header["fiqci_ems"]
+
+metadata["quasi_probabilities"]   # unprojected M3 output, keyed like the counts
+metadata["mitigation_overhead"]   # M3's variance amplification factor (>= 1)
+metadata["clipped_outcomes"]      # outcomes the projection zeroed
+metadata["raw_counts"]            # pre-mitigation counts
+```
+
+A warning is raised when the projection had to clip anything, since the counts from those circuits are
+biased towards the physical boundary.
+
 ## Advanced: Direct M3IQM Control
 
 For fine-grained control over the mitigation process, you can use the {class}`~fiqci.ems.mitigators.rem.M3IQM` class directly. This allows you to:

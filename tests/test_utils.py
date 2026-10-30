@@ -33,6 +33,30 @@ def test_probabilities_to_counts():
 	assert all(isinstance(v, int) for v in result[0].values())
 
 
+def test_probabilities_to_counts_totals_exactly_shots():
+	"""A normalised distribution must convert to exactly `shots` counts, not fewer.
+
+	Truncating each outcome loses up to one count per outcome, which understates the N used as the
+	shot count downstream (e.g. in the estimator's standard errors).
+	"""
+	# Every outcome has a non-zero remainder at these shot counts, so truncation loses one each.
+	probs = {"00": 1 / 3, "01": 1 / 3, "10": 1 / 6, "11": 1 / 6}
+	for shots in (100, 1000, 2048, 8192):
+		counts = probabilities_to_counts(probs, shots)[0]
+		assert sum(counts.values()) == shots
+
+	# Each count still rounds to the right outcome, within the one count largest-remainder moves.
+	counts = probabilities_to_counts(probs, 1000)[0]
+	for key, prob in probs.items():
+		assert abs(counts[key] - prob * 1000) <= 1
+
+
+def test_probabilities_to_counts_handles_unnormalised_input():
+	"""A distribution summing below 1 must not be padded up to `shots`."""
+	counts = probabilities_to_counts({"00": 0.25, "11": 0.25}, 1000)[0]
+	assert sum(counts.values()) == 500
+
+
 def test_count_gates_simple():
 	"""Test _count_gates with a simple circuit."""
 	qc = QuantumCircuit(3)

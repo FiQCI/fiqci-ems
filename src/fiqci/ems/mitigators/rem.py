@@ -58,8 +58,9 @@ class M3IQM(M3Mitigation):
 		Overrides M3's method to:
 		1. Default to 'balanced' calibration method for IQM
 		2. Support IQM's calibration_set_id parameter
-		3. Use IQM-specific job thread for bit-string handling
-		4. Support configurable calibration batching
+		3. Support configurable calibration batching
+
+		Bit-string parsing is left to mthree's own calibration job thread; nothing here changes it.
 
 		Parameters:
 			qubits (array_like): Qubits over which to correct calibration data. Default is all.

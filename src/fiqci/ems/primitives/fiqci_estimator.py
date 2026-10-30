@@ -8,7 +8,7 @@ import logging
 import math
 import threading
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, TypedDict, cast
 
 import numpy as np
@@ -22,11 +22,66 @@ from fiqci.ems.transpiler_passes.basis_measurement import (
 	_get_observable_circuit_index,
 )
 from fiqci.ems.utils import _remove_idle_wires
+from fiqci.ems.backend.counts import _average_counts
 from fiqci.ems.transpiler_passes.zne_circuits import _achieved_scale_factors, _get_zne_circuits
 from fiqci.ems.mitigators.zne import exponential_extrapolation, richardson_extrapolation, polynomial_extrapolation
 from fiqci.ems.mitigators.dd import DDGateSequenceEntry
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+def _fiqci_ems_metadata(result, index: int) -> dict[str, Any]:
+	"""Read the ``fiqci_ems`` header entry FiQCIBackend attaches to a mitigated result, if any."""
+	entries = getattr(result, "results", None)
+	if not isinstance(entries, (list, tuple)) or index >= len(entries):
+		return {}
+	header = getattr(entries[index], "header", None)
+	if isinstance(header, dict):
+		metadata = header.get("fiqci_ems")
+	else:
+		metadata = getattr(header, "fiqci_ems", None)
+	return metadata if isinstance(metadata, dict) else {}
+
+
+def _per_circuit_result_data(
+	result, all_counts: list[dict[str, int]]
+) -> tuple[list[Mapping[str, float]], list[dict[str, int]], list[float | None]]:
+	"""Split a result into the per-circuit data the expectation values and error bars need.
+
+	Returns ``(value_weights, variance_counts, mitigation_overheads)``, one entry per submitted
+	circuit:
+
+	- ``value_weights`` are what each ⟨P⟩ is averaged over. For a mitigated result these are M3's
+	  *unprojected* quasi-probabilities, which may be negative: the projection onto the nearest
+	  physical distribution that produces the result's counts clips those entries to zero, which
+	  biases ⟨P⟩ towards (and for few-outcome observables onto) the physical boundary ±1.
+	- ``variance_counts`` are the raw, pre-mitigation counts, which carry the shot noise the error
+	  bar comes from. Deriving it from the mitigated counts instead would report the boundary
+	  artifact's vanishing spread as certainty.
+	- ``mitigation_overheads`` are M3's per-circuit variance amplification factors, or ``None`` where
+	  mitigation did not run.
+
+	Results without ``fiqci_ems`` metadata (mitigation level 0) fall back to the counts themselves for
+	both roles and no overhead, which is exactly the unmitigated case.
+	"""
+	value_weights: list[Mapping[str, float]] = []
+	variance_counts: list[dict[str, int]] = []
+	mitigation_overheads: list[float | None] = []
+
+	for index, counts in enumerate(all_counts):
+		metadata = _fiqci_ems_metadata(result, index)
+		quasi_probabilities = metadata.get("quasi_probabilities")
+		raw_counts = metadata.get("raw_counts")
+		# With Pauli twirling the header holds every twirled variant's raw counts; average them so the
+		# total matches the averaged counts the shot error is scaled from.
+		if isinstance(raw_counts, list):
+			raw_counts = _average_counts(raw_counts) if raw_counts else None
+
+		value_weights.append(quasi_probabilities if quasi_probabilities else counts)
+		variance_counts.append(raw_counts if raw_counts else counts)
+		mitigation_overheads.append(metadata.get("mitigation_overhead"))
+
+	return value_weights, variance_counts, mitigation_overheads
 
 
 def _is_nested_scale_factors(scale_factors) -> bool:
@@ -148,7 +203,7 @@ class FiQCIEstimator:
 
 		self._zne: ZNESettings = {
 			"enabled": mitigation_level == 3,
-			"fold_gates": None,  # if None, fold all gates. Otherwise, should be a list of gate names to fold (e.g. ["cx", "cz"])
+			"fold_gates": None,  # if None, fold every two-qubit gate except MOVE. Otherwise, a list of gate names (e.g. ["cx", "cz"])
 			"scale_factors": [1, 3, 5],  # any real numbers >= 1
 			"folding_method": "local",  # global or local folding
 			"extrapolation_method": "exponential",  # exponential, richardson, linear, polynomial
@@ -476,16 +531,20 @@ class FiQCIEstimator:
 			same values), and the third holds the per-pair standard-error dicts (see
 			:meth:`FiQCIEstimatorJob.standard_errors`).
 			"""
-			all_counts = job.result().get_counts()
+			result = job.result()
+			all_counts = result.get_counts()
 			if not isinstance(all_counts, list):
 				all_counts = [all_counts]
+			all_weights, all_variance_counts, all_overheads = _per_circuit_result_data(result, all_counts)
 
 			expectation_values: list = []
 			all_zne_expvs: list = []
 			standard_errors: list = []
 			offset = 0
 			for i, length in enumerate(pair_lengths):
-				counts = all_counts[offset : offset + length]
+				counts = all_weights[offset : offset + length]
+				variance_counts = all_variance_counts[offset : offset + length]
+				overheads = all_overheads[offset : offset + length]
 				offset += length
 
 				obs = observables if isinstance(observables, SparsePauliOp) else observables[i]
@@ -493,16 +552,15 @@ class FiQCIEstimator:
 				zne_expvs = []
 
 				if zne_enabled:
-					split_counts = []
 					num_circs_per_zne = len(measurement_settings)
-					for j in range(0, len(counts), num_circs_per_zne):
-						split_counts.append(counts[j : j + num_circs_per_zne])
-
 					per_scale_sigmas = []
-					for c in split_counts:
-						zne_expvs.append(self._calculate_expectation_values(c, obs, measurement_settings))
+					for j in range(0, len(counts), num_circs_per_zne):
+						scale = slice(j, j + num_circs_per_zne)
+						zne_expvs.append(self._calculate_expectation_values(counts[scale], obs, measurement_settings))
 						per_scale_sigmas.append(
-							self._calculate_shot_errors(c, obs, measurement_settings, twirl_group_size)
+							self._calculate_shot_errors(
+								variance_counts[scale], obs, measurement_settings, twirl_group_size, overheads[scale]
+							)
 						)
 
 					scales = zne_scale_factors_per_pair[i]
@@ -531,7 +589,9 @@ class FiQCIEstimator:
 					)
 				else:
 					expvs = self._calculate_expectation_values(counts, obs, measurement_settings)
-					shot_err = self._calculate_shot_errors(counts, obs, measurement_settings, twirl_group_size)
+					shot_err = self._calculate_shot_errors(
+						variance_counts, obs, measurement_settings, twirl_group_size, overheads
+					)
 					standard_errors.append({"shot_error": shot_err, "zne_extrapolation_error": None, "total": shot_err})
 
 				expectation_values.append(expvs)
@@ -573,10 +633,16 @@ class FiQCIEstimator:
 
 	def _calculate_expectation_values(
 		self,
-		counts: dict[str, int] | list[dict[str, int]],
+		counts: Mapping[str, float] | list[Mapping[str, float]],
 		obs: SparsePauliOp,
 		measurement_settings: list[dict[int, str]],
 	) -> list[float]:
+		"""Per-Pauli-term expectation value, as the parity-weighted mean over each circuit's outcomes.
+
+		``counts`` may be measurement counts or M3's quasi-probabilities: only per-outcome weights and
+		their total are used, so signed weights work unchanged (and avoid the boundary artifact the
+		projected counts carry, see ``_per_circuit_result_data``).
+		"""
 		if not isinstance(counts, list):
 			counts = [counts]
 		expectation_values = []
@@ -611,14 +677,22 @@ class FiQCIEstimator:
 		obs: SparsePauliOp,
 		measurement_settings: list[dict[int, str]],
 		twirl_group_size: int = 1,
+		mitigation_overheads: list[float | None] | None = None,
 	) -> list[float]:
-		"""Per-Pauli-term shot-noise standard error, mirroring ``_calculate_expectation_values``.
+		"""Per-Pauli-term standard error, mirroring ``_calculate_expectation_values``.
 
-		Each ⟨P⟩ is the sample mean of a ±1 random variable over ``N`` shots, so its standard error
-		is ``sqrt((1 - ⟨P⟩²) / N)``. Uncovered terms (no measurement setting) report 0.0.
+		Each ⟨P⟩ is the sample mean of a ±1 random variable over ``N`` shots, so its standard error is
+		``sqrt((1 - ⟨P⟩²) / N)``. ``counts`` are the raw, pre-mitigation counts (see
+		``_per_circuit_result_data``), so this is the shot noise of the measurement itself. Uncovered
+		terms (no measurement setting) report 0.0.
 
 		``twirl_group_size`` scales ``N``: Pauli-twirled counts are averaged back down to ``shots``,
 		so the recorded total is a factor of the group size below the samples actually taken.
+
+		``mitigation_overheads`` gives M3's per-circuit variance amplification factor, if any. Readout
+		mitigation trades bias for variance, so the shot noise is inflated by ``sqrt(overhead)`` —
+		mthree's own error bound (``QuasiDistribution.stddev`` is ``sqrt(overhead / shots)``). Entries
+		may be ``None`` (no mitigation), which leaves the error at plain shot noise.
 		"""
 		if not isinstance(counts, list):
 			counts = [counts]
@@ -627,7 +701,8 @@ class FiQCIEstimator:
 			pauli = cast(Pauli, pauli)
 			obs_info = _get_observable_circuit_index(pauli, measurement_settings)
 			if obs_info["circuit_index"] is not None:
-				circuit_counts = counts[obs_info["circuit_index"]]
+				circuit_index = obs_info["circuit_index"]
+				circuit_counts = counts[circuit_index]
 				total = sum(circuit_counts.values())
 				if total == 0:
 					shot_errors.append(0.0)
@@ -640,7 +715,11 @@ class FiQCIEstimator:
 							parity *= -1
 					exp_val += parity * count
 				exp_val /= total
-				shot_errors.append(math.sqrt(max(0.0, 1.0 - exp_val**2) / (total * twirl_group_size)))
+				sigma = math.sqrt(max(0.0, 1.0 - exp_val**2) / (total * twirl_group_size))
+				overhead = mitigation_overheads[circuit_index] if mitigation_overheads is not None else None
+				if overhead is not None:
+					sigma *= math.sqrt(max(1.0, float(overhead)))
+				shot_errors.append(sigma)
 			else:
 				shot_errors.append(0.0)  # No measurement setting covers this observable
 		return shot_errors
@@ -702,6 +781,11 @@ class FiQCIEstimator:
 		then return a ``(values, standard_errors)`` pair instead of just the values. Those standard
 		errors are surfaced as the ``"zne_extrapolation_error"`` / ``"total"`` entries of
 		:meth:`FiQCIEstimatorJob.standard_errors`; callables that return only values leave both ``None``.
+
+		On devices with computational resonators, local folding leaves MOVE gates alone unless
+		``fold_gates`` names ``"move"`` explicitly: folding MOVE adds state transfers without scaling
+		how long the state sits in the resonator, so its noise would not scale by the requested factor.
+		Global folding inverts the whole circuit and therefore always folds MOVE too.
 		"""
 		if not callable(extrapolation_method) and extrapolation_method not in [
 			"exponential",
@@ -830,7 +914,14 @@ class FiQCIEstimatorJob:
 		return self._raw_expectation_values
 
 	def expectation_values(self, index: int | None = None) -> list[float]:
-		"""Get the calculated expectation values (computes lazily on first access)."""
+		"""Get the calculated expectation values (computes lazily on first access).
+
+		With readout error mitigation enabled these come from M3's quasi-probabilities, which are an
+		unbiased but not necessarily physical estimate: a value may fall slightly outside ``[-1, 1]``
+		when the calibration over-subtracts. Clamping it would reintroduce the boundary bias, so the
+		estimate is reported as is; a value far outside the range means the readout calibration is too
+		noisy (raise ``calibration_shots``).
+		"""
 		self._ensure_computed()
 		assert self._expectation_values is not None
 		if index is not None:
@@ -849,9 +940,12 @@ class FiQCIEstimatorJob:
 		Mirrors the shape of :meth:`expectation_values`: one entry per circuit/observable pair, each
 		a dict of per-Pauli-term standard errors with keys:
 
-		- ``"shot_error"``: statistical SE of the raw measurement, ``sqrt((1 - ⟨P⟩²) / N)`` per term.
-		  When ZNE is enabled this is taken at the unfolded (scale 1) point. With Pauli twirling, ``N``
-		  counts every twirled variant's shots, not the averaged total.
+		- ``"shot_error"``: statistical SE of the raw measurement, ``sqrt((1 - ⟨P⟩²) / N)`` per term,
+		  taken from the pre-mitigation counts. When readout error mitigation is on, this is inflated
+		  by ``sqrt(M3 mitigation overhead)``, so a mitigated value carries a *larger* error bar than
+		  the unmitigated one it was computed from — mitigation trades bias for variance. When ZNE is
+		  enabled the value is taken at the unfolded (scale 1) point. With Pauli twirling, ``N`` counts
+		  every twirled variant's shots, not the averaged total.
 		- ``"zne_extrapolation_error"``: SE of the extrapolated value, the per-scale shot errors
 		  propagated through the (linear) extrapolator; ``None`` when ZNE is disabled, or when a
 		  user-defined extrapolation callable reports no standard errors.
