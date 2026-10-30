@@ -1,4 +1,11 @@
-## [WIP] [2.0.0]
+## [2.0.0] 30.10.2026
+
+### Fixed
+- result metadata reports `mitigation_method` and `calibration_shots` whenever readout error mitigation ran, not only at mitigation level 1
+- `FiQCIEstimator` at mitigation level 3 reports level 3 in `mitigator_options` and result metadata instead of 2
+- https://github.com/FiQCI/fiqci-ems/pull/53
+
+---
 
 ### Breaking changes
 - `FiQCIEstimator` observables now behave as in Qiskit's Estimator. A `SparsePauliOp` is one observable with expectation value `sum(c * <P>)` over its terms, instead of one value per term with the coefficients ignored. To keep one value per term, pass the terms of the laid-out observable as a list, e.g. `run(tr_qc, list(obs.apply_layout(tr_qc.layout).paulis))`
