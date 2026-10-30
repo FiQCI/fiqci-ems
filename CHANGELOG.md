@@ -10,13 +10,17 @@
 - `FiQCIEstimator.run()` and `total_circuits_generated()` accept several observables per circuit, as `run(qc, [a, b])` or `run([qc1, qc2], [[a, b], c])`. Terms of all observables on a circuit share measurement circuits
 - observables can be given as anything Qiskit's Estimator accepts, including label strings, `{label: coeff}` dicts, `Pauli` and `SparseObservable`
 - ZNE extrapolates each observable's combined value. Identity terms are added after extrapolation
-- Support IQM OS 4.7.0: allow `iqm-client` 36 (`iqm-client[qiskit]>=35.0.3,<37`). 35.0.3 remains the minimum and is tested in CI alongside the locked 36.0.0
-- `iqm-client` 36 no longer drops final RZ gates by default (`transpile_to_IQM(remove_final_rzs=False)`, `optimize_single_qubit_gates(drop_final_rz=False)`), so transpiled circuits keep their unitary. Z-basis counts are unchanged; RZ gates directly before a measurement are still dropped, so `FiQCIEstimator` keeps rejecting circuits that end in measurements. Keep passing `remove_final_rzs=False` explicitly for the estimator to stay correct on `iqm-client` 35
 
 ### Fixed
 - identity terms now contribute their coefficient instead of `0`, and an identity-only observable no longer fails the run
+- https://github.com/FiQCI/fiqci-ems/pull/48
 
-- https://github.com/FiQCI/fiqci-ems/pull/50
+---
+
+### Changed
+- Support IQM OS 4.7.0: allow `iqm-client` 36 (`iqm-client[qiskit]>=35.0.3,<37`). 35.0.3 remains the minimum and is tested in CI alongside the locked 36.0.0
+- `iqm-client` 36 no longer drops final RZ gates by default (`transpile_to_IQM(remove_final_rzs=False)`, `optimize_single_qubit_gates(drop_final_rz=False)`), so transpiled circuits keep their unitary. Z-basis counts are unchanged; RZ gates directly before a measurement are still dropped, so `FiQCIEstimator` keeps rejecting circuits that end in measurements. Keep passing `remove_final_rzs=False` explicitly for the estimator to stay correct on `iqm-client` 35
+- https://github.com/FiQCI/fiqci-ems/pull/49
 
 ---
 
