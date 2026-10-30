@@ -114,3 +114,33 @@ jobs:
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+
+  test-iqm-client-floor:
+    # The main test job runs against the locked (newest) iqm-client; this one pins the lowest
+    # supported version from pyproject.toml so both ends of the range stay tested.
+    name: Run Tests (iqm-client ${{ matrix.iqm-client }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        iqm-client: ["35.0.3"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need for setuptools_scm
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: |
+          uv sync
+          uv pip install "iqm-client[qiskit]==${{ matrix.iqm-client }}"
+
+      - name: Run tests
+        run: uv run --no-sync pytest tests/
