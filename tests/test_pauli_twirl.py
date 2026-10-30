@@ -841,15 +841,29 @@ class TestComputationalResonatorTwirling:
 					assert instruction.qubits[0] is not moved
 
 	def test_resonator_detected_when_wire_index_differs_from_physical_index(self, backend) -> None:
-		"""The single-partner layout puts the resonator on a wire whose index is not its physical one."""
-		base = self.transpiled(backend, 1)
+		"""Detection must not assume the resonator's wire index equals its physical index."""
+		transpiled = self.transpiled(backend, 1)
+		physical_resonator = next(i for i, n in backend._idx_to_qb.items() if n == "CR1")
+		move = next(i for i in transpiled.data if i.operation.name == "move")
+		original_wire = transpiled.find_bit(move.qubits[1]).index
+		# iqm-client >= 36 keeps wire index == physical index, older versions do not. Swap the resonator
+		# onto a different wire so the mismatching case is exercised either way.
+		target_wire = (physical_resonator + 1) % transpiled.num_qubits
+		wire_map = list(range(transpiled.num_qubits))
+		wire_map[original_wire], wire_map[target_wire] = wire_map[target_wire], wire_map[original_wire]
+		base = QuantumCircuit(transpiled.num_qubits)
+		for instruction in transpiled.data:
+			base.append(
+				instruction.operation, [base.qubits[wire_map[transpiled.find_bit(q).index]] for q in instruction.qubits]
+			)
 		move = next(i for i in base.data if i.operation.name == "move")
 		resonator_wire = base.find_bit(move.qubits[1]).index
-		physical_resonator = next(i for i, n in backend._idx_to_qb.items() if n == "CR1")
 		assert resonator_wire != physical_resonator, "fixture no longer covers the mismatching case"
 
 		# Detection comes from the MOVE argument order, so it still finds the right wire.
-		for candidate in get_twirled_circuits([base], num_twirls=8, backend=backend)[1:]:
+		candidates = get_twirled_circuits([base], num_twirls=8, backend=backend)[1:]
+		assert any(candidate != base for candidate in candidates), "nothing was twirled"
+		for candidate in candidates:
 			for instruction in candidate.data:
 				if len(instruction.qubits) == 1:
 					assert base.find_bit(instruction.qubits[0]).index != resonator_wire
