@@ -81,7 +81,8 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
         estimator = FiQCIEstimator(backend, mitigation_level=1, calibration_file="cals.json")
 
         # Transpile for the backend. remove_final_rzs=False is required: the estimator measures in
-        # the X and Y bases, and dropping the final RZ gates changes those expectation values.
+        # the X and Y bases, and dropping the final RZ gates changes those expectation values. It is
+        # the default from iqm-client 36, but older versions default to True.
         tr_qc = transpile_to_IQM(qc, backend, remove_final_rzs=False, optimization_level=3)
 
         # Define observables

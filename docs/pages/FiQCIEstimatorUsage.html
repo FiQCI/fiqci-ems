@@ -387,7 +387,9 @@
 <p>For more details see the API reference documentation for <code class="xref py py-class docutils literal notranslate"><span class="pre">FiQCIEstimator</span></code>.</p>
 <p>Transpile the circuit with <code class="xref py py-func docutils literal notranslate"><span class="pre">transpile_to_IQM()</span></code> and map the observables onto the
 transpiled circuit’s layout. <code class="docutils literal notranslate"><span class="pre">remove_final_rzs=False</span></code> is required: the estimator measures in the X
-and Y bases, and dropping the final RZ gates changes those expectation values.</p>
+and Y bases, and dropping the final RZ gates changes those expectation values. It is the default from
+<code class="docutils literal notranslate"><span class="pre">iqm-client</span></code> 36 onwards, but pass it explicitly to stay correct on older versions, where it defaults
+to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">iqm.qiskit_iqm</span><span class="w"> </span><span class="kn">import</span> <span class="n">transpile_to_IQM</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">qiskit.quantum_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">SparsePauliOp</span>
 
