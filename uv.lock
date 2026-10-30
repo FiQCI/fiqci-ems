@@ -487,7 +487,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "iqm-client", extras = ["qiskit"], specifier = ">=35.0.3" },
+    { name = "iqm-client", extras = ["qiskit"], specifier = ">=35.0.3,<37" },
     { name = "mthree", specifier = ">=3.0.0" },
 ]
 
@@ -787,9 +787,11 @@ wheels = [
 
 [[package]]
 name = "iqm-client"
-version = "35.0.3"
+version = "36.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "iqm-exa-common" },
+    { name = "iqm-pulla" },
     { name = "iqm-pulse" },
     { name = "iqm-station-control-client" },
     { name = "numpy" },
@@ -797,9 +799,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/d2/a12af4608f70d2b3ea3cd854cb0cae42af754f18964877a95cf7167d03b7/iqm_client-35.0.3.tar.gz", hash = "sha256:0363cd5afe5e4e4ac153e9032138f2d76e6d1d7157a3f53456b9dfa3d7c7e2be", size = 197097, upload-time = "2026-09-07T09:42:32.489Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/ca/4a7d8ca4d0a8fb07a1d80ec0b1dc7a9d6ee1b7c432fe56856763cfc3d375/iqm_client-36.0.0.tar.gz", hash = "sha256:04b9353a58bd55dd93b9d12474a2e07172d12c452e2be729f4f50341593a07a0", size = 210587, upload-time = "2026-10-08T14:07:09.129Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/1e/d130c0a49ef1ba3c007de83853f588a8ba230bdafe8661ee02fdb737c0bf/iqm_client-35.0.3-py3-none-any.whl", hash = "sha256:1c4de62171d6222a8ff04996fa4bde146c71c99020ef61f5204b42b45970c98e", size = 251050, upload-time = "2026-09-07T09:42:29.881Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/fc/f4c67edd958f65f5bdc0d3ba93f3a8414eb0bb1c446a7fb150da48a14f61/iqm_client-36.0.0-py3-none-any.whl", hash = "sha256:8a24f7468c1f6f3d73d7990197cc7de3b81f48fd41f9b57dedd74f60e5ef83ac", size = 266353, upload-time = "2026-10-08T14:07:06.776Z" },
 ]
 
 [package.optional-dependencies]
@@ -810,7 +812,7 @@ qiskit = [
 
 [[package]]
 name = "iqm-data-definitions"
-version = "3.0"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
@@ -819,14 +821,14 @@ dependencies = [
     { name = "scipy-stubs" },
     { name = "types-protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/53/c562d2f787d83e5e3ab34d7b43d82b60f32be6372cb322f20a72e6ca8cd5/iqm_data_definitions-3.0.tar.gz", hash = "sha256:d283c5571509e7401c36b2ff1a1e754a2bfc03d564eb13047f751599d57ee16a", size = 241305, upload-time = "2026-08-04T14:19:33.633Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/3a/7d7b2123f9a3da2dd1ad38bf3496581640421ead8b08b4307afea05c6d04/iqm_data_definitions-3.1.0.tar.gz", hash = "sha256:60f6314a0cdd8946ac134939eba97336b6a3f02411e5c8968e930dc798c46af9", size = 67913, upload-time = "2026-10-08T14:07:12.228Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/a4/bd3b5ffc6e2c0744b7fc0e2c9f5f1e59768ee706908ebc0329a1bc28fd95/iqm_data_definitions-3.0-py3-none-any.whl", hash = "sha256:7f6262a10e9185bd829b776ba08f5ea609ba473f07581e7e818fa7a2a1682deb", size = 84731, upload-time = "2026-08-04T14:19:31.779Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/d6/1b49d1a2e43550e3dee512484567ca162603638fa5dd2ee09dd99d8ab23b/iqm_data_definitions-3.1.0-py3-none-any.whl", hash = "sha256:346348d976fc1b435995fd1ea5ec8d279f639fce2956f96f94f81c1a31bbf2c5", size = 86328, upload-time = "2026-10-08T14:07:10.942Z" },
 ]
 
 [[package]]
 name = "iqm-exa-common"
-version = "28.0.3"
+version = "29.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "iqm-data-definitions" },
@@ -839,16 +841,38 @@ dependencies = [
     { name = "six" },
     { name = "types-requests" },
     { name = "types-six" },
+    { name = "typing-extensions" },
     { name = "xarray" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/a2/0b722f38f61dcd657699dd54dfc325a91908f3643d1597d38fc4fc47aaaf/iqm_exa_common-28.0.3.tar.gz", hash = "sha256:24c05c6a1c1c6e72534677cafa053d448e9c89e349e5aed1ba9c73a0c2dde3e9", size = 70408, upload-time = "2026-09-07T09:42:39.677Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/7a/bcd1b7abd28e2d69fba8982bb726645d7e2a3c34e32d87b987561f9f3026/iqm_exa_common-29.0.0.tar.gz", hash = "sha256:4410cf8aaa4a1fc97d077123c4b3bafeee4b7e1a142539c1ed1db15849cdb5f9", size = 75935, upload-time = "2026-10-08T14:07:19.088Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/55/f468321268c7a8b5599d6160c8951ed2eca23a3fbf9ea883e7acfdf24c69/iqm_exa_common-28.0.3-py3-none-any.whl", hash = "sha256:e639761ac013aa278237a2c2f5c9fca161ff2c2adef538e8bd60e4447d8c84db", size = 99324, upload-time = "2026-09-07T09:42:38.323Z" },
+    { url = "https://files.pythonhosted.org/packages/da/0e/46d0cab284f366a443c8dc33d34601051c0a1a7a641629a56c5b8ce8b1c9/iqm_exa_common-29.0.0-py3-none-any.whl", hash = "sha256:b05de3223f915c0d5fc9d5b51616d7892fccc7efbb98a30e3363493c7d0d74d1", size = 106151, upload-time = "2026-10-08T14:07:17.619Z" },
+]
+
+[[package]]
+name = "iqm-pulla"
+version = "15.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ipython", version = "9.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "ipython", version = "9.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "iqm-data-definitions" },
+    { name = "iqm-exa-common" },
+    { name = "iqm-pulse" },
+    { name = "iqm-station-control-client" },
+    { name = "pylatexenc" },
+    { name = "scipy" },
+    { name = "scipy-stubs" },
+    { name = "xarray" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b8/ef/66ff222a83395b5e7f68b7700f952a0c2aa9f72e02dff3d656008ebdab68/iqm_pulla-15.0.0.tar.gz", hash = "sha256:be079df8303b1e64ff723d4f65306f8aa846d5527aa1cdd7d9ea99e2f3c1d9f0", size = 143144, upload-time = "2026-10-08T14:07:23.529Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/b0/19ae7cce9a9a47254fc186c15dd7c9f930da00d0669a74c7739e1551f915/iqm_pulla-15.0.0-py3-none-any.whl", hash = "sha256:7b8bf9291892f9cbabc917ae2f285e958306913a3f727f02e3dc521d92e150cb", size = 151273, upload-time = "2026-10-08T14:07:20.881Z" },
 ]
 
 [[package]]
 name = "iqm-pulse"
-version = "14.0.3"
+version = "15.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "iqm-data-definitions" },
@@ -858,15 +882,16 @@ dependencies = [
     { name = "python-rapidjson" },
     { name = "scipy" },
     { name = "scipy-stubs" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/f6/34c66f26dec4929342eeda5913b3b7495f3dec261f8bce24a4d1822e8598/iqm_pulse-14.0.3.tar.gz", hash = "sha256:4ba5e28ceede52bd3064aef1ee9587c7aff212802e7c0cf0d7d15e1478a7c431", size = 419440, upload-time = "2026-09-07T09:42:47.881Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/03/9e42099d01df10d018c0ea50bdeea8ee2767adfa23106463c3ceb1d24f22/iqm_pulse-15.0.0.tar.gz", hash = "sha256:765f8c5eaa46cd18f28cfa6035aaa229941a0e69711c7cbfa64211a11ce0ca61", size = 424586, upload-time = "2026-10-08T14:07:27.782Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/f3/1f602285a5ceaaf8d8387b35813b0c15ee566132cb1869f6609d946830bf/iqm_pulse-14.0.3-py3-none-any.whl", hash = "sha256:39a1177f8e57b190af684f8f62e8b2a503ca75be41bd30821ebbdea8aa0772d9", size = 443249, upload-time = "2026-09-07T09:42:46.262Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/34/e55b7e2fbb91c5f1e39ddc7d8312da5e09cea8a1894b4a32472f1c568ba2/iqm_pulse-15.0.0-py3-none-any.whl", hash = "sha256:4cb1681d19f5b49d95f03fd21e7ba58c349689b8e60acb926d7990934131269b", size = 446869, upload-time = "2026-10-08T14:07:25.573Z" },
 ]
 
 [[package]]
 name = "iqm-station-control-client"
-version = "13.0.3"
+version = "14.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "grpcio" },
@@ -882,9 +907,9 @@ dependencies = [
     { name = "types-requests" },
     { name = "types-tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/6c/68a10472366eb0172fab31b4a80a2f50373cd1ca2907ce4379bb61cef438/iqm_station_control_client-13.0.3.tar.gz", hash = "sha256:6dcd34f54df406c27ddc15937280f0b283de7f6431d5793820cee976a620ed16", size = 63997, upload-time = "2026-09-07T09:42:58.727Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/c9/1fb496855a0cb49f52a0d4bfa3f7f60ddbce0f19cdd18e74c2bf34ad7ca1/iqm_station_control_client-14.0.0.tar.gz", hash = "sha256:b0c31a50c41dc64f54a325e5c6a99040cc0aa800bb1a0ace5a58dd7595f59784", size = 85308, upload-time = "2026-10-08T14:07:39.455Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/06/2f/1564ca048bf291c3644d6c54ce1bcf383ad4bcdce703eaae563e85b8dd3a/iqm_station_control_client-13.0.3-py3-none-any.whl", hash = "sha256:91d24c7bc6968c3e20699262e0b22cf0a03111af46425cff4aa988d4a1828da0", size = 84120, upload-time = "2026-09-07T09:42:57.466Z" },
+    { url = "https://files.pythonhosted.org/packages/70/a6/b70079bdf6c72e2018c4eecd9865406ba073aef16485ea822329c5c4698e/iqm_station_control_client-14.0.0-py3-none-any.whl", hash = "sha256:237128d1e33e334b6054cfc2dcdd1fa8a80a9f35d070dcb744aadc5c3a89b225", size = 104881, upload-time = "2026-10-08T14:07:37.774Z" },
 ]
 
 [[package]]
