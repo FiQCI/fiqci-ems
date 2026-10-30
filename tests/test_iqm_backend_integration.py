@@ -80,12 +80,17 @@ class TestSamplerOnRealDeviceValidation:
 		assert probabilities.get("00", 0.0) > 0.3
 		assert probabilities.get("11", 0.0) > 0.3
 
-	def test_mitigated_result_reports_m3_diagnostics(self, backend: IQMFakeAdonis, measured: QuantumCircuit) -> None:
+	@pytest.mark.parametrize("level", [1, 2, 3])
+	def test_mitigated_result_reports_m3_diagnostics(
+		self, backend: IQMFakeAdonis, measured: QuantumCircuit, level: int
+	) -> None:
 		"""The header must carry what an honest error bar and an unbiased value need."""
-		result = FiQCISampler(backend, mitigation_level=1).run(measured, shots=SHOTS).result()
+		result = FiQCISampler(backend, mitigation_level=level).run(measured, shots=SHOTS).result()
 
 		metadata = result.results[0].header["fiqci_ems"]
+		assert metadata["mitigation_level"] == level
 		assert metadata["mitigation_method"] == "M3"
+		assert metadata["calibration_shots"] == 1000
 		assert metadata["mitigation_overhead"] >= 1.0
 		assert metadata["clipped_outcomes"] >= 0
 		# Quasi-probabilities are keyed like the counts and sum to 1, but need not be non-negative.
@@ -151,6 +156,17 @@ class TestEstimatorOnRealDeviceValidation:
 		# quasi-probabilities and so are not bounded by ±1, but this device's readout error is small
 		# enough that over-subtraction stays well inside the margin.
 		assert all(-1.05 <= value <= 1.05 for value in values)
+
+	def test_level_3_reports_its_own_level(
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp]
+	) -> None:
+		job = FiQCIEstimator(backend, mitigation_level=3).run(transpiled, device_observables, shots=SHOTS)
+
+		options = job.mitigator_options
+		assert options["mitigation_level"] == 3
+		assert options["zne"]["enabled"] is True
+		assert options["pauli_twirl"]["enabled"] is False
+		assert job.result().results[0].header["fiqci_ems"]["mitigation_level"] == 3
 
 	def test_standard_errors_are_reported(
 		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp]
