@@ -1,3 +1,11 @@
+## [WIP] [2.0.1]
+
+### Fixed
+- global ZNE folding no longer moves mid-circuit measurements to the end. It folds the segments between measurements, resets and control flow separately
+- https://github.com/FiQCI/fiqci-ems/pull/54
+
+---
+
 ## [2.0.0] 30.10.2026
 
 ### Fixed
