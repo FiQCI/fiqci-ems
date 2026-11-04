@@ -25,6 +25,7 @@ FiQCI EMS supports two methods for amplifying noise by increasing the effective 
 - **Global folding**: Global folding appends the entire circuit and its inverse in alternating sequence. For a circuit $C$ with scale factor 3, the result is $C C^\dagger C$, and for scale factor 5: $C C^\dagger C C^\dagger C$.
     - This uniformly amplifies noise across all gates.
     - The `fold_gates` parameter is not applicable and will be ignored if set.
+    - Measurements, resets and control flow cannot be inverted, so the circuit is cut at each of them and the segments in between are folded separately. These operations are not noise-scaled.
 
 ### Devices with computational resonators
 
