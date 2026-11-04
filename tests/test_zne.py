@@ -527,6 +527,121 @@ class TestZNECircuitsPass:
 		assert folded_nm.size() > qc_nm.size()
 		assert np.allclose(Operator(qc_nm).data, Operator(folded_nm).data, atol=1e-10)
 
+	@staticmethod
+	def _mid_circuit_cases() -> dict[str, QuantumCircuit]:
+		"""Circuits whose measurements, resets or conditionals sit between gates."""
+		measured = QuantumCircuit(3, 4)
+		measured.h(0)
+		measured.crx(0.7, 0, 1)
+		measured.measure(0, 3)
+		measured.cx(1, 2)
+		measured.ry(0.4, 0)
+		measured.crx(0.3, 0, 2)
+		measured.measure([0, 1, 2], [0, 1, 2])
+
+		reset = QuantumCircuit(2, 3)
+		reset.h(0)
+		reset.cx(0, 1)
+		reset.measure(0, 2)
+		reset.reset(0)
+		reset.ry(0.9, 0)
+		reset.crx(0.5, 0, 1)
+		reset.measure([0, 1], [0, 1])
+
+		feedforward = QuantumCircuit(2, 3)
+		feedforward.h(0)
+		feedforward.measure(0, 2)
+		with feedforward.if_test((feedforward.clbits[2], 1)):
+			feedforward.x(1)
+		feedforward.crx(0.6, 1, 0)
+		feedforward.measure([0, 1], [0, 1])
+
+		return {"measure": measured, "reset": reset, "feedforward": feedforward}
+
+	@staticmethod
+	def _distribution(circuit: QuantumCircuit, shots: int = 20000) -> dict[str, float]:
+		from qiskit_aer import AerSimulator
+
+		counts = AerSimulator().run(circuit, shots=shots, seed_simulator=7).result().get_counts()
+		return {key: value / shots for key, value in counts.items()}
+
+	def test_global_folding_keeps_mid_circuit_measurement_in_place(self) -> None:
+		"""Regression: measurements were all moved to the end, so ``h; m; h; m`` always read ``00``."""
+		qc = QuantumCircuit(1, 2)
+		qc.h(0)
+		qc.measure(0, 0)
+		qc.h(0)
+		qc.measure(0, 1)
+
+		for scale in (1.5, 2, 3, 5):
+			folded = PassManager(ZNECircuits(scale_factor=scale, folding_method="global")).run(qc)
+			distribution = self._distribution(folded)
+			assert set(distribution) == {"00", "01", "10", "11"}
+			assert all(abs(p - 0.25) < 0.02 for p in distribution.values())
+
+	@pytest.mark.parametrize("case", ["measure", "reset", "feedforward"])
+	@pytest.mark.parametrize("scale", [1.5, 2, 3, 5])
+	def test_global_folding_preserves_mid_circuit_semantics(self, case: str, scale: float) -> None:
+		qc = self._mid_circuit_cases()[case]
+		folded = PassManager(ZNECircuits(scale_factor=scale, folding_method="global")).run(qc)
+
+		expected, actual = self._distribution(qc), self._distribution(folded)
+		tvd = 0.5 * sum(abs(expected.get(k, 0) - actual.get(k, 0)) for k in set(expected) | set(actual))
+		assert tvd < 0.03
+
+	@pytest.mark.parametrize("case", ["measure", "reset", "feedforward"])
+	def test_global_folding_keeps_non_invertible_operations_in_order(self, case: str) -> None:
+		"""Each wire sees its measurements, resets and conditionals in the original order.
+
+		Only the per-wire order is fixed: operations on disjoint wires may be listed in either order.
+		"""
+		from fiqci.ems.transpiler_passes.zne_circuits import _is_fold_boundary
+
+		qc = self._mid_circuit_cases()[case]
+		folded = PassManager(ZNECircuits(scale_factor=3, folding_method="global")).run(qc)
+
+		def boundaries_per_wire(circuit: QuantumCircuit) -> dict[tuple[str, int], list[str]]:
+			per_wire: dict[tuple[str, int], list[str]] = {}
+			for instr in circuit.data:
+				if not _is_fold_boundary(instr.operation):
+					continue
+				wires = [("q", circuit.find_bit(q).index) for q in instr.qubits]
+				wires += [("c", circuit.find_bit(c).index) for c in instr.clbits]
+				for wire in wires:
+					per_wire.setdefault(wire, []).append(instr.operation.name)
+			return per_wire
+
+		assert boundaries_per_wire(folded) == boundaries_per_wire(qc)
+
+	@pytest.mark.parametrize("case", ["measure", "reset", "feedforward"])
+	@pytest.mark.parametrize("scale", [1.5, 2, 3, 5])
+	def test_global_folding_with_segments_realises_the_achieved_scale_factor(self, case: str, scale: float) -> None:
+		"""The scale factor reported for extrapolation must match what the segmented folding produced."""
+		from fiqci.ems.transpiler_passes.zne_circuits import _achieved_scale_factors, _count_foldable_gates
+
+		qc = self._mid_circuit_cases()[case]
+		folded = PassManager(ZNECircuits(scale_factor=scale, folding_method="global")).run(qc)
+
+		realised = _count_foldable_gates(folded, "global") / _count_foldable_gates(qc, "global")
+		assert realised == pytest.approx(_achieved_scale_factors(qc, [scale], "global")[0])
+
+	def test_global_folding_keeps_global_phase_once_across_segments(self) -> None:
+		"""Each segment is composed separately; the circuit's global phase must not be added per segment."""
+		qc = self._mid_circuit_cases()["measure"]
+		qc.global_phase = 0.3
+
+		folded = PassManager(ZNECircuits(scale_factor=3, folding_method="global")).run(qc)
+
+		assert folded.global_phase == pytest.approx(0.3)
+
+	def test_global_foldable_count_skips_non_invertible_operations(self) -> None:
+		from fiqci.ems.transpiler_passes.zne_circuits import _count_foldable_gates
+
+		# reset: h, cx, ry, crx are foldable; measure and reset are not.
+		assert _count_foldable_gates(self._mid_circuit_cases()["reset"], "global") == 4
+		# feedforward: h and crx; the if_test block is left alone.
+		assert _count_foldable_gates(self._mid_circuit_cases()["feedforward"], "global") == 2
+
 
 class TestGetZNECircuits:
 	"""Tests for _get_zne_circuits helper function."""
@@ -1463,6 +1578,30 @@ class TestComputationalResonatorFolding:
 		from iqm.qiskit_iqm.iqm_circuit_validation import validate_circuit
 
 		folded = _get_zne_circuits([transpiled], scale_factors=[scale], folding_method=folding_method, seed=1)[0]
+		folded._layout = transpiled._layout
+		validate_circuit(folded, backend, validate_moves=MoveGateValidationMode.STRICT)
+
+	@pytest.mark.parametrize("scale", [1, 1.5, 3, 5])
+	def test_global_folding_cut_inside_a_move_sandwich_passes_validation(self, backend, scale: float) -> None:
+		"""A mid-circuit measurement can cut a MOVE sandwich into two segments; each folds validly."""
+		from iqm.iqm_client import MoveGateValidationMode
+		from iqm.qiskit_iqm import transpile_to_IQM
+		from iqm.qiskit_iqm.iqm_circuit_validation import validate_circuit
+
+		circuit = QuantumCircuit(3, 5)
+		circuit.h(0)
+		circuit.cz(0, 1)
+		circuit.measure(2, 3)
+		circuit.cz(1, 2)
+		circuit.measure(0, 4)
+		circuit.cz(0, 2)
+		circuit.measure([0, 1, 2], [0, 1, 2])
+		transpiled = transpile_to_IQM(circuit, backend)
+		names = [instr.operation.name for instr in transpiled.data]
+		first_move, last_move = names.index("move"), len(names) - 1 - names[::-1].index("move")
+		assert "measure" in names[first_move:last_move], "fixture must measure inside a MOVE sandwich"
+
+		folded = _get_zne_circuits([transpiled], scale_factors=[scale], folding_method="global", seed=1)[0]
 		folded._layout = transpiled._layout
 		validate_circuit(folded, backend, validate_moves=MoveGateValidationMode.STRICT)
 
