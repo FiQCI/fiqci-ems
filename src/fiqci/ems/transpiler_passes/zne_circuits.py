@@ -1,6 +1,6 @@
 import numpy as np
 from qiskit.dagcircuit import DAGCircuit
-from qiskit.circuit import QuantumCircuit, QuantumRegister
+from qiskit.circuit import CircuitInstruction, ControlFlowOp, Operation, QuantumCircuit, QuantumRegister
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.basepasses import TransformationPass
 from qiskit.transpiler import PassManager
@@ -38,6 +38,15 @@ def _is_locally_foldable(name: str, num_qubits: int, fold_gates: set[str] | None
 	# where the dominant error is, so the noise would not scale by the requested factor. It is only
 	# folded when named explicitly. Global folding inverts the whole circuit and so always folds it.
 	return name != _MOVE_GATE_NAME
+
+
+def _is_fold_boundary(operation: Operation) -> bool:
+	"""Whether global folding cuts the circuit at ``operation`` instead of inverting it.
+
+	Measurements, resets and classical control flow have no inverse. Shared so counting and folding
+	cannot drift apart.
+	"""
+	return operation.name in ("measure", "reset") or isinstance(operation, ControlFlowOp)
 
 
 def _replace_moves_with_self_inverse(dag: DAGCircuit) -> None:
@@ -79,9 +88,11 @@ def _achieved_scale_factor(num_gates: int, scale_factor: float, folding_method: 
 def _count_foldable_gates(
 	circuit: QuantumCircuit, folding_method: str = "local", fold_gates: Iterable[str] | None = None
 ) -> int:
-	"""Number of gates the folding will act on: all non-barrier gates (global) or foldable 2-qubit gates (local)."""
+	"""Number of gates the folding will act on: all invertible non-barrier gates (global) or foldable 2-qubit gates (local)."""
 	if folding_method == "global":
-		return sum(1 for instr in circuit.data if instr.operation.name not in ("measure", "barrier"))
+		return sum(
+			1 for instr in circuit.data if instr.operation.name != "barrier" and not _is_fold_boundary(instr.operation)
+		)
 	fold_set = set(fold_gates) if fold_gates is not None else None
 	return sum(1 for instr in circuit.data if _is_locally_foldable(instr.operation.name, len(instr.qubits), fold_set))
 
@@ -112,7 +123,9 @@ class ZNECircuits(TransformationPass):
 		        folding, which folds the whole circuit including MOVE.
 		    scale_factor: The factor by which to scale the noise. Any real number >= 1. Non-odd-integer
 		        values are approximated by partially folding a randomly-sampled subset of gates.
-		    folding_method: The method to use for folding gates ("local" or "global").
+		    folding_method: The method to use for folding gates ("local" or "global"). Global folding cuts
+		        the circuit at measurements, resets and control flow, which have no inverse, and folds each
+		        segment between them in place.
 		    seed: Seed or numpy Generator for the random gate sampling used to approximate non-odd-integer
 		        scale factors. Passing an existing Generator shares its state (and is returned unchanged
 		        by ``np.random.default_rng``), so a single Generator can drive many passes reproducibly.
@@ -188,41 +201,76 @@ class ZNECircuits(TransformationPass):
 		return cloned_dag
 
 	def _run_global(self, cloned_dag: DAGCircuit) -> DAGCircuit:
-		"""Fold the whole circuit (``C -> C C† C ...``), partially folding a suffix for the remainder."""
+		"""Fold the whole circuit (``C -> C C† C ...``), partially folding a suffix for the remainder.
+
+		Measurements, resets and control flow cannot be inverted, so the circuit is cut at each of them
+		and every segment in between is folded in place. ``circuit.data`` is a topological order, and a
+		run of consecutive instructions in it has no path that leaves the run and re-enters it, so
+		replacing a segment ``S`` by ``S S† S`` leaves the circuit unchanged. Without such operations
+		there is one segment, the whole circuit.
+		"""
 		circuit = dag_to_circuit(cloned_dag)
 
-		# Separate measurements; everything else forms the invertible `core` we fold.
-		measurements = [instr for instr in circuit.data if instr.operation.name == "measure"]
-		core = circuit.copy_empty_like()
+		segments: list[list[CircuitInstruction]] = [[]]
+		boundaries: list[CircuitInstruction] = []
 		for instr in circuit.data:
-			if instr.operation.name != "measure":
-				core.append(instr)
+			if _is_fold_boundary(instr.operation):
+				boundaries.append(instr)
+				segments.append([])
+			else:
+				segments[-1].append(instr)
 
 		# Integer part: full global folds. Fractional part: fold a suffix of the gates.
 		num_global_folds = int((self.scale_factor - 1) // 2)
 		frac = (self.scale_factor - 1) / 2 - num_global_folds
 
-		gate_indices = [i for i, instr in enumerate(core.data) if instr.operation.name != "barrier"]
-		num_to_fold = round(frac * len(gate_indices))
+		gate_positions = [
+			(seg, i)
+			for seg, segment in enumerate(segments)
+			for i, instr in enumerate(segment)
+			if instr.operation.name != "barrier"
+		]
+		num_to_fold = round(frac * len(gate_positions))
 
-		folded = core.copy()
-		for _ in range(num_global_folds):
-			folded.compose(core.inverse(), inplace=True)
-			folded.compose(core, inplace=True)
+		# The suffix is the last `num_to_fold` gates of the circuit (rather than a random subset), so the
+		# appended `suffix† suffix` cannot change the overall unitary. Segments are consecutive, so the
+		# suffix is a tail of every segment it reaches; record where each of those tails starts.
+		tail_starts: dict[int, int] = {}
+		for seg, i in gate_positions[len(gate_positions) - num_to_fold :]:
+			tail_starts.setdefault(seg, i)
 
-		if num_to_fold > 0:
-			# Build the sub-circuit of the last `num_to_fold` gates; a suffix (rather than a random
-			# subset) keeps the appended `suffix† suffix` from changing the overall unitary.
-			suffix = core.copy_empty_like()
-			for i in gate_indices[-num_to_fold:]:
-				suffix.append(core.data[i])
-			folded.compose(suffix.inverse(), inplace=True)
-			folded.compose(suffix, inplace=True)
+		folded = circuit.copy_empty_like()
+		for seg, segment in enumerate(segments):
+			block = self._sub_circuit(circuit, segment)
+			folded.compose(block, inplace=True)
+			for _ in range(num_global_folds):
+				folded.compose(block.inverse(), inplace=True)
+				folded.compose(block, inplace=True)
 
-		for instr in measurements:
-			folded.append(instr)
+			if seg in tail_starts:
+				tail = self._sub_circuit(
+					circuit, [instr for instr in segment[tail_starts[seg] :] if instr.operation.name != "barrier"]
+				)
+				folded.compose(tail.inverse(), inplace=True)
+				folded.compose(tail, inplace=True)
+
+			if seg < len(boundaries):
+				folded.append(boundaries[seg])
 
 		return circuit_to_dag(folded)
+
+	@staticmethod
+	def _sub_circuit(circuit: QuantumCircuit, instructions: list[CircuitInstruction]) -> QuantumCircuit:
+		"""A circuit over ``circuit``'s wires holding ``instructions``, without its global phase.
+
+		``folded`` already carries the phase from ``copy_empty_like``, and ``compose`` adds the composed
+		circuit's phase, so a block that kept it would add the phase once more per segment.
+		"""
+		sub = circuit.copy_empty_like()
+		sub.global_phase = 0
+		for instr in instructions:
+			sub.append(instr)
+		return sub
 
 
 def _get_zne_circuits(
@@ -242,7 +290,8 @@ def _get_zne_circuits(
 	        folds the whole circuit including MOVE.
 	    scale_factors: An optional iterable of real scale factors (>= 1) for folding. If None, defaults
 	        to [1, 3, 5]. Non-odd-integer values are approximated by partial/random folding.
-	    folding_method: The method to use for folding gates ("local" or "global").
+	    folding_method: The method to use for folding gates ("local" or "global"). Global folding cuts the
+	        circuit at measurements, resets and control flow and folds each segment between them in place.
 	    seed: Seed for the random gate sampling. A single Generator is shared across all generated
 	        circuits so the sampling is distinct per (scale factor, circuit) but reproducible overall.
 	Returns:
