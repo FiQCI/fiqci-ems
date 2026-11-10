@@ -1,3 +1,20 @@
+## [WIP]
+
+### Changed
+- `FiQCIBackend` is a Qiskit `BackendV2`. It shares the wrapped backend's target and options and works with Qiskit's `BackendSamplerV2` and `BackendEstimatorV2`
+- `FiQCIBackend.run()` without `shots` uses the wrapped backend's own default, as `backend.run` does. That is 1024 on IQM backends instead of the previous 2048
+- mitigated counts total the shots each circuit actually returned, which heralding can make fewer than requested
+- results use Qiskit's standard layout with hex keys and register sizes in the header. `get_counts()` returns the same keys as before
+- `result.get_memory()` agrees with the counts at every mitigation level. For mitigated results, or when the backend returns no memory, it is the counts expanded into shots in a random order
+- `memory` and `seed_simulator` run options are only forwarded to backends that support them
+- `job.cancel()` cancels every unfinished batch instead of only the first
+
+### Fixed
+- Pauli-twirled counts total exactly the requested shots
+- https://github.com/FiQCI/fiqci-ems/pull/54
+
+---
+
 ## [2.0.0] 30.10.2026
 
 ### Fixed
