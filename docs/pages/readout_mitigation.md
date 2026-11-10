@@ -62,6 +62,10 @@ metadata["raw_counts"]            # pre-mitigation counts
 A warning is raised when the projection had to clip anything, since the counts from those circuits are
 biased towards the physical boundary.
 
+A mitigated distribution has no individual shots, so `result.get_memory()` returns the mitigated
+counts expanded into shots in a random order. It agrees with `get_counts()`, which is what Qiskit's
+`BackendSamplerV2` and other memory consumers need, but its order carries no meaning.
+
 ## Advanced: Direct M3IQM Control
 
 For fine-grained control over the mitigation process, you can use the {class}`~fiqci.ems.mitigators.rem.M3IQM` class directly. This allows you to:

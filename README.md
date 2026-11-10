@@ -169,6 +169,11 @@ backend.mitigation_options
 Access raw (pre-mitigation) counts via `backend.raw_counts` (populated only after the run's
 `result()` has been retrieved, since post-processing is computed lazily).
 
+`FiQCIBackend` is a Qiskit `BackendV2` sharing the wrapped backend's target and options, so it can
+be passed wherever a backend is expected. `run()` without `shots` uses the wrapped backend's own
+default, as `backend.run` does (1024 on IQM backends). `result.get_memory()` always agrees with the counts: for mitigated results it is the
+mitigated counts expanded into shots in a random order.
+
 `run()` returns a lazy job handle immediately without waiting for results. The per-batch
 `job_id()`s and an aggregated `status()`/`done()` are available right away; error mitigation and
 result combination are computed on the first `result()` call. The handle also exposes
