@@ -162,6 +162,12 @@ class BatchedJob:
 		"""True once every batch has completed successfully (DONE)."""
 		return all(status == JobStatus.DONE for status in self.statuses())
 
+	def cancel(self) -> None:
+		"""Cancel every submitted batch that has not reached a terminal state yet."""
+		for job in self._jobs:
+			if not isinstance(job, _UnsubmittedBatch) and job.status() not in _TERMINAL_STATUSES:
+				job.cancel()
+
 	@staticmethod
 	def _aggregate_status(statuses: list[JobStatus]) -> JobStatus:
 		"""Collapse per-batch statuses into one by priority.

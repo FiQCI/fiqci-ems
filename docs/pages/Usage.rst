@@ -140,6 +140,8 @@ For executing quantum jobs EMS provides three interfaces depending on your use c
 
       Access raw (pre-mitigation) counts via :attr:`~fiqci.ems.FiQCIBackend.raw_counts` (populated only after the run's ``result()`` has been retrieved, since post-processing is lazy). Each mitigated result also carries per-circuit M3 diagnostics (the unprojected quasi-probabilities, the mitigation overhead and the number of clipped outcomes) in ``result.results[i].header["fiqci_ems"]``. See :doc:`readout_mitigation`.
 
+      :class:`~fiqci.ems.FiQCIBackend` is a Qiskit ``BackendV2``. Its target, options and other attributes are the wrapped backend's, so it can be passed wherever a backend is expected, including Qiskit's ``BackendSamplerV2`` and ``BackendEstimatorV2``. ``run()`` without ``shots`` uses the wrapped backend's own default, as ``backend.run`` does (1024 on IQM backends). Results use Qiskit's standard layout, and ``result.get_memory()`` always agrees with ``get_counts()``: when the counts are mitigated, or the backend returned no memory, the memory is the counts expanded into shots in a random order, not the measured shot sequence.
+
       The mitigation options for :class:`~fiqci.ems.FiQCIBackend` are the same as for :class:`~fiqci.ems.FiQCISampler`. For more information, see :doc:`FiQCISamplerUsage`.
 
 .. note::

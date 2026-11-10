@@ -1002,3 +1002,126 @@ class TestPartialCalibrationCoverage:
 		mitigator = self._run(mock_backend, None, {0: 2, 1: 4})
 
 		assert mitigator.cals_from_system.call_args.args[0] == [2, 4]
+
+
+class TestBackendV2DropIn:
+	"""FiQCIBackend stands in for the wrapped backend wherever a ``BackendV2`` is expected."""
+
+	@staticmethod
+	def _two_register_circuit() -> QuantumCircuit:
+		from qiskit import ClassicalRegister, QuantumRegister
+
+		qc = QuantumCircuit(QuantumRegister(2), ClassicalRegister(1, "a"), ClassicalRegister(2, "c"))
+		qc.x(1)
+		qc.measure(0, qc.cregs[0][0])
+		qc.measure([0, 1], qc.cregs[1])
+		return qc
+
+	def test_is_a_backend_v2_sharing_target_and_options(self) -> None:
+		from qiskit.providers import BackendV2
+		from qiskit_aer import AerSimulator
+
+		aer = AerSimulator()
+		backend = FiQCIBackend(aer, mitigation_level=0)
+
+		assert isinstance(backend, BackendV2)
+		# Aer builds a new Target on every access, so compare contents.
+		assert backend.operation_names == aer.operation_names
+		assert backend.options is aer.options
+		assert backend.num_qubits == aer.num_qubits
+		backend.set_options(shots=123)
+		assert aer.options.shots == 123
+
+	def test_default_shots_follow_the_wrapped_backend(self) -> None:
+		from qiskit_aer import AerSimulator
+
+		aer = AerSimulator()
+		aer.set_options(shots=300)
+		result = FiQCIBackend(aer, mitigation_level=0).run(self._two_register_circuit()).result()
+
+		assert sum(result.get_counts().values()) == 300
+
+	@pytest.mark.parametrize("twirl", [False, True])
+	def test_memory_agrees_with_counts_across_registers(self, twirl: bool) -> None:
+		from collections import Counter
+
+		from qiskit_aer import AerSimulator
+
+		backend = FiQCIBackend(AerSimulator(), mitigation_level=0)
+		if twirl:
+			backend.pauli_twirl(enabled=True, num_twirls=3, seed=1)
+		result = backend.run(self._two_register_circuit(), shots=501, memory=True).result()
+
+		memory = result.get_memory()
+		assert len(memory) == 501
+		assert Counter(memory) == result.get_counts()
+		assert result.get_counts() == {"10 0": 501}
+
+	def test_backend_without_declared_shots_keeps_its_own_default(self) -> None:
+		"""Real IQM backends declare no options. Their 1024 default lives in ``run()`` itself."""
+		from qiskit.providers import Options
+
+		mock_backend = Mock()
+		mock_backend.options = Options()
+		mock_backend.run.return_value = _make_result_mock([{"00": 600, "11": 424}])
+		qc = QuantumCircuit(2)
+		qc.measure_all()
+
+		with patch("fiqci.ems.backend.core.M3IQM") as m3_class:
+			mitigator = m3_class.return_value
+			mitigator.single_qubit_cals = None
+			quasi = QuasiDistribution({"00": 0.5, "11": 0.5}, shots=1024, mitigation_overhead=1.0)
+			mitigator.apply_correction.return_value = quasi
+			result = FiQCIBackend(mock_backend, mitigation_level=1).run(qc).result()
+
+		assert "shots" not in mock_backend.run.call_args.kwargs
+		# Mitigated counts are sized by the shots that came back, not by an assumed default.
+		assert sum(result.get_counts().values()) == 1024
+
+	def test_twirled_counts_total_the_shot_count(self) -> None:
+		from qiskit_aer import AerSimulator
+
+		qc = QuantumCircuit(2)
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure_all()
+		backend = FiQCIBackend(AerSimulator(), mitigation_level=0)
+		backend.pauli_twirl(enabled=True, num_twirls=4, seed=3)
+
+		assert sum(backend.run(qc, shots=1001).result().get_counts().values()) == 1001
+
+	@pytest.mark.parametrize(
+		("backend_options", "forwarded"),
+		[({"shots": 1024}, {}), ({"shots": 1024, "memory": False, "seed_simulator": None}, {"memory": True})],
+	)
+	def test_primitive_only_options_are_forwarded_only_when_supported(
+		self, backend_options: dict, forwarded: dict
+	) -> None:
+		"""Qiskit's primitives pass ``memory`` and ``seed_simulator``, which IQM backends warn about."""
+		from qiskit.providers import Options
+
+		mock_backend = Mock()
+		mock_backend.options = Options(**backend_options)
+		mock_backend.run.return_value = _make_result_mock([{"00": 1024}])
+		qc = QuantumCircuit(2)
+		qc.measure_all()
+
+		FiQCIBackend(mock_backend, mitigation_level=0).run(qc, shots=1024, memory=True, seed_simulator=None)
+
+		kwargs = mock_backend.run.call_args.kwargs
+		assert {key: kwargs[key] for key in ("memory", "seed_simulator") if key in kwargs} == forwarded
+
+	def test_cancel_reaches_every_unfinished_batch(self) -> None:
+		from fiqci.ems.backend.jobs import _UnsubmittedBatch
+
+		running, queued, done = Mock(), Mock(), Mock()
+		running.status.return_value = JobStatus.RUNNING
+		queued.status.return_value = JobStatus.QUEUED
+		done.status.return_value = JobStatus.DONE
+		unsubmitted = _UnsubmittedBatch((3, 4), JobStatus.CANCELLED)
+
+		BatchedJob([running, queued, done, unsubmitted]).cancel()
+
+		running.cancel.assert_called_once()
+		queued.cancel.assert_called_once()
+		done.cancel.assert_not_called()
