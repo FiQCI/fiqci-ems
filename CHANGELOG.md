@@ -1,4 +1,4 @@
-## [WIP]
+## [2.1.0] 23.11.2026
 
 ### Changed
 - `FiQCIBackend` is a Qiskit `BackendV2`. It shares the wrapped backend's target and options and works with Qiskit's `BackendSamplerV2` and `BackendEstimatorV2`
