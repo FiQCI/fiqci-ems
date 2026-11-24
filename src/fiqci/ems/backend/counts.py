@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
+import numpy as np
+from qiskit import QuantumCircuit
 from qiskit.result import Result
+
+from fiqci.ems.utils import probabilities_to_counts
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -125,7 +129,8 @@ def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
 	    counts_list: List of count dictionaries to average.
 
 	Returns:
-	    Averaged count dictionary with integer values.
+	    Averaged count dictionary with integer values. Apportioned by largest remainder, so it totals
+	    the average shot count exactly.
 	"""
 	if len(counts_list) == 1:
 		return counts_list[0]
@@ -135,7 +140,10 @@ def _average_counts(counts_list: list[dict[str, int]]) -> dict[str, int]:
 		for key, value in counts.items():
 			totals[key] = totals.get(key, 0.0) + value
 	n = len(counts_list)
-	return {key: round(value / n) for key, value in totals.items()}
+	shots = round(sum(totals.values()) / n)
+	if shots == 0:
+		return dict.fromkeys(totals, 0)
+	return probabilities_to_counts([{key: value / (n * shots) for key, value in totals.items()}], shots)[0]
 
 
 def _average_distributions(distributions: list[dict[str, float]]) -> dict[str, float]:
@@ -159,6 +167,82 @@ def _average_distributions(distributions: list[dict[str, float]]) -> dict[str, f
 			totals[key] = totals.get(key, 0.0) + value
 	n = len(distributions)
 	return {key: value / n for key, value in totals.items()}
+
+
+def _hex_key(key: str) -> str:
+	"""Qiskit's hex form of a count or memory key given as a (possibly spaced) bitstring."""
+	if key.startswith("0x"):
+		return key
+	bits = key.replace(" ", "")
+	return hex(int(bits, 2)) if bits else "0x0"
+
+
+def _fits_circuit(counts: dict[str, int], circuit: QuantumCircuit) -> bool:
+	"""True when every key is hex or a bitstring with one bit per classical bit of ``circuit``."""
+	num_clbits = getattr(circuit, "num_clbits", None)
+	if not isinstance(num_clbits, int):
+		return False
+	for key in counts:
+		if key.startswith("0x"):
+			continue
+		bits = key.replace(" ", "")
+		if len(bits) != num_clbits or set(bits) - {"0", "1"}:
+			return False
+	return True
+
+
+def _memory_from_counts(counts: dict[str, int], rng: np.random.Generator) -> list[str]:
+	"""One hex entry per counted shot, in random order, since counts carry no shot order."""
+	memory = [_hex_key(key) for key, value in counts.items() for _ in range(value)]
+	rng.shuffle(memory)
+	return memory
+
+
+def _store_counts(
+	entry: dict[str, Any], circuit: QuantumCircuit, counts: dict[str, int], memory: list[str] | None
+) -> None:
+	"""Store an experiment's counts and memory as Qiskit backends do.
+
+	Keys are hex and the header describes the classical registers, so ``Result.get_counts()`` and
+	``Result.get_memory()`` pad and split them by register, and ``BackendSamplerV2`` (which parses
+	memory as hex) reads the right bits.
+
+	Args:
+	    entry: One experiment of a ``Result.to_dict()``, modified in place.
+	    circuit: The circuit the experiment ran, which defines the classical registers.
+	    counts: Counts keyed by spaced bitstrings or hex. Zero counts are dropped.
+	    memory: Per-shot memory keyed the same way, or ``None`` to store none.
+
+	Counts whose keys do not have one bit per classical bit of ``circuit`` are stored as given, with
+	the header untouched, since they cannot be laid out by register.
+	"""
+	data = entry.setdefault("data", {})
+	if not _fits_circuit(counts, circuit):
+		data["counts"] = counts
+		if memory is not None:
+			data["memory"] = memory
+		return
+	hex_counts: dict[str, int] = {}
+	for key, value in counts.items():
+		# Averaging can leave outcomes at zero; backends report only observed outcomes.
+		if value:
+			hex_key = _hex_key(key)
+			hex_counts[hex_key] = hex_counts.get(hex_key, 0) + value
+	data["counts"] = hex_counts
+	if memory is not None:
+		data["memory"] = [_hex_key(shot) for shot in memory]
+
+	header = entry.get("header")
+	if not isinstance(header, dict):
+		header = {}
+		entry["header"] = header
+	header["memory_slots"] = circuit.num_clbits
+	creg_sizes = [[creg.name, creg.size] for creg in circuit.cregs]
+	# Clbits outside any register cannot be described per register, so leave the keys unsplit.
+	if sum(size for _, size in creg_sizes) == circuit.num_clbits:
+		header["creg_sizes"] = creg_sizes
+	else:
+		header.pop("creg_sizes", None)
 
 
 def _trim_result_to_groups(result: Result, num_groups: int) -> Result:

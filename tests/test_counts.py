@@ -101,8 +101,14 @@ class TestAverageCounts:
 
 	def test_averages_and_rounds(self):
 		result = _average_counts([{"00": 1, "11": 2}, {"00": 2, "11": 1}, {"00": 1, "11": 1}])
-		# (1+2+1)/3 and (2+1+1)/3 both round to 1.
-		assert result == {"00": 1, "11": 1}
+		# Both average to 4/3; the total is round(8/3) = 3, so one key takes the extra count.
+		assert sum(result.values()) == 3
+		assert sorted(result.values()) == [1, 2]
+
+	def test_total_matches_the_shot_count(self):
+		# Rounding each key separately would total 1001 here: 333.5 rounds up three times.
+		counts_list = [{"00": 334, "01": 333, "10": 333}, {"00": 333, "01": 334, "10": 333}]
+		assert sum(_average_counts(counts_list).values()) == 1000
 
 	def test_non_overlapping_keys(self):
 		result = _average_counts([{"00": 1000}, {"11": 1000}])

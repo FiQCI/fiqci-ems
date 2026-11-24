@@ -734,15 +734,18 @@ class TestMitigationLevelValidation:
 			with pytest.raises(ValueError, match="mitigation_level must be 0-3"):
 				cls(AerSimulator(), mitigation_level=7)
 
-	def test_default_shots_match_across_interfaces(self) -> None:
-		"""A user moving between interfaces should not silently change shot count."""
+	def test_default_shots_match_between_primitives(self) -> None:
+		"""A user moving between the primitives should not silently change shot count.
+
+		FiQCIBackend instead follows the wrapped backend's ``options.shots``, as ``backend.run`` does.
+		"""
 		import inspect
 
-		from fiqci.ems import FiQCIBackend, FiQCISampler
+		from fiqci.ems import FiQCISampler
 
 		defaults = {
 			cls.__name__: inspect.signature(cls.run).parameters["shots"].default
-			for cls in (FiQCIBackend, FiQCISampler, FiQCIEstimator)
+			for cls in (FiQCISampler, FiQCIEstimator)
 		}
 
 		assert len(set(defaults.values())) == 1, defaults

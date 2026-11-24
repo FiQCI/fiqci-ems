@@ -504,15 +504,15 @@ class TestAverageAndTrimMethods:
 		assert result["11"] == 500
 
 	def test_average_counts_rounding(self):
-		"""Test that averaging rounds to nearest integer."""
+		"""Averaged counts are integers that total the average shot count."""
 		counts1 = {"00": 1, "11": 2}
 		counts2 = {"00": 2, "11": 1}
 		counts3 = {"00": 1, "11": 1}
 		result = _average_counts([counts1, counts2, counts3])
 
-		# (1+2+1)/3 = 1.33 -> 1, (2+1+1)/3 = 1.33 -> 1
-		assert result["00"] == 1
-		assert result["11"] == 1
+		# Both keys average to 4/3; the total is round(8/3) = 3.
+		assert sum(result.values()) == 3
+		assert sorted(result.values()) == [1, 2]
 
 	def test_trim_result_to_groups(self):
 		"""_trim_result_to_groups keeps one representative entry per group, in order.

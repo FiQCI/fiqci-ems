@@ -328,7 +328,7 @@ class TestKeyLayout:
 
 			with patch.object(backend, "_create_mitigated_result") as mock_create:
 				# Mitigation is lazy; result() triggers the deferred M3 correction.
-				backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()], shots=1000).result()
+				backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()]).result()
 
 		# M3 received spaceless keys (a spaced key like "0 0" would raise M3Error).
 		corrected_counts = mock_mitigator.apply_correction.call_args[0][0]
@@ -371,7 +371,7 @@ class TestKeyLayout:
 
 			with patch.object(backend, "_create_mitigated_result") as mock_create:
 				# Mitigation is lazy; result() triggers the deferred M3 correction.
-				backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()], shots=1000).result()
+				backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()]).result()
 
 		# Only the measured bit reaches M3, with no space and no unmeasured bit.
 		corrected_counts = mock_mitigator.apply_correction.call_args[0][0]
@@ -561,7 +561,7 @@ class TestQuasiProbabilityDiagnostics:
 			mock_m3iqm_class.return_value = mock_mitigator
 
 			backend = FiQCIBackend(mock_backend, mitigation_level=1)
-			result = backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()], shots=1000).result()
+			result = backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()]).result()
 
 		return result, mock_mitigator
 
@@ -615,7 +615,7 @@ class TestQuasiProbabilityDiagnostics:
 			mock_m3iqm_class.return_value = mock_mitigator
 
 			backend = FiQCIBackend(mock_backend, mitigation_level=1)
-			result = backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()], shots=1000).result()
+			result = backend._run_with_m3_mitigation([mock_job], [(0, 1)], [Mock()]).result()
 
 		quasi_probabilities = result.results[0].header["fiqci_ems"]["quasi_probabilities"]
 		assert set(quasi_probabilities) == {"0 0", "1 1", "0 1"}

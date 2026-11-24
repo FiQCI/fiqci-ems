@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 from collections.abc import Iterable
 
+import numpy as np
 from iqm.iqm_client import STANDARD_DD_STRATEGY, CircuitCompilationOptions, DDMode
 from iqm.qiskit_iqm.iqm_backend import IQMBackendBase
 from mthree.utils import final_measurement_mapping
@@ -31,13 +32,16 @@ from fiqci.ems.backend.counts import (
 	_expand_quasi_probabilities,
 	_average_counts,
 	_average_distributions,
+	_memory_from_counts,
+	_store_counts,
 	_trim_result_to_groups,
 )
 
 from qiskit import QuantumCircuit
 from qiskit.circuit import Gate
-from qiskit.providers import JobStatus, JobV1
+from qiskit.providers import BackendV2, JobStatus, JobV1, Options
 from qiskit.result import Result
+from qiskit.transpiler import Target
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -68,14 +72,22 @@ def _combine_rem_diagnostics(diagnostics: list[dict[str, Any]]) -> dict[str, Any
 	}
 
 
-class FiQCIBackend:
+class FiQCIBackend(BackendV2):
 	"""FiQCI backend wrapper that applies error mitigation automatically.
+
+	A :class:`~qiskit.providers.BackendV2` that stands in for the wrapped backend: the target, options
+	and every other attribute come from it, so code written against ``backend.run`` works unchanged.
 
 	Mitigation levels:
 		- 0: No error mitigation (raw results)
 		- 1: Readout error mitigation using M3 (default)
 		- 2: Level 1 + dynamical decoupling (DD)
 		- 3: Level 2 + Pauli twirling
+
+	Results are stored the way Qiskit backends store them (hex keys and a header describing the
+	classical registers), and ``memory`` always agrees with the counts. When the counts are
+	mitigated, or the backend returned no memory, the memory is the counts expanded into shots in a
+	random order rather than the measured shot sequence.
 
 	Args:
 		backend: An IQMBackendBase instance to wrap.
@@ -106,6 +118,12 @@ class FiQCIBackend:
 			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
 
 		self._backend = backend
+		super().__init__(
+			name=backend.name,
+			description=backend.description,
+			online_date=backend.online_date,
+			backend_version=backend.backend_version,
+		)
 		self._mitigation_level = mitigation_level
 		self._raw_counts_cache: list[dict[str, int]] | None = None
 
@@ -155,6 +173,35 @@ class FiQCIBackend:
 			self.init_pauli_twirl(enabled=True)
 		else:
 			raise ValueError(f"mitigation_level must be 0-3, got {mitigation_level}")
+
+	@property
+	def target(self) -> Target:
+		"""The wrapped backend's target, from which ``num_qubits``, ``coupling_map`` etc. follow."""
+		return self._backend.target
+
+	@property
+	def max_circuits(self) -> Any:
+		"""The wrapped backend's ``max_circuits``. ``run()`` batches by ``max_batch_size`` itself."""
+		return self._backend.max_circuits
+
+	@property
+	def options(self) -> Any:
+		"""The wrapped backend's options, so ``backend.options.shots`` and ``set_options`` act on it."""
+		return self._backend.options
+
+	@property
+	def provider(self) -> Any:
+		"""The wrapped backend's provider."""
+		return self._backend.provider
+
+	@classmethod
+	def _default_options(cls) -> Options:  # type: ignore[bad-override]
+		# Unused: options are the wrapped backend's.
+		return Options()
+
+	def set_options(self, **fields: Any) -> None:
+		"""Set options on the wrapped backend."""
+		self._backend.set_options(**fields)
 
 	@property
 	def backend(self) -> IQMBackendBase:
@@ -401,10 +448,10 @@ class FiQCIBackend:
 		"""
 		self.init_pauli_twirl(enabled, num_twirls, gates_to_twirl, seed)
 
-	def run(
+	def run(  # type: ignore[bad-override]  # returns FiQCI's lazy handles, not a JobV1
 		self,
 		circuits: QuantumCircuit | list[QuantumCircuit],
-		shots: int = 2048,
+		shots: int | None = None,
 		max_batch_size: int = 100,
 		**kwargs: Any,
 	) -> MitigatedJob | BatchedJob:
@@ -417,12 +464,17 @@ class FiQCIBackend:
 
 		Args:
 			circuits: Single quantum circuit or list of circuits to execute.
-			shots: Number of shots. Default is 2048, matching FiQCISampler and FiQCIEstimator.
+			shots: Number of shots. Defaults to what ``backend.run`` would use: the wrapped backend's
+				``options.shots`` if it declares one, otherwise its own ``run()`` default (real IQM
+				backends declare no options and default to 1024).
 			max_batch_size: Maximum number of circuits per backend job. The (post-twirl) circuit list is
 				flattened and split into batches of this size; the resulting jobs are wrapped so that the
 				returned handle's ``result()`` exposes a single combined Result indexed in submission order
 				(default: 100).
-			**kwargs: Additional keyword arguments passed to backend.run().
+			**kwargs: Additional keyword arguments passed to backend.run(). ``memory`` and
+				``seed_simulator`` are only forwarded to backends whose options have them, since Qiskit's
+				primitives pass them to every backend. Results carry memory either way when ``memory`` is
+				set.
 
 		Returns:
 			A :class:`BatchedJob` handle (level 0) or a :class:`MitigatedJob` view (level 1+). In
@@ -437,7 +489,10 @@ class FiQCIBackend:
 
 		if not circuits_list:
 			raise ValueError("No circuits provided")
+		if shots is None:
+			shots = self._default_shots()
 
+		input_circuits = circuits_list
 		input_circuit_count = len(circuits_list)
 		logger.info(
 			"FiQCIBackend.run: %d input circuit(s); mitigation_level=%d (REM=%s, DD=%s, pauli_twirl=%s)",
@@ -474,6 +529,10 @@ class FiQCIBackend:
 		# kept and only has its DD fields set, so options like MOVE gate validation and frame
 		# tracking survive.
 		run_kwargs = dict(kwargs)
+		memory_requested = bool(run_kwargs.get("memory"))
+		for option in ("memory", "seed_simulator"):
+			if option in run_kwargs and (run_kwargs[option] is None or not hasattr(self._backend.options, option)):
+				del run_kwargs[option]
 		if self._dd["enabled"]:
 			base_options = run_kwargs.get("circuit_compilation_options")
 			if base_options is not None and not isinstance(base_options, CircuitCompilationOptions):
@@ -488,6 +547,8 @@ class FiQCIBackend:
 					"to submit with your own DD strategy."
 				)
 			run_kwargs["circuit_compilation_options"] = build_dd_options(self._dd["gate_sequences"], base=base_options)
+		if shots is not None:
+			run_kwargs["shots"] = shots
 
 		# Submit circuits in batches of at most max_batch_size, preserving submission order so the
 		# combined result indices match circuits_list.
@@ -518,7 +579,7 @@ class FiQCIBackend:
 				continue
 
 			try:
-				batch_job = self._backend.run(batch, shots=shots, **run_kwargs)
+				batch_job = self._backend.run(batch, **run_kwargs)
 				assert batch_job is not None, "Backend returned None job"
 			except Exception as exc:
 				submission_failed = True
@@ -553,7 +614,13 @@ class FiQCIBackend:
 		# handle's result() via a post-process callback (no blocking here).
 		if not self._rem["enabled"]:
 			if twirl_group_size == 0:
-				return BatchedJob(batch_jobs, batch_ranges, mitigator_options=options_snapshot)
+
+				def _format_post(result: Result) -> Result:
+					return self._format_result(result, input_circuits, memory_requested)
+
+				return BatchedJob(
+					batch_jobs, batch_ranges, post_process=_format_post, mitigator_options=options_snapshot
+				)
 
 			# Snapshot mitigation metadata at submission time so deferred post-processing is not
 			# affected by later changes to the backend's settings.
@@ -578,9 +645,11 @@ class FiQCIBackend:
 					result_to_use,
 					averaged_counts_list,
 					raw_counts_list,
+					input_circuits,
 					twirl_group_size=twirl_group_size,
 					mitigation_level=mitigation_level,
 					calibration_shots=calibration_shots,
+					memory_requested=memory_requested,
 				)
 
 			return MitigatedJob(
@@ -592,10 +661,11 @@ class FiQCIBackend:
 			batch_jobs,
 			batch_ranges,
 			circuits_list,
-			shots,
 			twirl_group_size=twirl_group_size,
 			max_batch_size=max_batch_size,
 			mitigator_options=options_snapshot,
+			input_circuits=input_circuits,
+			memory_requested=memory_requested,
 		)
 
 	def _run_with_m3_mitigation(
@@ -603,10 +673,11 @@ class FiQCIBackend:
 		batch_jobs: list[JobV1],
 		batch_ranges: list[tuple[int, int]],
 		circuits: list[QuantumCircuit],
-		shots: int,
 		twirl_group_size: int = 0,
 		max_batch_size: int = 100,
 		mitigator_options: dict[str, Any] | None = None,
+		input_circuits: list[QuantumCircuit] | None = None,
+		memory_requested: bool = False,
 	) -> MitigatedJob:
 		"""Build a lazy M3-mitigated handle for already-submitted batch jobs.
 
@@ -619,15 +690,19 @@ class FiQCIBackend:
 			batch_jobs: Per-batch jobs already submitted to the backend, in submission order.
 			batch_ranges: ``(start, end_exclusive)`` circuit index range for each batch.
 			circuits: List of quantum circuits that were executed.
-			shots: Number of measurement shots.
 			twirl_group_size: Size of each twirl group (num_twirls + 1), or 0 if no twirling.
 			max_batch_size: Maximum circuits per calibration job (default: 100).
 			mitigator_options: Frozen snapshot of the mitigation settings used at submission, attached
 				to the returned handle so it can report the configuration it ran with.
+			input_circuits: The circuits before twirling, one per result entry. Defaults to the first
+				circuit of each twirl group, which is the untwirled one.
+			memory_requested: Whether ``run()`` was asked for memory.
 
 		Returns:
 			A MitigatedJob view whose ``result()`` lazily applies M3 mitigation.
 		"""
+		if input_circuits is None:
+			input_circuits = circuits[:: twirl_group_size or 1]
 		# Get qubit mappings for each circuit
 		qubits_list = [final_measurement_mapping(circuit) for circuit in circuits]
 
@@ -704,7 +779,8 @@ class FiQCIBackend:
 
 				quasi_dist = mitigator.apply_correction(counts_for_correction, qubits, return_mitigation_overhead=True)
 				mitigated_probs = quasi_dist.nearest_probability_distribution()  # type: ignore[union-attr]
-				mitigated_counts = probabilities_to_counts(mitigated_probs, shots)
+				# Sized by the shots the circuit actually returned, which heralding can reduce.
+				mitigated_counts = probabilities_to_counts(mitigated_probs, sum(raw_counts.values()))
 				mitigated_counts_list.append(_expand_counts(mitigated_counts[0], layout))
 				diagnostics_list.append(
 					{
@@ -744,25 +820,49 @@ class FiQCIBackend:
 				result_to_use,
 				mitigated_counts_list,
 				raw_counts_list,
+				input_circuits,
 				twirl_group_size=twirl_group_size or 1,
 				mitigation_level=mitigation_level,
 				calibration_shots=calibration_shots,
 				rem_diagnostics=diagnostics_list,
+				memory_requested=memory_requested,
 			)
 
 		return MitigatedJob(
 			BatchedJob(batch_jobs, batch_ranges, post_process=_m3_post, mitigator_options=mitigator_options)
 		)
 
+	def _default_shots(self) -> int | None:
+		"""The wrapped backend's declared default shot count, or ``None`` to leave it to its ``run()``."""
+		shots = getattr(getattr(self._backend, "options", None), "shots", None)
+		return shots if isinstance(shots, int) else None
+
+	def _format_result(self, result: Result, circuits: list[QuantumCircuit], memory_requested: bool) -> Result:
+		"""Lay out an unmitigated result's counts and memory as Qiskit backends do (see ``_store_counts``).
+
+		The measured memory is kept when the backend returned it. Otherwise, when ``run()`` was asked for
+		memory, it is the counts expanded into shots.
+		"""
+		results_data = result.to_dict()
+		rng = np.random.default_rng()
+		for entry, circuit in zip(results_data.get("results") or [], circuits):
+			data = entry.get("data") or {}
+			counts = data.get("counts") or {}
+			memory = data.get("memory") or (_memory_from_counts(counts, rng) if memory_requested else None)
+			_store_counts(entry, circuit, counts, memory)
+		return Result.from_dict(results_data)
+
 	def _create_mitigated_result(
 		self,
 		original_result: Result,
 		mitigated_counts: list[dict[str, int]],
 		raw_counts: list[dict[str, int]],
+		circuits: list[QuantumCircuit],
 		twirl_group_size: int = 1,
 		mitigation_level: int | None = None,
 		calibration_shots: int | None = None,
 		rem_diagnostics: list[dict[str, Any]] | None = None,
+		memory_requested: bool = False,
 	) -> Result:
 		"""Create a new Result object with mitigated counts and metadata.
 
@@ -771,6 +871,8 @@ class FiQCIBackend:
 			mitigated_counts: List of mitigated count dictionaries, one per group.
 			raw_counts: Flat list of raw (unmitigated) count dictionaries, one per submitted circuit.
 				When ``twirl_group_size > 1`` this contains all per-twirl counts in submission order.
+			circuits: The input circuit of each group, whose classical registers lay out the stored
+				counts and memory.
 			twirl_group_size: Number of submitted circuits per group (``num_twirls + 1``), or 1 when
 				twirling is disabled. Used to slice ``raw_counts`` into the per-group entries that get
 				attached to each result header.
@@ -783,6 +885,8 @@ class FiQCIBackend:
 				``mitigation_overhead``, ``clipped_outcomes``) merged into each header's ``fiqci_ems``
 				entry. Omitted when readout error mitigation did not run, which also leaves
 				``mitigation_method`` and ``calibration_shots`` as ``None``.
+			memory_requested: Whether ``run()`` was asked for memory. Memory is also written when the
+				backend returned some, so it never disagrees with the mitigated counts.
 
 		Returns:
 			New Result object with mitigated data and FiQCI EMS metadata. Each header's
@@ -796,18 +900,17 @@ class FiQCIBackend:
 
 		# Get original result data
 		results_data = original_result.to_dict()
+		rng = np.random.default_rng()
 
 		# Update counts and add metadata in each experiment result
 		results_list = results_data.get("results")
 		if results_list is not None:
 			for idx, counts in enumerate(mitigated_counts):
 				if idx < len(results_list):
-					# Update counts with mitigated values
-					results_list[idx]["data"]["counts"] = counts  # type: ignore[index]
-
-					# Add FiQCI EMS metadata to header
-					if "header" not in results_list[idx]:
-						results_list[idx]["header"] = {}  # type: ignore[index]
+					entry = results_list[idx]
+					with_memory = memory_requested or bool((entry.get("data") or {}).get("memory"))
+					memory = _memory_from_counts(counts, rng) if with_memory else None
+					_store_counts(entry, circuits[idx], counts, memory)
 
 					if twirl_group_size > 1:
 						raw_for_group: dict[str, int] | list[dict[str, int]] = raw_counts[
@@ -833,4 +936,7 @@ class FiQCIBackend:
 
 	def __getattr__(self, name: str) -> Any:
 		"""Delegate attribute access to underlying backend object."""
+		if name == "_backend":
+			# Not set yet (during __init__ or unpickling); delegating would recurse.
+			raise AttributeError(name)
 		return getattr(self._backend, name)

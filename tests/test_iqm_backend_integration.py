@@ -18,7 +18,7 @@ from qiskit.quantum_info import SparsePauliOp
 
 from iqm.qiskit_iqm import IQMFakeAdonis, transpile_to_IQM
 
-from fiqci.ems import FiQCIEstimator, FiQCISampler
+from fiqci.ems import FiQCIBackend, FiQCIEstimator, FiQCISampler
 
 SHOTS = 2048
 LEVELS = [0, 1, 2, 3]
@@ -97,6 +97,60 @@ class TestSamplerOnRealDeviceValidation:
 		quasi = metadata["quasi_probabilities"]
 		assert set(quasi) >= set(result.get_counts(0))
 		assert sum(quasi.values()) == pytest.approx(1.0)
+
+
+class TestQiskitBackendPrimitives:
+	"""FiQCIBackend is a ``BackendV2``, so Qiskit's backend primitives accept it and see its results."""
+
+	@pytest.fixture(scope="class")
+	def two_registers(self, backend: IQMFakeAdonis) -> QuantumCircuit:
+		qc = QuantumCircuit(2)
+		qc.add_register(ClassicalRegister(1, "a"))
+		qc.add_register(ClassicalRegister(2, "c"))
+		qc.h(0)
+		qc.cx(0, 1)
+		qc.measure(0, qc.cregs[0][0])
+		qc.measure([0, 1], qc.cregs[1])
+		return transpile_to_IQM(qc, backend)
+
+	@pytest.mark.parametrize("level", LEVELS)
+	def test_memory_agrees_with_counts(self, backend: IQMFakeAdonis, two_registers: QuantumCircuit, level: int) -> None:
+		"""IQM's fake backend returns no memory, and mitigated counts are not the measured shots."""
+		from collections import Counter
+
+		result = FiQCIBackend(backend, mitigation_level=level).run(two_registers, shots=SHOTS, memory=True).result()
+
+		counts = result.get_counts()
+		assert all(len(key.split(" ")) == 2 for key in counts)
+		assert Counter(result.get_memory()) == counts
+		assert sum(counts.values()) == SHOTS
+
+	def test_default_shots_follow_the_device(self, backend: IQMFakeAdonis, measured: QuantumCircuit) -> None:
+		counts = FiQCIBackend(backend, mitigation_level=1).run(measured).result().get_counts()
+
+		assert sum(counts.values()) == backend.options.shots
+
+	def test_backend_sampler_sees_mitigated_samples(self, backend: IQMFakeAdonis, measured: QuantumCircuit) -> None:
+		from qiskit.primitives import BackendSamplerV2
+
+		def bell_fraction(level: int) -> float:
+			sampler = BackendSamplerV2(backend=FiQCIBackend(backend, mitigation_level=level))
+			counts = sampler.run([measured], shots=8192).result()[0].data.c.get_counts()
+			return (counts.get("00", 0) + counts.get("11", 0)) / 8192
+
+		# Readout error costs Adonis roughly 0.1 of the Bell fraction, far above the shot noise.
+		raw, mitigated = bell_fraction(0), bell_fraction(1)
+		assert 0.5 < raw < mitigated
+
+	def test_backend_estimator_accepts_it(
+		self, backend: IQMFakeAdonis, transpiled: QuantumCircuit, device_observables: list[SparsePauliOp]
+	) -> None:
+		from qiskit.primitives import BackendEstimatorV2
+
+		estimator = BackendEstimatorV2(backend=FiQCIBackend(backend, mitigation_level=1))
+		evs = estimator.run([(transpiled, device_observables)]).result()[0].data.evs
+
+		assert evs.shape == (len(device_observables),)
 
 
 class TestMitigationImprovesAccuracy:
