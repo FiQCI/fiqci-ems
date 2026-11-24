@@ -1,7 +1,7 @@
 ## [2.1.0] 23.11.2026
 
 ### Changed
-- `FiQCIBackend` is a Qiskit `BackendV2`. It shares the wrapped backend's target and options and works with Qiskit's `BackendSamplerV2` and `BackendEstimatorV2`
+- `FiQCIBackend` is a Qiskit `BackendV2` inherited object. It shares the wrapped backend's target and options and works with Qiskit's `BackendSamplerV2` and `BackendEstimatorV2`
 - `FiQCIBackend.run()` without `shots` uses the wrapped backend's own default, as `backend.run` does. That is 1024 on IQM backends instead of the previous 2048
 - mitigated counts total the shots each circuit actually returned, which heralding can make fewer than requested
 - results use Qiskit's standard layout with hex keys and register sizes in the header. `get_counts()` returns the same keys as before
